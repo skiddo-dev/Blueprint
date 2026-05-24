@@ -68,7 +68,7 @@ st.title("🛒 Grocery Construction Kanban")
 st.caption("Track permits, vendor quotes, and site tasks")
 
 statuses = ["To Do", "In Progress", "Done"]
-assignees = ["Unassigned", "Site Foreman", "Project Manager", "Electrician", "Plumber", "Safety Officer"]
+assignees = ["Unassigned", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady","Frank Crew","Bob","Dean","Vickie"]
 
 cols = st.columns(3)
 
