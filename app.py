@@ -86,10 +86,52 @@ for i, status in enumerate(statuses):
                     st.markdown(f"**{task['title']}**")
                     st.caption(task['description'][:90] + "..." if len(task['description']) > 90 else task['description'])
                     
-                    # Quote field prominently displayed
-                    st.markdown(f"💰 **Quote:** `{task['quote']}`")
+                    # --- NEW: Date & Notes Fields ---
+                    col_date, col_notes = st.columns(2)
+                    with col_date:
+                        # Handle potential string-to-date conversion if stored as string
+                        current_date = task.get('date', None)
+                        if isinstance(current_date, str):
+                            from datetime import datetime
+                            current_date = datetime.strptime(current_date, "%Y-%m-%d").date()
+                        
+                        new_date = st.date_input("📅 Date", value=current_date, key=f"date_{task['id']}")
+                        if new_date != current_date:
+                            # Save as ISO string for consistent backend storage
+                            update_task_field(task['id'], 'date', str(new_date))
+                            
+                    with col_notes:
+                        current_notes = task.get('notes', '')
+                        new_notes = st.text_area("📝 Notes", value=current_notes, key=f"notes_{task['id']}", height=60)
+                        if new_notes != current_notes:
+                            update_task_field(task['id'], 'notes', new_notes)
                     
-                    # Assignment & Status Controls
+                    # --- NEW: Quote Field with Clickable Submenu ---
+                    # Uses st.popover (requires Streamlit >= 1.30.0)
+                    quote_display = f"💰 Quote: {task.get('quote_type', 'Not Set')}"
+                    with st.popover(quote_display):
+                        st.caption("Configure Quote Type & Assignee")
+                        c_q1, c_q2 = st.columns(2)
+                        
+                        with c_q1:
+                            quote_types = ["assign Quote", "T&M", "Service Call", "Maintenance Request"]
+                            curr_type = task.get('quote_type', quote_types[0])
+                            new_type = st.selectbox("Quote Type", quote_types,
+                                                    index=quote_types.index(curr_type) if curr_type in quote_types else 0,
+                                                    key=f"qtype_{task['id']}")
+                            if new_type != curr_type:
+                                update_task_field(task['id'], 'quote_type', new_type)
+                                
+                        with c_q2:
+                            quote_people = ["Bob", "Ben", "Andrew", "Mike", "Riley"]
+                            curr_person = task.get('quote_assignee', quote_people[0])
+                            new_person = st.selectbox("Assign To", quote_people,
+                                                      index=quote_people.index(curr_person) if curr_person in quote_people else 0,
+                                                      key=f"qperson_{task['id']}")
+                            if new_person != curr_person:
+                                update_task_field(task['id'], 'quote_assignee', new_person)
+                    
+                    # Assignment & Status Controls (unchanged)
                     col_ctrl1, col_ctrl2 = st.columns(2)
                     with col_ctrl1:
                         new_assign = st.selectbox(
@@ -100,7 +142,7 @@ for i, status in enumerate(statuses):
                         )
                         if new_assign != task['assigned_to']:
                             update_task_field(task['id'], 'assigned_to', new_assign)
-                    
+                        
                     with col_ctrl2:
                         new_status = st.selectbox(
                             "Move to", 
