@@ -3,16 +3,17 @@ import streamlit as st
 from dotenv import load_dotenv
 load_dotenv()                  
 import streamlit as st
-from streamlit_sortables import sort_items
 from datetime import datetime
 import logging
 from typing import List, Dict
 import os
 
+
 # ======================
 # MOCK DATA MODE SETUP
 # ======================
 USE_MOCK = os.getenv("USE_MOCK_DATA", "false").lower() == "true"
+
 
 if USE_MOCK:
     # Mock database functions (using Streamlit session state)
@@ -58,11 +59,13 @@ if USE_MOCK:
             ]
         return st.session_state.mock_tasks
 
+
     def insert_task(task):
         if "_id" not in task:
             task["_id"] = f"mock_{len(st.session_state.mock_tasks) + 1}_{int(datetime.utcnow().timestamp())}"
         st.session_state.mock_tasks.append(task)
         return task["_id"]
+
 
     def update_task_field(task_id, field, value):
         for task in st.session_state.mock_tasks:
@@ -71,33 +74,38 @@ if USE_MOCK:
                 return True
         return False
 
+
     def delete_task(task_id):
         initial_len = len(st.session_state.mock_tasks)
         st.session_state.mock_tasks = [t for t in st.session_state.mock_tasks if t["_id"] != task_id]
         return len(st.session_state.mock_tasks) < initial_len
+
 
 else:
     # Real mode: Import actual implementations
     from db import get_tasks, insert_task, update_task_field, delete_task
     from utils import fetch_recent_emails, parse_email_with_llm
 
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 # Page config
 st.set_page_config(page_title="Blueprint - Email to Task Kanban", layout="wide")
 st.title("🏗️ Blueprint - Email-to-Task Kanban")
 st.caption("For Grocery Construction Companies: Turn Emails into Actionable Tasks")
 
+
 # Initialize session state for UI controls
 if "refresh_key" not in st.session_state:
     st.session_state.refresh_key = 0
 
+
 # Sidebar controls
 with st.sidebar:
     st.header("⚙️ Controls")
-    
     if st.button("🔄 Sync Emails from Exchange", type="primary", use_container_width=True):
         if USE_MOCK:
             # MOCK MODE: Generate a new mock task
@@ -122,17 +130,14 @@ with st.sidebar:
             with st.spinner("Fetching and processing emails from Exchange..."):
                 new_emails = fetch_recent_emails(max_results=30)
                 new_count = 0
-                
                 for email in new_emails:
                     existing = False
                     for task in get_tasks():
                         if task.get("exchange_id") == email["id"]:
                             existing = True
                             break
-                    
                     if not existing:
                         parsed = parse_email_with_llm(email)
-                        
                         task = {
                             "title": email["subject"],
                             "description": email["body"],
@@ -146,34 +151,31 @@ with st.sidebar:
                         }
                         insert_task(task)
                         new_count += 1
-                
                 if new_count > 0:
                     st.success(f"✅ Synced {new_count} new task(s) from Exchange!")
                     st.session_state.refresh_key += 1
                     st.rerun()
                 else:
                     st.info("📭 No new emails to process in Exchange.")
-    
-    st.divider()
-    
-    if st.button("🗑️ Clear All Tasks (DANGER)", use_container_width=True):
-        if st.checkbox("I confirm deletion of all tasks"):
-            if USE_MOCK:
-                st.session_state.mock_tasks = []
-            else:
-                for task in get_tasks():
-                    delete_task(task["_id"])
-            st.warning("All tasks cleared!")
-            st.session_state.refresh_key += 1
-            st.rerun()
-    
-    st.divider()
-    st.subheader("📊 Stats")
-    tasks = get_tasks()
-    st.metric("Total Tasks", len(tasks))
-    st.metric("To Do", len([t for t in tasks if t["status"] == "To Do"]))
-    st.metric("In Progress", len([t for t in tasks if t["status"] == "In Progress"]))
-    st.metric("Done", len([t for t in tasks if t["status"] == "Done"]))
+        st.divider()
+        if st.button("🗑️ Clear All Tasks (DANGER)", use_container_width=True):
+            if st.checkbox("I confirm deletion of all tasks"):
+                if USE_MOCK:
+                    st.session_state.mock_tasks = []
+                else:
+                    for task in get_tasks():
+                        delete_task(task["_id"])
+                st.warning("All tasks cleared!")
+                st.session_state.refresh_key += 1
+                st.rerun()
+        st.divider()
+        st.subheader("📊 Stats")
+        tasks = get_tasks()
+        st.metric("Total Tasks", len(tasks))
+        st.metric("To Do", len([t for t in tasks if t["status"] == "To Do"]))
+        st.metric("In Progress", len([t for t in tasks if t["status"] == "In Progress"]))
+        st.metric("Done", len([t for t in tasks if t["status"] == "Done"]))
+
 
 # Main Kanban Board
 statuses = ["To Do", "In Progress", "Done"]
@@ -181,11 +183,14 @@ assignees = ["Unassigned", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "
 quote_types = ["assign Quote", "T&M", "Service Call", "Maintenance Request"]
 quote_people = ["Bob", "Ben", "Andrew", "Mike", "Riley"]
 
+
 # Fetch fresh tasks from MongoDB (or mock)
 tasks = get_tasks()
 
+
 # Create three columns for Kanban
 cols = st.columns(3)
+
 
 # Process each column
 for idx, status in enumerate(statuses):
@@ -194,24 +199,8 @@ for idx, status in enumerate(statuses):
         task_count = len([t for t in tasks if t["status"] == status])
         st.subheader(f"{status} ({task_count})")
         st.divider()
-        
         # Get tasks for this column
         column_tasks = [t for t in tasks if t["status"] == status]
-        task_ids = [t["_id"] for t in column_tasks]
-        
-        # Render sortable list for drag-and-drop
-        if task_ids:
-            new_ids = sort_items(task_ids, key=f"col_{status}_{st.session_state.refresh_key}")
-            
-            # Detect changes and update task statuses
-            if set(new_ids) != set(task_ids):
-                for task_id in new_ids:
-                    update_task_field(task_id, "status", status)
-                st.session_state.refresh_key += 1
-                st.rerun()
-        else:
-            st.info(f"No tasks in {status}")
-
         # Render individual task cards
         for task in column_tasks:
             with st.container(border=True):
@@ -219,7 +208,18 @@ for idx, status in enumerate(statuses):
                 st.markdown(f"**{task['title']}**")
                 desc = task['description'][:90] + "..." if len(task['description']) > 90 else task['description']
                 st.caption(desc)
-                
+                # Status dropdown (replaces drag-and-drop)
+                current_status = task.get('status', 'To Do')
+                new_status = st.selectbox(
+                    "Status", 
+                    statuses,
+                    index=statuses.index(current_status) if current_status in statuses else 0,
+                    key=f"status_{task['_id']}_{st.session_state.refresh_key}"
+                )
+                if new_status != current_status:
+                    update_task_field(task["_id"], "status", new_status)
+                    st.session_state.refresh_key += 1
+                    st.rerun()
                 # Date and Notes fields
                 col1, col2 = st.columns(2)
                 with col1:
@@ -229,7 +229,6 @@ for idx, status in enumerate(statuses):
                         date_val = datetime.strptime(current_date, "%Y-%m-%d").date() if current_date else None
                     except:
                         date_val = None
-                    
                     new_date = st.date_input(
                         "📅 Date", 
                         value=date_val,
@@ -237,7 +236,6 @@ for idx, status in enumerate(statuses):
                     )
                     if new_date != date_val:
                         update_task_field(task["_id"], "date", str(new_date))
-                
                 with col2:
                     # Notes area
                     current_notes = task.get('notes', '')
@@ -249,7 +247,6 @@ for idx, status in enumerate(statuses):
                     )
                     if new_notes != current_notes:
                         update_task_field(task["_id"], "notes", new_notes)
-                
                 # Quote popover (requires Streamlit >= 1.30.0)
                 quote_display = f"💰 Quote: {task.get('quote_type', 'Not Set')}"
                 with st.popover(quote_display):
@@ -265,7 +262,6 @@ for idx, status in enumerate(statuses):
                         )
                         if new_type != curr_type:
                             update_task_field(task["_id"], "quote_type", new_type)
-                    
                     with q_col2:
                         curr_person = task.get('quote_assignee', quote_people[0])
                         new_person = st.selectbox(
@@ -276,8 +272,7 @@ for idx, status in enumerate(statuses):
                         )
                         if new_person != curr_person:
                             update_task_field(task["_id"], "quote_assignee", new_person)
-                
-                # Task assignment (status handled via drag-drop)
+                # Task assignment (status handled via dropdown above)
                 col_a, col_b = st.columns(2)
                 with col_a:
                     curr_assign = task.get('assigned_to', 'Unassigned')
@@ -290,6 +285,7 @@ for idx, status in enumerate(statuses):
                     if new_assign != curr_assign:
                         update_task_field(task["_id"], "assigned_to", new_assign)
 
+
 # Admin: View raw task data
 with st.expander("🛠️ Admin - Raw Task Data"):
     if tasks:
@@ -301,6 +297,7 @@ with st.expander("🛠️ Admin - Raw Task Data"):
         st.dataframe(df, use_container_width=True, hide_index=True)
     else:
         st.write("No tasks in database.")
+
 
 # Auto-refresh on sync
 if st.session_state.get("refresh_key", 0) > 0:
