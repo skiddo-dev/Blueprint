@@ -157,24 +157,24 @@ with st.sidebar:
                     st.rerun()
                 else:
                     st.info("📭 No new emails to process in Exchange.")
-        st.divider()
-        if st.button("🗑️ Clear All Tasks (DANGER)", use_container_width=True):
-            if st.checkbox("I confirm deletion of all tasks"):
-                if USE_MOCK:
-                    st.session_state.mock_tasks = []
-                else:
-                    for task in get_tasks():
-                        delete_task(task["_id"])
-                st.warning("All tasks cleared!")
-                st.session_state.refresh_key += 1
-                st.rerun()
-        st.divider()
-        st.subheader("📊 Stats")
-        tasks = get_tasks()
-        st.metric("Total Tasks", len(tasks))
-        st.metric("To Do", len([t for t in tasks if t["status"] == "To Do"]))
-        st.metric("In Progress", len([t for t in tasks if t["status"] == "In Progress"]))
-        st.metric("Done", len([t for t in tasks if t["status"] == "Done"]))
+    st.divider()
+    if st.button("🗑️ Clear All Tasks (DANGER)", use_container_width=True):
+        if st.checkbox("I confirm deletion of all tasks"):
+            if USE_MOCK:
+                st.session_state.mock_tasks = []
+            else:
+                for task in get_tasks():
+                    delete_task(task["_id"])
+            st.warning("All tasks cleared!")
+            st.session_state.refresh_key += 1
+            st.rerun()
+    st.divider()
+    st.subheader("📊 Stats")
+    tasks = get_tasks()
+    st.metric("Total Tasks", len(tasks))
+    st.metric("To Do", len([t for t in tasks if t["status"] == "To Do"]))
+    st.metric("In Progress", len([t for t in tasks if t["status"] == "In Progress"]))
+    st.metric("Done", len([t for t in tasks if t["status"] == "Done"]))
 
 
 # Main Kanban Board
@@ -284,21 +284,3 @@ for idx, status in enumerate(statuses):
                     )
                     if new_assign != curr_assign:
                         update_task_field(task["_id"], "assigned_to", new_assign)
-
-
-# Admin: View raw task data
-with st.expander("🛠️ Admin - Raw Task Data"):
-    if tasks:
-        import pandas as pd
-        df = pd.DataFrame(tasks)
-        cols_order = ["_id", "title", "date", "assigned_to", "quote", "quote_type", 
-                     "quote_assignee", "notes", "status", "exchange_id", "created_at"]
-        df = df[cols_order] if all(c in df.columns for c in cols_order) else df
-        st.dataframe(df, use_container_width=True, hide_index=True)
-    else:
-        st.write("No tasks in database.")
-
-
-# Auto-refresh on sync
-if st.session_state.get("refresh_key", 0) > 0:
-    st.rerun()
