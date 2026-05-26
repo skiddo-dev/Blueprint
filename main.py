@@ -1,6 +1,9 @@
 # Blueprint/main.py
 import streamlit as st
-from streamlit_sortables import sortables
+from dotenv import load_dotenv
+load_dotenv()                  
+import streamlit as st
+from streamlit_sortables import sort_items
 from datetime import datetime
 import logging
 from typing import List, Dict
@@ -198,7 +201,7 @@ for idx, status in enumerate(statuses):
         
         # Render sortable list for drag-and-drop
         if task_ids:
-            new_ids = sortables(task_ids, key=f"col_{status}_{st.session_state.refresh_key}")
+            new_ids = sort_items(task_ids, key=f"col_{status}_{st.session_state.refresh_key}")
             
             # Detect changes and update task statuses
             if set(new_ids) != set(task_ids):
