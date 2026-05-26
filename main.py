@@ -3,10 +3,11 @@ import streamlit as st
 from dotenv import load_dotenv
 load_dotenv()                  
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from typing import List, Dict
 import os
+import random
 
 
 # ======================
@@ -15,48 +16,135 @@ import os
 USE_MOCK = os.getenv("USE_MOCK_DATA", "false").lower() == "true"
 
 
+# ======================
+# KANBAN BOARD CONFIGURATION
+# ======================
+# ADD YOUR NEW STATUSES HERE - Modify this list to add/remove columns
+KANBAN_STATUSES = ["To Do", "In Progress", "Review", "Approval", "Done", "On Hold", "Cancelled"]
+
+
 if USE_MOCK:
     # Mock database functions (using Streamlit session state)
     def get_tasks():
         if 'mock_tasks' not in st.session_state:
-            st.session_state.mock_tasks = [
-                {
-                    "_id": "mock1",
-                    "title": "Mock Task 1: Quote for Freezer Units",
-                    "description": "Attached is the final quote for 12 walk-in freezer units. Installation & calibration included.",
-                    "quote": "$12,500.00",
-                    "assigned_to": "Andrew",
-                    "notes": "Follow up with vendor on delivery date.",
-                    "date": "2025-06-01",
-                    "status": "To Do",
-                    "exchange_id": "mock_exchange_id_1",
-                    "created_at": "2024-05-26T10:00:00Z"
-                },
-                {
-                    "_id": "mock2",
-                    "title": "Mock Task 2: Permit Approved",
-                    "description": "Your electrical permit for the downtown location has been approved. Valid for 6 months from issuance.",
-                    "quote": "$0.00",
-                    "assigned_to": "Unassigned",
-                    "notes": "Schedule work within permit validity period.",
-                    "date": "2025-05-30",
-                    "status": "In Progress",
-                    "exchange_id": "mock_exchange_id_2",
-                    "created_at": "2024-05-26T10:05:00Z"
-                },
-                {
-                    "_id": "mock3",
-                    "title": "Mock Task 3: Concrete Pour Delayed",
-                    "description": "Due to heavy rain, the scheduled pour for Aisle 3 is pushed to next Tuesday. Please adjust site fencing.",
-                    "quote": "$0.00",
-                    "assigned_to": "Mike",
-                    "notes": "Notify site crew and update safety barriers.",
-                    "date": "2025-06-04",
-                    "status": "To Do",
-                    "exchange_id": "mock_exchange_id_3",
-                    "created_at": "2024-05-26T10:10:00Z"
-                }
+            # Enhanced mock data with variety for all statuses
+            task_titles = [
+                "Quote for Freezer Units", 
+                "Permit Approved", 
+                "Concrete Pour Delayed", 
+                "Site Inspection Required", 
+                "Equipment Delivery Scheduled",
+                "Safety Review Completed",
+                "Budget Approval Pending",
+                "Vendor Meeting Scheduled",
+                "Quality Check Performed",
+                "Timeline Update Needed",
+                "Material Shortage Alert",
+                "Weather Delay Notice",
+                "Change Order Request",
+                "Invoice Dispute Resolution",
+                "Staff Training Required",
+                "Utility Coordination",
+                "Foundation Pour Scheduled",
+                "Electrical Rough-In Complete",
+                "Plumbing Inspection Passed",
+                "HVAC Installation"
             ]
+            
+            task_descriptions = [
+                "Attached is the final quote for 12 walk-in freezer units. Installation & calibration included.",
+                "Your electrical permit for the downtown location has been approved. Valid for 6 months from issuance.",
+                "Due to heavy rain, the scheduled pour for Aisle 3 is pushed to next Tuesday. Please adjust site fencing.",
+                "Requires immediate attention from site supervisor",
+                "Pending approval from project manager",
+                "Awaiting client feedback before proceeding",
+                "Scheduled for next week's work window",
+                "On hold due to material availability",
+                "Completed ahead of schedule",
+                "Requires rework due to quality issues",
+                "Critical materials delayed - impact assessment needed",
+                "Severe weather forecasted for next 3 days",
+                "Client requesting additional features mid-project",
+                "Vendor billing discrepancy requiring resolution",
+                "OSHA compliance training needed for new equipment",
+                "Coordinate with water/gas/electric companies",
+                "Concrete foundation pour for Phase 2",
+                "Rough-in electrical inspection passed",
+                "All plumbing rough-in approved by inspector",
+                "HVAC units installation in progress"
+            ]
+            
+            notes_templates = [
+                "Follow up with vendor on delivery date",
+                "Schedule work within permit validity period",
+                "Notify site crew and update safety barriers",
+                "Review budget allocation for next phase",
+                "Coordinate with utility company for shutdown",
+                "Prepare safety briefing for tomorrow's work",
+                "Update client on progress via email",
+                "Check material specifications against approved samples",
+                "Verify measurements before cutting",
+                "Ensure proper disposal of waste materials",
+                "Confirm insurance certificates are current",
+                "Validate measurements with architect drawings",
+                "Schedule follow-up inspection in 48 hours",
+                "Review subcontractor qualifications",
+                "Check for potential utility conflicts",
+                "Verify ADA compliance requirements",
+                "Confirm fire rating specifications",
+                "Check for moisture barrier installation",
+                "Verify proper flashing details",
+                "Ensure adequate ventilation during installation"
+            ]
+            
+            quote_types = ["assign Quote", "T&M", "Service Call", "Maintenance Request", "Emergency Repair"]
+            quote_people = ["Bob", "Ben", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady"]
+            assignees = ["Unassigned", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Bob", "Dean", "Vickie", "Sarah", "Tom"]
+            
+            # Generate 25 varied tasks
+            tasks = []
+            for i in range(25):
+                title = random.choice(task_titles)
+                description = random.choice(task_descriptions)
+                quote_type = random.choice(quote_types)
+                quote_person = random.choice(quote_people)
+                assignee = random.choice(assignees)
+                status = random.choice(KANBAN_STATUSES)  # Use our Kanban statuses
+                notes = random.choice(notes_templates)
+                
+                # Generate quote amount based on type
+                if quote_type == "assign Quote":
+                    quote_amount = f"${random.randint(5000, 50000):,}.00"
+                elif quote_type == "T&M":
+                    quote_amount = f"${random.randint(2000, 20000):,}.00"
+                elif quote_type == "Service Call":
+                    quote_amount = f"${random.randint(500, 5000):,}.00"
+                elif quote_type == "Maintenance Request":
+                    quote_amount = f"${random.randint(1000, 10000):,}.00"
+                else:  # Emergency Repair
+                    quote_amount = f"${random.randint(3000, 30000):,}.00"
+                
+                # Random date within next 3 months or past month
+                days_offset = random.randint(-30, 90)
+                task_date = (datetime.now() + timedelta(days=days_offset)).strftime("%Y-%m-%d")
+                
+                task = {
+                    "_id": f"mock_{i:02d}",
+                    "title": title,
+                    "description": description,
+                    "quote": quote_amount,
+                    "quote_type": quote_type,
+                    "quote_assignee": quote_person,
+                    "assigned_to": assignee,
+                    "notes": notes,
+                    "date": task_date,
+                    "status": status,
+                    "exchange_id": f"mock_exchange_{i:03d}",
+                    "created_at": (datetime.now() - timedelta(days=random.randint(0, 15))).isoformat()
+                }
+                tasks.append(task)
+            
+            st.session_state.mock_tasks = tasks
         return st.session_state.mock_tasks
 
 
@@ -165,31 +253,32 @@ with st.sidebar:
             else:
                 for task in get_tasks():
                     delete_task(task["_id"])
-            st.warning("All tasks cleared!")
-            st.session_state.refresh_key += 1
-            st.rerun()
+                st.warning("All tasks cleared!")
+                st.session_state.refresh_key += 1
+                st.rerun()
     st.divider()
     st.subheader("📊 Stats")
     tasks = get_tasks()
-    st.metric("Total Tasks", len(tasks))
-    st.metric("To Do", len([t for t in tasks if t["status"] == "To Do"]))
-    st.metric("In Progress", len([t for t in tasks if t["status"] == "In Progress"]))
-    st.metric("Done", len([t for t in tasks if t["status"] == "Done"]))
+    # Show stats for ALL Kanban statuses
+    for status in KANBAN_STATUSES:
+        count = len([t for t in tasks if t["status"] == status])
+        st.metric(status, count)
 
 
 # Main Kanban Board
-statuses = ["To Do", "In Progress", "Done"]
-assignees = ["Unassigned", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Bob", "Dean", "Vickie"]
-quote_types = ["assign Quote", "T&M", "Service Call", "Maintenance Request"]
-quote_people = ["Bob", "Ben", "Andrew", "Mike", "Riley"]
+# Use our configured statuses list
+statuses = KANBAN_STATUSES
+assignees = ["Unassigned", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Bob", "Dean", "Vickie", "Sarah", "Tom"]
+quote_types = ["assign Quote", "T&M", "Service Call", "Maintenance Request", "Emergency Repair"]
+quote_people = ["Bob", "Ben", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady"]
 
 
 # Fetch fresh tasks from MongoDB (or mock)
 tasks = get_tasks()
 
 
-# Create three columns for Kanban
-cols = st.columns(3)
+# Create columns for Kanban - ONE COLUMN PER STATUS
+cols = st.columns(len(statuses))
 
 
 # Process each column
@@ -208,6 +297,7 @@ for idx, status in enumerate(statuses):
                 st.markdown(f"**{task['title']}**")
                 desc = task['description'][:90] + "..." if len(task['description']) > 90 else task['description']
                 st.caption(desc)
+                
                 # Status dropdown (replaces drag-and-drop)
                 current_status = task.get('status', 'To Do')
                 new_status = st.selectbox(
@@ -220,6 +310,7 @@ for idx, status in enumerate(statuses):
                     update_task_field(task["_id"], "status", new_status)
                     st.session_state.refresh_key += 1
                     st.rerun()
+                
                 # Date and Notes fields
                 col1, col2 = st.columns(2)
                 with col1:
@@ -247,6 +338,7 @@ for idx, status in enumerate(statuses):
                     )
                     if new_notes != current_notes:
                         update_task_field(task["_id"], "notes", new_notes)
+                
                 # Quote popover (requires Streamlit >= 1.30.0)
                 quote_display = f"💰 Quote: {task.get('quote_type', 'Not Set')}"
                 with st.popover(quote_display):
@@ -272,6 +364,7 @@ for idx, status in enumerate(statuses):
                         )
                         if new_person != curr_person:
                             update_task_field(task["_id"], "quote_assignee", new_person)
+                
                 # Task assignment (status handled via dropdown above)
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -284,3 +377,21 @@ for idx, status in enumerate(statuses):
                     )
                     if new_assign != curr_assign:
                         update_task_field(task["_id"], "assigned_to", new_assign)
+
+
+# Admin: View raw task data
+with st.expander("🛠️ Admin - Raw Task Data"):
+    if tasks:
+        import pandas as pd
+        df = pd.DataFrame(tasks)
+        cols_order = ["_id", "title", "date", "assigned_to", "quote", "quote_type", 
+                     "quote_assignee", "notes", "status", "exchange_id", "created_at"]
+        df = df[cols_order] if all(c in df.columns for c in cols_order) else df
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        st.write("No tasks in database.")
+
+
+# Auto-refresh on sync
+if st.session_state.get("refresh_key", 0) > 0:
+    st.rerun()
