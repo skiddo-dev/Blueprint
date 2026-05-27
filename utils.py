@@ -1,6 +1,6 @@
 # Blueprint/utils.py
 import msal
-import requests
+import json
 import base64
 import email
 import re
@@ -9,26 +9,39 @@ import openai
 import os
 from dotenv import load_dotenv
 from dateutil import parser as date_parser
+from msgraph.core import GraphClient
+
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
 
 # Microsoft Graph Configuration
 TENANT_ID = os.getenv("AZURE_TENANT_ID")
 CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
 CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
 AUTHORITY = os.getenv("AZURE_AUTHORITY")
-SCOPES = os.getenv("AZURE_SCOPES", '["https://graph.microsoft.com/Mail.Read"]')
+# SCOPES should be a JSON array string from environment variable
+SCOPES_STR = os.getenv("AZURE_SCOPES", '["https://graph.microsoft.com/Mail.Read"]')
+try:
+    SCOPES = json.loads(SCOPES_STR)
+except json.JSONDecodeError:
+    SCOPES = ["https://graph.microsoft.com/Mail.Read"]
 GRAPH_ENDPOINT = "https://graph.microsoft.com/v1.0"
 
-def _get_graph_token():
-    """Acquire token for Microsoft Graph using client credentials flow"""
+
+def _get_graph_token() -> str:
+    """
+    Acquire token for Microsoft Graph using client credentials flow
+    Returns access token string
+    """
     app = msal.ConfidentialClientApplication(
-        CLIENT_ID,
+        client_id=CLIENT_ID,
         authority=AUTHORITY,
         client_credential=CLIENT_SECRET,
     )
     
+    # Try to get token from cache first
     result = app.acquire_token_silent(SCOPES, account=None)
     
     if not result:
@@ -37,33 +50,34 @@ def _get_graph_token():
     if "access_token" in result:
         return result["access_token"]
     else:
-        raise Exception(
-            f"Failed to acquire token: {result.get('error')}\n"
-            f"{result.get('error_description')}\n"
-            f"{result.get('correlation_id')}"
-        )
+        error_msg = f"Failed to acquire token: {result.get('error')}\n"
+        error_msg += f"{result.get('error_description')}\n"
+        error_msg += f"{result.get('correlation_id')}"
+        raise Exception(error_msg)
+
 
 def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
     """
-    Fetch recent emails from Exchange/Outlook via Microsoft Graph API
-    Returns same structure as Gmail version for compatibility
-    """
+        Fetch recent emails from Exchange/Outlook via Microsoft Graph API
+        Returns same structure as Gmail version for compatibility
+        """
     try:
+        # Get fresh token
         token = _get_graph_token()
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
         
+        # Create Graph Client with token
+        client = GraphClient(credential=token)
+        
+        # Build request parameters
         params = {
             "$top": max_results,
             "$orderby": "receivedDateTime DESC",
             "$select": "id,subject,from,receivedDateTime,bodyPreview,body"
         }
         
-        response = requests.get(
-            f"{GRAPH_ENDPOINT}/me/mailfolders/inbox/messages",
-            headers=headers,
+        # Make request using Graph Client
+        response = client.get(
+            f"/me/mailfolders/inbox/messages",
             params=params
         )
         response.raise_for_status()
@@ -93,34 +107,38 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
                 "date": msg.get("receivedDateTime", ""),
                 "body": body
             })
+        
         return emails
         
     except Exception as e:
+        # Log error but return empty list to avoid breaking the app
         print(f"Exchange sync error: {str(e)}")
         return []
 
+
 def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Extract date, assigned_to, quote, notes using LLM
-    (Unchanged from Gmail version - works identically for Exchange)
-    """
+        Extract date, assigned_to, quote, notes using LLM
+        (Unchanged from Gmail version - works identically for Exchange)
+        """
     prompt = f"""
-    You are an assistant extracting structured data from grocery construction emails.
-    From the email below, return JSON with:
-    - "date": Task date (ISO 8601, e.g. "2025-01-15"). If not explicit, infer from email Date.
-    - "assigned_to": Person/team assigned (string). Null if unclear.
-    - "quote": Monetary figure (string, keep raw like "$12,300"). Null if none.
-    - "notes": Task summary (max 200 chars).
+        You are an assistant extracting structured data from grocery construction emails.
+        From the email below, return JSON with:
+        - "date": Task date (ISO 8601, e.g. "2025-01-15"). If not explicit, infer from email Date.
+        - "assigned_to": Person/team assigned (string). Null if unclear.
+        - "quote": Monetary figure (string, keep raw like "$12,300"). Null if none.
+        - "notes": Task summary (max 200 chars).
 
-    Email:
-    Subject: {email_dict['subject']}
-    From: {email_dict['from']}
-    Date: {email_dict['date']}
-    Body: {email_dict['body'][:1500]}
 
-    Return ONLY JSON object.
-    """
-    
+        Email:
+        Subject: {email_dict['subject']}
+        From: {email_dict['from']}
+        Date: {email_dict['date']}
+        Body: {email_dict['body'][:1500]}
+
+
+        Return ONLY JSON object.
+        """
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -131,7 +149,6 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
         content = response.choices[0].message.content.strip()
         import json
         data = json.loads(content)
-        
         return {
             "date": data.get("date"),
             "assigned_to": data.get("assigned_to") or None,
