@@ -50,7 +50,6 @@ if USE_MOCK:
                 "Plumbing Inspection Passed",
                 "HVAC Installation"
             ]
-            
             task_descriptions = [
                 "Attached is the final quote for 12 walk-in freezer units. Installation & calibration included.",
                 "Your electrical permit for the downtown location has been approved. Valid for 6 months from issuance.",
@@ -73,7 +72,6 @@ if USE_MOCK:
                 "All plumbing rough-in approved by inspector",
                 "HVAC units installation in progress"
             ]
-            
             notes_templates = [
                 "Follow up with vendor on delivery date",
                 "Schedule work within permit validity period",
@@ -96,11 +94,9 @@ if USE_MOCK:
                 "Verify proper flashing details",
                 "Ensure adequate ventilation during installation"
             ]
-            
             quote_types = ["assign Quote", "T&M", "Service Call", "Maintenance Request", "Emergency Repair"]
             quote_people = ["Bob", "Ben", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady"]
             assignees = ["Unassigned", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Bob", "Dean", "Vickie", "Sarah", "Tom"]
-            
             # Generate 25 varied tasks
             tasks = []
             for i in range(25):
@@ -111,7 +107,6 @@ if USE_MOCK:
                 assignee = random.choice(assignees)
                 status = random.choice(KANBAN_STATUSES)  # Use our Kanban statuses
                 notes = random.choice(notes_templates)
-                
                 # Generate quote amount based on type
                 if quote_type == "assign Quote":
                     quote_amount = f"${random.randint(5000, 50000):,}.00"
@@ -123,11 +118,9 @@ if USE_MOCK:
                     quote_amount = f"${random.randint(1000, 10000):,}.00"
                 else:  # Emergency Repair
                     quote_amount = f"${random.randint(3000, 30000):,}.00"
-                
                 # Random date within next 3 months or past month
                 days_offset = random.randint(-30, 90)
                 task_date = (datetime.now() + timedelta(days=days_offset)).strftime("%Y-%m-%d")
-                
                 task = {
                     "_id": f"mock_{i:02d}",
                     "title": title,
@@ -143,7 +136,6 @@ if USE_MOCK:
                     "created_at": (datetime.now() - timedelta(days=random.randint(0, 15))).isoformat()
                 }
                 tasks.append(task)
-            
             st.session_state.mock_tasks = tasks
         return st.session_state.mock_tasks
 
@@ -245,24 +237,24 @@ with st.sidebar:
                     st.rerun()
                 else:
                     st.info("📭 No new emails to process in Exchange.")
-    st.divider()
-    if st.button("🗑️ Clear All Tasks (DANGER)", use_container_width=True):
-        if st.checkbox("I confirm deletion of all tasks"):
-            if USE_MOCK:
-                st.session_state.mock_tasks = []
-            else:
-                for task in get_tasks():
-                    delete_task(task["_id"])
+        st.divider()
+        if st.button("🗑️ Clear All Tasks (DANGER)", use_container_width=True):
+            if st.checkbox("I confirm deletion of all tasks"):
+                if USE_MOCK:
+                    st.session_state.mock_tasks = []
+                else:
+                    for task in get_tasks():
+                        delete_task(task["_id"])
                 st.warning("All tasks cleared!")
                 st.session_state.refresh_key += 1
                 st.rerun()
-    st.divider()
-    st.subheader("📊 Stats")
-    tasks = get_tasks()
-    # Show stats for ALL Kanban statuses
-    for status in KANBAN_STATUSES:
-        count = len([t for t in tasks if t["status"] == status])
-        st.metric(status, count)
+        st.divider()
+        st.subheader("📊 Stats")
+        tasks = get_tasks()
+        # Show stats for ALL Kanban statuses
+        for status in KANBAN_STATUSES:
+            count = len([t for t in tasks if t["status"] == status])
+            st.metric(status, count)
 
 
 # Main Kanban Board
@@ -298,18 +290,31 @@ for idx, status in enumerate(statuses):
                 desc = task['description'][:90] + "..." if len(task['description']) > 90 else task['description']
                 st.caption(desc)
                 
-                # Status dropdown (replaces drag-and-drop)
-                current_status = task.get('status', 'To Do')
-                new_status = st.selectbox(
-                    "Status", 
-                    statuses,
-                    index=statuses.index(current_status) if current_status in statuses else 0,
-                    key=f"status_{task['_id']}_{st.session_state.refresh_key}"
-                )
-                if new_status != current_status:
-                    update_task_field(task["_id"], "status", new_status)
-                    st.session_state.refresh_key += 1
-                    st.rerun()
+                # QUOTE AMOUNT DISPLAY (NEW: Shows the actual quote value)
+                quote_display = f"💰 Quote: {task.get('quote', 'Not Set')}"
+                with st.popover(quote_display):
+                    st.caption("Configure Quote Details")
+                    q_col1, q_col2 = st.columns(2)
+                    with q_col1:
+                        curr_type = task.get('quote_type', quote_types[0])
+                        new_type = st.selectbox(
+                            "Quote Type", 
+                            quote_types,
+                            index=quote_types.index(curr_type) if curr_type in quote_types else 0,
+                            key=f"qtype_{task['_id']}_{st.session_state.refresh_key}"
+                        )
+                        if new_type != curr_type:
+                            update_task_field(task["_id"], "quote_type", new_type)
+                    with q_col2:
+                        curr_person = task.get('quote_assignee', quote_people[0])
+                        new_person = st.selectbox(
+                            "Assign To", 
+                            quote_people,
+                            index=quote_people.index(curr_person) if curr_person in quote_people else 0,
+                            key=f"qperson_{task['_id']}_{st.session_state.refresh_key}"
+                        )
+                        if new_person != curr_person:
+                            update_task_field(task["_id"], "quote_assignee", new_person)
                 
                 # Date and Notes fields
                 col1, col2 = st.columns(2)
@@ -338,32 +343,6 @@ for idx, status in enumerate(statuses):
                     )
                     if new_notes != current_notes:
                         update_task_field(task["_id"], "notes", new_notes)
-                
-                # Quote popover (requires Streamlit >= 1.30.0)
-                quote_display = f"💰 Quote: {task.get('quote_type', 'Not Set')}"
-                with st.popover(quote_display):
-                    st.caption("Configure Quote Details")
-                    q_col1, q_col2 = st.columns(2)
-                    with q_col1:
-                        curr_type = task.get('quote_type', quote_types[0])
-                        new_type = st.selectbox(
-                            "Quote Type", 
-                            quote_types,
-                            index=quote_types.index(curr_type) if curr_type in quote_types else 0,
-                            key=f"qtype_{task['_id']}_{st.session_state.refresh_key}"
-                        )
-                        if new_type != curr_type:
-                            update_task_field(task["_id"], "quote_type", new_type)
-                    with q_col2:
-                        curr_person = task.get('quote_assignee', quote_people[0])
-                        new_person = st.selectbox(
-                            "Assign To", 
-                            quote_people,
-                            index=quote_people.index(curr_person) if curr_person in quote_people else 0,
-                            key=f"qperson_{task['_id']}_{st.session_state.refresh_key}"
-                        )
-                        if new_person != curr_person:
-                            update_task_field(task["_id"], "quote_assignee", new_person)
                 
                 # Task assignment (status handled via dropdown above)
                 col_a, col_b = st.columns(2)
