@@ -18,148 +18,98 @@ USE_MOCK = os.getenv("USE_MOCK_DATA", "false").lower() == "true"
 
 
 if USE_MOCK:
-    # Mock database functions (using Streamlit session state)
+    # Shared mock data generation function
+    def _generate_mock_tasks():
+        # Configuration arrays
+        quote_types = ["assign Quote", "T&M", "Service Call", "Maintenance Request", "Emergency Repair", "Inspection Fee"]
+        quote_people = ["Bob", "Ben", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Dean", "Vickie", "Sarah"]
+        assignees = ["Unassigned", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Bob", "Dean", "Vickie", "Sarah", "Tom", "Lisa"]
+        statuses = ["To Do", "In Progress", "Review", "Approval", "Done", "On Hold", "Cancelled"]
+        
+        # Task templates (25 unique titles, descriptions, notes)
+        templates = [
+            ("Site Inspection Required", "Requires immediate attention from site supervisor", "Follow up with vendor on delivery date"),
+            ("Equipment Delivery Scheduled", "Pending approval from project manager", "Schedule work within permit validity period"),
+            ("Permit Application Submitted", "Awaiting client feedback before proceeding", "Notify site crew and update safety barriers"),
+            ("Safety Review Completed", "Scheduled for next week's work window", "Review budget allocation for next phase"),
+            ("Budget Approval Pending", "On hold due to material availability", "Coordinate with utility company for shutdown"),
+            ("Vendor Meeting Scheduled", "Completed ahead of schedule", "Prepare safety briefing for tomorrow's work"),
+            ("Quality Check Performed", "Requires rework due to quality issues", "Update client on progress via email"),
+            ("Timeline Update Needed", "Budget variance needs explanation", "Check material specifications against approved samples"),
+            ("Material Shortage Alert", "Client requested additional features", "Verify measurements before cutting"),
+            ("Weather Delay Notice", "Regulatory update affects timeline", "Ensure proper disposal of waste materials"),
+            ("Change Order Request", "Vendor performance review needed", "Confirm insurance certificates are current"),
+            ("Invoice Dispute Resolution", "Weather contingency plan activated", "Validate measurements with architect drawings"),
+            ("Staff Training Required", "Subcontractor coordination meeting", "Schedule follow-up inspection in 48 hours"),
+            ("Utility Coordination", "Material delivery tracking required", "Review subcontractor qualifications"),
+            ("Foundation Pour Scheduled", "Safety incident investigation", "Check for potential utility conflicts"),
+            ("Electrical Rough-In Complete", "Quality assurance documentation", "Verify ADA compliance requirements"),
+            ("Plumbing Inspection Passed", "Change order pricing negotiation", "Confirm fire rating specifications"),
+            ("HVAC Installation", "Final inspection scheduling", "Check for moisture barrier installation"),
+            ("Roofing Materials Delivered", "Client satisfaction survey", "Verify proper flashing details"),
+            ("Flooring Installation Started", "Post-project cleanup coordination", "Ensure adequate ventilation during installation"),
+            ("Painting Prep Work", "Exterior lighting installation", "Check electrical grounding"),
+            ("Final Walkthrough Scheduled", "Parking lot resurfacing", "Verify fire alarm connectivity"),
+            ("Client Presentation Prepared", "ADA compliance upgrades", "Check refrigerant levels"),
+            ("As-Built Drawings Updated", "Energy efficiency audit", "Verify irrigation system"),
+            ("Warranty Registration Filed", "Fire suppression system check", "Check door hardware specifications"),
+            ("Final Invoice Generated", "Roof membrane replacement", "Verify insulation R-values"),
+            ("Project Closeout Meeting", "Interior demolition work", "Check paint adhesion"),
+            ("Safety Audit Conducted", "Structural engineering review", "Verify concrete slump test"),
+            ("Environmental Compliance Check", "Plumbing fixture upgrades", "Check electrical conduit fill"),
+            ("Accessibility Review", "Electrical load calculation", "Verify HVAC airflow measurements")
+        ]
+        
+        # Generate 35 tasks with varied data
+        import random
+        tasks = []
+        for i in range(1, 36):
+            # Select random template (with repetition to get 35 tasks)
+            title, desc, notes = random.choice(templates)
+            
+            # Random dates
+            task_date = (datetime.now() - timedelta(days=random.randint(0, 270))).strftime("%Y-%m-%d")
+            created_at = (datetime.now() - timedelta(days=random.randint(0, 60))).isoformat()
+            
+            # Random selections
+            quote_type = random.choice(quote_types)
+            quote_person = random.choice(quote_people)
+            assignee = random.choice(assignees)
+            status = random.choice(statuses)
+            
+            # Quote amount by type
+            if quote_type == "assign Quote":
+                quote_amount = f"${random.randint(8000, 75000):,}.00"
+            elif quote_type == "T&M":
+                quote_amount = f"${random.randint(1500, 25000):,}.00"
+            elif quote_type == "Service Call":
+                quote_amount = f"${random.randint(300, 8000):,}.00"
+            elif quote_type == "Maintenance Request":
+                quote_amount = f"${random.randint(500, 12000):,}.00"
+            elif quote_type == "Emergency Repair":
+                quote_amount = f"${random.randint(2000, 30000):,}.00"
+            else:  # Inspection Fee
+                quote_amount = f"${random.randint(250, 5000):,}.00"
+            
+            tasks.append({
+                "_id": f"mock_{i:02d}",
+                "title": title,
+                "description": desc,
+                "quote": quote_amount,
+                "quote_type": quote_type,
+                "quote_assignee": quote_person,
+                "assigned_to": assignee,
+                "notes": notes,
+                "date": task_date,
+                "status": status,
+                "exchange_id": f"mock_exchange_{i:03d}_{int(datetime.utcnow().timestamp())}",
+                "created_at": created_at
+            })
+        return tasks
+
     def get_tasks():
-        if 'mock_tasks' not in st.session_state:
-            # Enhanced mock data with more variety for colorful charts
-            quote_types = ["assign Quote", "T&M", "Service Call", "Maintenance Request", "Emergency Repair", "Inspection Fee"]
-            quote_people = ["Bob", "Ben", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Dean", "Vickie", "Sarah"]
-            assignees = ["Unassigned", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Bob", "Dean", "Vickie", "Sarah", "Tom", "Lisa"]
-            statuses = ["To Do", "In Progress", "Review", "Approval", "Done", "On Hold", "Cancelled"]
-            task_titles = [
-                "Site Inspection Required", "Equipment Delivery Scheduled", "Permit Application Submitted",
-                "Safety Review Completed", "Budget Approval Pending", "Vendor Meeting Scheduled",
-                "Quality Check Performed", "Timeline Update Needed", "Material Shortage Alert",
-                "Weather Delay Notice", "Change Order Request", "Invoice Dispute Resolution",
-                "Staff Training Required", "Utility Coordination", "Foundation Pour Scheduled",
-                "Electrical Rough-In Complete", "Plumbing Inspection Passed", "HVAC Installation",
-                "Roofing Materials Delivered", "Flooring Installation Started", "Painting Prep Work",
-                "Final Walkthrough Scheduled", "Client Presentation Prepared", "As-Built Drawings Updated",
-                "Warranty Registration Filed", "Final Invoice Generated", "Project Closeout Meeting",
-                "Safety Audit Conducted", "Environmental Compliance Check", "Accessibility Review",
-                "Landscaping Planning", "Security System Installation", "Fire Alarm Upgrade",
-                "Kitchen Renovation Planning", "HVAC Ductwork Installation", "Electrical Panel Upgrade"
-            ]
-            
-            descriptions = [
-                "Requires immediate attention from site supervisor",
-                "Pending approval from project manager",
-                "Awaiting client feedback before proceeding",
-                "Scheduled for next week's work window",
-                "On hold due to material availability",
-                "Completed ahead of schedule",
-                "Requires rework due to quality issues",
-                "Budget variance needs explanation",
-                "Client requested additional features",
-                "Regulatory update affects timeline",
-                "Vendor performance review needed",
-                "Weather contingency plan activated",
-                "Subcontractor coordination meeting",
-                "Material delivery tracking required",
-                "Safety incident investigation",
-                "Quality assurance documentation",
-                "Change order pricing negotiation",
-                "Final inspection scheduling",
-                "Client satisfaction survey",
-                "Post-project cleanup coordination",
-                "Exterior lighting installation",
-                "Parking lot resurfacing",
-                "ADA compliance upgrades",
-                "Energy efficiency audit",
-                "Fire suppression system check",
-                "Roof membrane replacement",
-                "Interior demolition work",
-                "Structural engineering review",
-                "Plumbing fixture upgrades",
-                "Electrical load calculation",
-                "Window replacement project"
-            ]
-            
-            notes_templates = [
-                "Follow up with vendor on delivery date",
-                "Schedule work within permit validity period",
-                "Notify site crew and update safety barriers",
-                "Review budget allocation for next phase",
-                "Coordinate with utility company for shutdown",
-                "Prepare safety briefing for tomorrow's work",
-                "Update client on progress via email",
-                "Check material specifications against approved samples",
-                "Verify measurements before cutting",
-                "Ensure proper disposal of waste materials",
-                "Confirm insurance certificates are current",
-                "Validate measurements with architect drawings",
-                "Schedule follow-up inspection in 48 hours",
-                "Review subcontractor qualifications",
-                "Check for potential utility conflicts",
-                "Verify ADA compliance requirements",
-                "Confirm fire rating specifications",
-                "Check for moisture barrier installation",
-                "Verify proper flashing details",
-                "Ensure adequate ventilation during installation",
-                "Check electrical grounding",
-                "Verify fire alarm connectivity",
-                "Check refrigerant levels",
-                "Verify irrigation system",
-                "Check door hardware specifications",
-                "Verify insulation R-values",
-                "Check paint adhesion",
-                "Verify concrete slump test",
-                "Check electrical conduit fill",
-                "Verify HVAC airflow measurements"
-            ]
-            
-            # Generate 35 varied tasks for rich visualizations
-            import random
-            tasks = []
-            for i in range(1, 36):
-                # Random date within last 9 months for better time distribution
-                days_ago = random.randint(0, 270)
-                task_date = (datetime.now() - timedelta(days=days_ago)).strftime("%Y-%m-%d")
-                
-                # Random creation date within last 2 months
-                created_days_ago = random.randint(0, 60)
-                created_at = (datetime.now() - timedelta(days=created_days_ago)).isoformat()
-                
-                # Select random elements
-                title = random.choice(task_titles)
-                description = random.choice(descriptions)
-                quote_type = random.choice(quote_types)
-                quote_person = random.choice(quote_people)
-                assignee = random.choice(assignees)
-                status = random.choice(statuses)
-                notes = random.choice(notes_templates)
-                
-                # Generate quote amount based on type with realistic ranges
-                if quote_type == "assign Quote":
-                    quote_amount = f"${random.randint(8000, 75000):,}.00"
-                elif quote_type == "T&M":
-                    quote_amount = f"${random.randint(1500, 25000):,}.00"
-                elif quote_type == "Service Call":
-                    quote_amount = f"${random.randint(300, 8000):,}.00"
-                elif quote_type == "Maintenance Request":
-                    quote_amount = f"${random.randint(500, 12000):,}.00"
-                elif quote_type == "Emergency Repair":
-                    quote_amount = f"${random.randint(2000, 30000):,}.00"
-                else:  # Inspection Fee
-                    quote_amount = f"${random.randint(250, 5000):,}.00"
-                
-                task = {
-                    "_id": f"mock_{i:02d}",
-                    "title": title,
-                    "description": description,
-                    "quote": quote_amount,
-                    "quote_type": quote_type,
-                    "quote_assignee": quote_person,
-                    "assigned_to": assignee,
-                    "notes": notes,
-                    "date": task_date,
-                    "status": status,
-                    "exchange_id": f"mock_exchange_{i:03d}_{int(datetime.utcnow().timestamp())}",
-                    "created_at": created_at
-                }
-                tasks.append(task)
-            
-            st.session_state.mock_tasks = tasks
+        # Always generate fresh mock data in mock mode
+        st.session_state.mock_tasks = _generate_mock_tasks()
         return st.session_state.mock_tasks
 
 
@@ -181,16 +131,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Theme-adaptive CSS for metric values (blue) - keeps status colors meaningful
+# Theme-adaptive CSS for metric values (blue)
 st.markdown(
     """
     <style>
-    /* Make metric values use theme's primary color (blue) and bold */
     div[data-testid="stMetric"] > div:nth-child(2) {
         color: var(--primary-color) !important;
         font-weight: 600 !important;
     }
-    /* Ensure metric labels are readable */
     div[data-testid="stMetric"] > div:nth-child(1) {
         opacity: 0.8 !important;
     }
@@ -203,8 +151,7 @@ st.title("📊 Blueprint Task Dashboard")
 st.caption("View and analyze raw task data with theme-adaptive quote analytics")
 
 
-# Sidebar navigation (auto-generated by Streamlit for multi-page apps)
-# We'll add a refresh button here instead
+# Sidebar controls
 with st.sidebar:
     st.header("🔧 Dashboard Controls")
     if st.button("🔄 Refresh Data", use_container_width=True):
@@ -212,7 +159,6 @@ with st.sidebar:
     st.divider()
     st.subheader("📊 Stats")
     tasks = get_tasks()
-    # Show stats for ALL Kanban statuses with meaningful colors
     statuses = ["To Do", "In Progress", "Review", "Approval", "Done", "On Hold", "Cancelled"]
     status_colors = {
         "To Do": "var(--primary-color)",
@@ -223,11 +169,9 @@ with st.sidebar:
         "On Hold": "gray",
         "Cancelled": "red"
     }
-    
     for status in statuses:
         count = len([t for t in tasks if t["status"] == status])
         color = status_colors[status]
-        # Use clean markdown without unnecessary divs
         st.markdown(f'<p style="margin: 5px 0; display: flex; align-items: center;"><span style="color: var(--primary-color); margin-right: 8px;">●</span> <strong>{status}:</strong> <span style="color: {color}; font-weight: 500;">{count}</span></p>', 
                    unsafe_allow_html=True)
 
@@ -236,7 +180,6 @@ with st.sidebar:
 def parse_quote(quote_str):
     if not isinstance(quote_str, str):
         return 0.0
-    # Remove $ and commas, then convert to float
     cleaned = quote_str.replace('$', '').replace(',', '')
     try:
         return float(cleaned)
@@ -254,7 +197,7 @@ else:
     # Convert to DataFrame for better display
     df = pd.DataFrame(tasks)
     
-    # Ensure quote_type and quote_assignee exist with defaults (for compatibility)
+    # Ensure quote_type and quote_assignee exist with defaults
     if 'quote_type' not in df.columns:
         df['quote_type'] = 'Not Set'
     if 'quote_assignee' not in df.columns:
@@ -269,8 +212,6 @@ else:
         "quote_type", "quote_assignee", "notes", "status", 
         "exchange_id", "created_at"
     ]
-    
-    # Only include columns that exist in the data
     existing_cols = [col for col in cols_order if col in df.columns]
     df = df[existing_cols]
     
@@ -296,11 +237,11 @@ else:
         }
     )
     
-    # Enhanced quote analytics section - CLEANED UP (no empty boxes)
+    # Enhanced quote analytics section
     st.divider()
     st.subheader("💰 Quote Analytics Dashboard")
     
-    # Summary statistics - clean metrics without containers
+    # Summary statistics
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.metric("Total Quote Value", f"${df['quote_value'].sum():,.2f}")
@@ -313,7 +254,7 @@ else:
     with col5:
         st.metric("Quote Tasks", f"{len(df[df['quote_value'] > 0])}")
     
-    # Charts section - 2x2 grid for better organization (CLEANED)
+    # Charts section - 2x2 grid
     chart_row1_col1, chart_row1_col2 = st.columns(2)
     chart_row2_col1, chart_row2_col2 = st.columns(2)
     
@@ -321,7 +262,6 @@ else:
         # Quote Value by Type
         st.write("**💰 Total Quote Value by Type**")
         quote_type_data = df.groupby('quote_type')['quote_value'].sum()
-        # Convert to DataFrame with one row for multi-color bars (Streamlit theme-adaptive)
         quote_type_df = quote_type_data.to_frame().T
         st.bar_chart(quote_type_df)
         
@@ -329,18 +269,15 @@ else:
         # Task Count by Quote Type
         st.write("**📊 Task Distribution by Quote Type**")
         type_counts = df['quote_type'].value_counts()
-        # Convert to DataFrame with one row for multi-color bars
         type_df = type_counts.to_frame().T
         st.bar_chart(type_df)
         
     with chart_row2_col1:
         # Quote Value Trend Over Time by Quote Type
         st.write("**📈 Quote Value Trend Over Time (by Type)**")
-        # Prepare data for multi-line chart: pivot to have quote types as columns
         df_temp = df.copy()
         df_temp['date_dt'] = pd.to_datetime(df_temp['date'])
         df_temp = df_temp.sort_values('date_dt')
-        # Pivot: index=date, columns=quote_type, values=quote_value (summed)
         pivot_df = df_temp.pivot_table(
             index='date_dt', 
             columns='quote_type', 
@@ -348,7 +285,6 @@ else:
             aggfunc='sum',
             fill_value=0
         )
-        # Sort by date for proper time series
         pivot_df = pivot_df.sort_index()
         st.line_chart(pivot_df)
         
@@ -357,11 +293,10 @@ else:
         st.write("**👥 Top 7 Assignees by Quote Value**")
         assignee_quote = df.groupby('assigned_to')['quote_value'].sum().reset_index()
         assignee_quote = assignee_quote.sort_values('quote_value', ascending=False).head(7)
-        # Convert to DataFrame with one row for multi-color bars
         assignee_df = assignee_quote.set_index('assigned_to')['quote_value'].to_frame().T
         st.bar_chart(assignee_df)
     
-    # Additional insights section (CLEANED)
+    # Additional insights section
     st.divider()
     st.subheader("📈 Advanced Quote Insights")
     
@@ -373,7 +308,6 @@ else:
         st.write("**📊 Average Quote by Status**")
         status_quote = df.groupby('status')['quote_value'].mean().reset_index()
         status_quote = status_quote.sort_values('quote_value', ascending=False)
-        # Convert to DataFrame with one row for multi-color bars
         status_df = status_quote.set_index('status')['quote_value'].to_frame().T
         st.bar_chart(status_df)
     
@@ -381,19 +315,16 @@ else:
         # Quote Assignee Popularity
         st.write("**👤 Most Active Quote Assignees**")
         assignee_counts = df['quote_assignee'].value_counts().head(6)
-        # Convert to DataFrame with one row for multi-color bars
         assignee_count_df = assignee_counts.to_frame().T
         st.bar_chart(assignee_count_df)
     
     with insight_row2_col1:
         # Quote Value Distribution
         st.write("**📊 Quote Value Distribution**")
-        # Create bins for quote values
         df['quote_bin'] = pd.cut(df['quote_value'], 
                                 bins=[0, 1000, 5000, 10000, 25000, 50000, 100000],
                                 labels=['$0-1K', '$1K-5K', '$5K-10K', '$10K-25K', '$25K-50K', '$50K+'])
         bin_counts = df['quote_bin'].value_counts().sort_index()
-        # Convert to DataFrame with one row for multi-color bars
         bin_df = bin_counts.to_frame().T
         st.bar_chart(bin_df)
     
@@ -401,10 +332,8 @@ else:
         # Status Distribution
         st.write("**🔵 Task Status Distribution**")
         status_counts = df['status'].value_counts()
-        # Create a DataFrame with proper ordering for better color distribution
         status_order = ["To Do", "In Progress", "Review", "Approval", "Done", "On Hold", "Cancelled"]
         status_counts_ordered = status_counts.reindex([s for s in status_order if s in status_counts])
-        # Convert to DataFrame with one row for multi-color bars
         status_chart_df = status_counts_ordered.to_frame().T
         st.bar_chart(status_chart_df)
     
