@@ -1,8 +1,6 @@
-# Blueprint/main.py
 import streamlit as st
 from dotenv import load_dotenv
 load_dotenv()                  
-import streamlit as st
 from datetime import datetime, timedelta
 import logging
 from typing import List, Dict
@@ -66,7 +64,8 @@ logger = logging.getLogger(__name__)
 st.set_page_config(page_title="Blueprint - Email to Task Kanban", layout="wide")
 st.title("🏗️ Blueprint - Email-to-Task Kanban")
 st.caption("For Grocery Construction Companies: Turn Emails into Actionable Tasks")
-
+st.sidebar.markdown("---")
+st.sidebar.page_link("pages/quote_generator.py", label="💰 Quote Generator", icon="💰")
 # Initialize session state for UI controls
 if "refresh_key" not in st.session_state:
     st.session_state.refresh_key = 0
