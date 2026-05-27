@@ -83,11 +83,11 @@ def _generate_mock_tasks():
     
     # Generate 35 tasks with varied data
     tasks = []
-    for i in range(1, 36):
+    for i in range(1, 36):  # Creates tasks 1-35 (35 total)
         # Select random template (with repetition to get 35 tasks)
         title, desc, notes = random.choice(templates)
         
-        # Random dates - FIXED: Using imported timedelta
+        # Random dates
         task_date = (datetime.now() - timedelta(days=random.randint(0, 270))).strftime("%Y-%m-%d")
         created_at = (datetime.now() - timedelta(days=random.randint(0, 60))).isoformat()
         
