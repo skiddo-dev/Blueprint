@@ -1,4 +1,4 @@
-#!/Users/robertbice/Source/Blueprint/venv/bin/python3
+#!/Users/robertbice/Documents/GitHub/Blueprint/venv/bin/python
 import sys
 from tqdm.cli import main
 if __name__ == '__main__':

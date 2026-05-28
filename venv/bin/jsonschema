@@ -1,4 +1,4 @@
-#!/Users/robertbice/Source/Blueprint/venv/bin/python3
+#!/Users/robertbice/Documents/GitHub/Blueprint/venv/bin/python3
 import sys
 from jsonschema.cli import main
 if __name__ == '__main__':
