@@ -10,14 +10,14 @@ load_dotenv()
 from db import get_tasks, insert_task, update_task_field, delete_task
 from utils import fetch_recent_emails, parse_email_with_llm
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
 
 st.set_page_config(page_title="Blueprint - Email to Task Kanban", layout="wide")
 st.title("🏗️ Blueprint - Email-to-Task Kanban")
 st.caption("For Grocery Construction Companies: Turn Emails into Actionable Tasks")
 
-KANBAN_STATUSES = ["To Do", "In Progress", "Review", "Approval", "Done", "On Hold", "Cancelled"]
+KANBAN_STATUSES = ["To Do", "In Progress", "Review", "Done", "On Hold", "Cancelled"]
 ASSIGNEES = ["Unassigned", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Bob", "Dean", "Vickie", "Sarah", "Tom"]
 QUOTE_TYPES = ["Assign Quote", "T&M", "Service Call", "Maintenance Request", "Emergency Repair"]
 QUOTE_PEOPLE = ["Bob", "Ben", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady"]
@@ -82,6 +82,9 @@ if st.session_state.syncing:
                     "date": parsed["date"],
                     "status": "To Do",
                     "exchange_id": email["id"],
+                    "from": email.get("from", "Unknown Sender"),
+                    "sender_name": email.get("sender_name", ""),
+                    "sender_email": email.get("sender_email", ""),
                     "attachments": email.get("attachments", []),
                     "created_at": datetime.utcnow().isoformat()
                 }
@@ -116,6 +119,16 @@ for idx, status in enumerate(KANBAN_STATUSES):
         for task in column_tasks:
             with st.container(border=True):
                 st.markdown(f"**{task.get('title', 'Untitled')}**")
+                
+                # Robust sender display
+                sender_display = (
+                    task.get('from') or 
+                    task.get('sender_name') or 
+                    task.get('sender_email') or 
+                    "Unknown Sender"
+                )
+                st.caption(f"📩 From: {sender_display}")
+                
                 desc = task.get('description', '')
                 st.caption(desc[:90] + "..." if len(desc) > 90 else desc)
                 
@@ -213,9 +226,10 @@ for idx, status in enumerate(KANBAN_STATUSES):
 with st.expander("🛠️ Admin - Raw Task Data"):
     if tasks:
         df = pd.DataFrame(tasks)
-        cols_order = ["_id", "title", "date", "assigned_to", "quote", "quote_type", 
+        cols_order = ["_id", "title", "sender_name", "sender_email", "date", "assigned_to", "quote", "quote_type", 
                       "quote_assignee", "notes", "status", "exchange_id", "attachments", "created_at"]
-        df = df[cols_order] if all(c in df.columns for c in df.columns) else df
+        available_cols = [c for c in cols_order if c in df.columns]
+        df = df[available_cols] if available_cols else df
         st.dataframe(df, use_container_width=True, hide_index=True)
     else:
         st.write("No tasks in database.")

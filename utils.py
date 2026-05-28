@@ -1,99 +1,106 @@
 # Blueprint/utils.py
+"""
+Microsoft 365 Email Sync & Parsing Module
+Handles OAuth2 authentication, Graph API calls, attachment storage, and LLM parsing.
+"""
 import os
 import re
 import html
 import json
-import openai
 import logging
 import requests
 import msal
-from pathlib import Path
+import openai  # ✅ ADDED IMPORT
 from typing import List, Dict, Any
 from dateutil import parser as date_parser
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ✅ CONFIGURE OPENAI KEY
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
 
-# Microsoft 365 / Graph Configuration
+# ========================
+# CONFIGURATION
+# ========================
 AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
 AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
-AZURE_REDIRECT_URI = os.getenv("AZURE_REDIRECT_URI", "http://localhost:8080")
 SCOPES = ["Mail.Read"]
 
-# Attachment Configuration
 ATTACHMENT_DIR = os.getenv("ATTACHMENT_DIR", "attachments")
 MAX_ATTACHMENT_SIZE = int(os.getenv("MAX_ATTACHMENT_SIZE_MB", "10")) * 1024 * 1024
 MAX_ATTACHMENTS_PER_EMAIL = int(os.getenv("MAX_ATTACHMENTS_PER_EMAIL", "5"))
 
-TOKEN_CACHE_FILE = Path.home() / ".graph_token_cache.json"
-
-
-def _get_token_cache():
-    if TOKEN_CACHE_FILE.exists():
-        with open(TOKEN_CACHE_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-
-def _save_token_cache(cache):
-    with open(TOKEN_CACHE_FILE, 'w') as f:
-        json.dump(cache, f)
-
 
 def get_graph_token() -> str:
-    """Acquire token via interactive OAuth2 login (works with MFA)"""
+    """
+    Acquire Microsoft Graph token via interactive OAuth2.
+    Version-safe for msal >= 1.20.0
+    """
+    try:
+        MSAL_MAJOR, MSAL_MINOR = map(int, msal.__version__.split('.')[:2])
+    except (ValueError, AttributeError):
+        MSAL_MAJOR, MSAL_MINOR = 1, 20
+
     authority = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}"
-    app = msal.PublicClientApplication(AZURE_CLIENT_ID, authority=authority)
-    
-    cache = _get_token_cache()
-    app.token_cache._cache = cache
 
+    # Constructor accepts redirect_uri in msal >= 1.25.0
+    if MSAL_MAJOR >= 1 and MSAL_MINOR >= 25:
+        app = msal.PublicClientApplication(AZURE_CLIENT_ID, authority=authority, redirect_uri="http://localhost")
+    else:
+        app = msal.PublicClientApplication(AZURE_CLIENT_ID, authority=authority)
+
+    # 1. Silent token (cached accounts)
     accounts = app.get_accounts()
-    token = None
-
     if accounts:
         result = app.acquire_token_silent(SCOPES, account=accounts[0])
         if result and "access_token" in result:
-            token = result["access_token"]
+            return result["access_token"]
 
-    if not token:
-        logger.info("🔐 Opening browser for Microsoft login...")
-        result = app.acquire_token_interactive(
-            scopes=SCOPES,
-            redirect_uri=AZURE_REDIRECT_URI,
-            prompt="select_account"
-        )
-        if "access_token" in result:
-            token = result["access_token"]
-            app.add_account(result.get("account"))
-            _save_token_cache(app.token_cache._cache)
-            logger.info("✅ Authentication successful")
+    # 2. Interactive login
+    logger.info("🔐 Opening browser for Microsoft login...")
+    try:
+        if MSAL_MAJOR >= 1 and MSAL_MINOR >= 25:
+            result = app.acquire_token_interactive(scopes=SCOPES, prompt="select_account")
         else:
-            raise Exception(f"Auth failed: {result.get('error')} | {result.get('error_description')}")
+            result = app.acquire_token_interactive(scopes=SCOPES, prompt="select_account", redirect_uri="http://localhost")
+    except TypeError:
+        result = app.acquire_token_interactive(scopes=SCOPES, prompt="select_account")
 
-    return token
+    if "access_token" in result:
+        logger.info("✅ Authentication successful")
+        return result["access_token"]
+
+    error = result.get("error", "unknown")
+    desc = result.get("error_description", "No description")
+    raise Exception(f"Auth failed: {error} | {desc}")
+
+
+def _sanitize_filename(name: str) -> str:
+    """Strip unsafe characters to prevent path traversal"""
+    return re.sub(r'[^\w\-.]', '_', name)
 
 
 def save_attachment(name: str, content: bytes, email_id: str) -> str:
+    """Securely save attachment to local storage"""
     os.makedirs(ATTACHMENT_DIR, exist_ok=True)
-    safe_name = re.sub(r'[^\w\-.]', '_', name)
+    safe_name = _sanitize_filename(name)
     path = os.path.join(ATTACHMENT_DIR, f"{email_id}_{safe_name}")
+    
     with open(path, "wb") as f:
         f.write(content)
     return path
 
 
 def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
-    """Fetch emails & attachments via Microsoft Graph API"""
+    """Fetch emails & attachments via Microsoft Graph API v1.0"""
     try:
         token = get_graph_token()
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         
-        # Fetch messages
         url = "https://graph.microsoft.com/v1.0/me/messages"
         params = {
             "$top": max_results,
@@ -117,16 +124,24 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
             elif msg.get("bodyPreview"):
                 body = msg["bodyPreview"]
 
-            # Extract sender
+            # Extract sender with robust fallbacks
             sender_info = msg.get("from", {}).get("emailAddress", {})
             sender_email = sender_info.get("address", "")
             sender_name = sender_info.get("name", "")
-            sender = f"{sender_name} <{sender_email}>" if sender_name and sender_name not in sender_email else sender_email
+            
+            if not sender_email and isinstance(msg.get("from"), str):
+                sender_email = msg.get("from")
+                
+            if sender_name and sender_name not in sender_email:
+                sender_display = f"{sender_name} <{sender_email}>"
+            else:
+                sender_display = sender_email or sender_name or "Unknown Sender"
 
             # Fetch & download attachments
             attachments = []
-            if msg.get("id"):
-                att_url = f"https://graph.microsoft.com/v1.0/me/messages/{msg['id']}/attachments"
+            msg_id = msg.get("id")
+            if msg_id:
+                att_url = f"https://graph.microsoft.com/v1.0/me/messages/{msg_id}/attachments"
                 att_resp = requests.get(att_url, headers=headers, timeout=15)
                 if att_resp.status_code == 200:
                     atts = att_resp.json().get("value", [])
@@ -142,10 +157,10 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
                         elif att_size > MAX_ATTACHMENT_SIZE:
                             attachments.append({"filename": att_name, "size": att_size, "error": "Too large", "skipped": True})
                         else:
-                            dl_url = f"https://graph.microsoft.com/v1.0/me/messages/{msg['id']}/attachments/{att_id}/$value"
+                            dl_url = f"https://graph.microsoft.com/v1.0/me/messages/{msg_id}/attachments/{att_id}/$value"
                             dl_resp = requests.get(dl_url, headers=headers, timeout=30)
                             if dl_resp.status_code == 200:
-                                path = save_attachment(att_name, dl_resp.content, msg["id"])
+                                path = save_attachment(att_name, dl_resp.content, msg_id)
                                 attachments.append({
                                     "filename": att_name,
                                     "size": att_size,
@@ -156,9 +171,11 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
                                 attachments.append({"filename": att_name, "size": att_size, "error": "Download failed", "skipped": True})
 
             emails.append({
-                "id": msg["id"],
+                "id": msg_id,
                 "subject": msg.get("subject", "(no subject)"),
-                "from": sender,
+                "from": sender_display,
+                "sender_name": sender_name,
+                "sender_email": sender_email,
                 "date": msg.get("receivedDateTime", ""),
                 "body": body,
                 "attachments": attachments
@@ -171,7 +188,7 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
 
 
 def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract structured data using LLM (unchanged logic)"""
+    """Extract structured data using LLM with regex fallback"""
     att_info = ""
     if email_dict.get("attachments"):
         att_names = [a["filename"] for a in email_dict["attachments"] if not a.get("skipped")]
@@ -188,6 +205,7 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
     Email:
     Subject: {email_dict['subject']}
     From: {email_dict['from']}
+    Sender: {email_dict.get('sender_name', '')} ({email_dict.get('sender_email', '')})
     Date: {email_dict['date']}
     Body: {email_dict['body'][:1500]}
     {att_info}
@@ -195,6 +213,7 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
     Return ONLY JSON object.
     """
     try:
+        # ✅ This line uses the openai library now
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
