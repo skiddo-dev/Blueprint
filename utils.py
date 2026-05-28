@@ -1,159 +1,199 @@
 # Blueprint/utils.py
-import msal
-import requests
-import base64
-import email
-import re
-from typing import List, Dict, Any
-import openai
 import os
-from dotenv import load_dotenv
-from dateutil import parser as date_parser
+import re
+import html
 import json
-
+import openai
+import logging
+import requests
+import msal
+from pathlib import Path
+from typing import List, Dict, Any
+from dateutil import parser as date_parser
+from dotenv import load_dotenv
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Microsoft Graph Configuration
-TENANT_ID = os.getenv("AZURE_TENANT_ID")
-CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
-CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
-AUTHORITY = os.getenv("AZURE_AUTHORITY")
-# SCOPES should be a JSON array string from environment variable
-SCOPES_STR = os.getenv("AZURE_SCOPES", '["https://graph.microsoft.com/Mail.Read"]')
-try:
-    SCOPES = json.loads(SCOPES_STR)
-except json.JSONDecodeError:
-    SCOPES = ["https://graph.microsoft.com/Mail.Read"]
-GRAPH_ENDPOINT = "https://graph.microsoft.com/v1.0"
+# Microsoft 365 / Graph Configuration
+AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
+AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
+AZURE_REDIRECT_URI = os.getenv("AZURE_REDIRECT_URI", "http://localhost:8080")
+SCOPES = ["Mail.Read"]
+
+# Attachment Configuration
+ATTACHMENT_DIR = os.getenv("ATTACHMENT_DIR", "attachments")
+MAX_ATTACHMENT_SIZE = int(os.getenv("MAX_ATTACHMENT_SIZE_MB", "10")) * 1024 * 1024
+MAX_ATTACHMENTS_PER_EMAIL = int(os.getenv("MAX_ATTACHMENTS_PER_EMAIL", "5"))
+
+TOKEN_CACHE_FILE = Path.home() / ".graph_token_cache.json"
 
 
-def _get_graph_token() -> str:
-    """
-    Acquire token for Microsoft Graph using client credentials flow
-    Returns access token string
-    """
-    app = msal.ConfidentialClientApplication(
-        client_id=CLIENT_ID,
-        authority=AUTHORITY,
-        client_credential=CLIENT_SECRET,
-    )
+def _get_token_cache():
+    if TOKEN_CACHE_FILE.exists():
+        with open(TOKEN_CACHE_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+
+def _save_token_cache(cache):
+    with open(TOKEN_CACHE_FILE, 'w') as f:
+        json.dump(cache, f)
+
+
+def get_graph_token() -> str:
+    """Acquire token via interactive OAuth2 login (works with MFA)"""
+    authority = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}"
+    app = msal.PublicClientApplication(AZURE_CLIENT_ID, authority=authority)
     
-    # Try to get token from cache first
-    result = app.acquire_token_silent(SCOPES, account=None)
-    
-    if not result:
-        result = app.acquire_token_for_client(scopes=SCOPES)
-    
-    if "access_token" in result:
-        return result["access_token"]
-    else:
-        error_msg = f"Failed to acquire token: {result.get('error')}\n"
-        error_msg += f"{result.get('error_description')}\n"
-        error_msg += f"{result.get('correlation_id')}"
-        raise Exception(error_msg)
+    cache = _get_token_cache()
+    app.token_cache._cache = cache
+
+    accounts = app.get_accounts()
+    token = None
+
+    if accounts:
+        result = app.acquire_token_silent(SCOPES, account=accounts[0])
+        if result and "access_token" in result:
+            token = result["access_token"]
+
+    if not token:
+        logger.info("🔐 Opening browser for Microsoft login...")
+        result = app.acquire_token_interactive(
+            scopes=SCOPES,
+            redirect_uri=AZURE_REDIRECT_URI,
+            prompt="select_account"
+        )
+        if "access_token" in result:
+            token = result["access_token"]
+            app.add_account(result.get("account"))
+            _save_token_cache(app.token_cache._cache)
+            logger.info("✅ Authentication successful")
+        else:
+            raise Exception(f"Auth failed: {result.get('error')} | {result.get('error_description')}")
+
+    return token
+
+
+def save_attachment(name: str, content: bytes, email_id: str) -> str:
+    os.makedirs(ATTACHMENT_DIR, exist_ok=True)
+    safe_name = re.sub(r'[^\w\-.]', '_', name)
+    path = os.path.join(ATTACHMENT_DIR, f"{email_id}_{safe_name}")
+    with open(path, "wb") as f:
+        f.write(content)
+    return path
 
 
 def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
-    """
-        Fetch recent emails from Exchange/Outlook via Microsoft Graph API
-        Returns same structure as Gmail version for compatibility
-        """
+    """Fetch emails & attachments via Microsoft Graph API"""
     try:
-        # Get fresh token using MSAL (we already have this working)
-        token = _get_graph_token()
+        token = get_graph_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         
-        # Make raw request to Microsoft Graph (NO SDK NEEDED)
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
+        # Fetch messages
+        url = "https://graph.microsoft.com/v1.0/me/messages"
         params = {
             "$top": max_results,
             "$orderby": "receivedDateTime DESC",
             "$select": "id,subject,from,receivedDateTime,bodyPreview,body"
         }
-        
-        response = requests.get(
-            f"{GRAPH_ENDPOINT}/me/mailfolders/inbox/messages",
-            headers=headers,
-            params=params,
-            timeout=30  # Add timeout for reliability
-        )
+        response = requests.get(url, headers=headers, params=params, timeout=30)
         response.raise_for_status()
-        
         messages = response.json().get("value", [])
+
         emails = []
-        
         for msg in messages:
-            # Extract plain text body (handle both text and html)
+            # Extract body
             body = ""
-            if msg.get("body", {}).get("contentType") == "text":
-                body = msg["body"]["content"]
-            elif msg.get("body", {}).get("contentType") == "html":
-                # Simple HTML to text fallback (for basic emails)
-                import html
-                body = html.unescape(msg["body"]["content"])
-                # Remove HTML tags (basic)
-                body = re.sub('<[^<]+?>', '', body)
+            body_obj = msg.get("body", {})
+            if body_obj.get("contentType") == "text":
+                body = body_obj.get("content", "")
+            elif body_obj.get("contentType") == "html":
+                body = html.unescape(body_obj.get("content", ""))
+                body = re.sub(r'<[^<]+?>', '', body)
             elif msg.get("bodyPreview"):
                 body = msg["bodyPreview"]
-            
-            # Parse sender
+
+            # Extract sender
             sender_info = msg.get("from", {}).get("emailAddress", {})
-            sender = sender_info.get("address", "")
+            sender_email = sender_info.get("address", "")
             sender_name = sender_info.get("name", "")
-            if sender_name and sender_name not in sender:
-                sender = f"{sender_name} <{sender}>"
-            
+            sender = f"{sender_name} <{sender_email}>" if sender_name and sender_name not in sender_email else sender_email
+
+            # Fetch & download attachments
+            attachments = []
+            if msg.get("id"):
+                att_url = f"https://graph.microsoft.com/v1.0/me/messages/{msg['id']}/attachments"
+                att_resp = requests.get(att_url, headers=headers, timeout=15)
+                if att_resp.status_code == 200:
+                    atts = att_resp.json().get("value", [])
+                    for att in atts[:MAX_ATTACHMENTS_PER_EMAIL]:
+                        att_name = att.get("name", "unknown")
+                        att_size = att.get("size", 0)
+                        is_inline = att.get("isInline", False)
+                        att_id = att.get("id")
+                        content_type = att.get("contentType", "application/octet-stream")
+
+                        if is_inline:
+                            attachments.append({"filename": att_name, "size": att_size, "is_inline": True, "skipped": True})
+                        elif att_size > MAX_ATTACHMENT_SIZE:
+                            attachments.append({"filename": att_name, "size": att_size, "error": "Too large", "skipped": True})
+                        else:
+                            dl_url = f"https://graph.microsoft.com/v1.0/me/messages/{msg['id']}/attachments/{att_id}/$value"
+                            dl_resp = requests.get(dl_url, headers=headers, timeout=30)
+                            if dl_resp.status_code == 200:
+                                path = save_attachment(att_name, dl_resp.content, msg["id"])
+                                attachments.append({
+                                    "filename": att_name,
+                                    "size": att_size,
+                                    "path": path,
+                                    "content_type": content_type
+                                })
+                            else:
+                                attachments.append({"filename": att_name, "size": att_size, "error": "Download failed", "skipped": True})
+
             emails.append({
                 "id": msg["id"],
                 "subject": msg.get("subject", "(no subject)"),
                 "from": sender,
                 "date": msg.get("receivedDateTime", ""),
-                "body": body
+                "body": body,
+                "attachments": attachments
             })
-        
         return emails
-        
-    except requests.exceptions.RequestException as e:
-        # Handle network/API errors gracefully
-        print(f"Exchange API error: {str(e)}")
-        if hasattr(e, 'response') and e.response is not None:
-            print(f"Response status: {e.response.status_code}")
-            print(f"Response text: {e.response.text[:200]}")
-        return []
+
     except Exception as e:
-        # Catch-all for unexpected errors
-        print(f"Exchange sync error: {str(e)}")
+        logger.error(f"Graph sync error: {str(e)}")
         return []
 
 
 def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
-    """
-        Extract date, assigned_to, quote, notes using LLM
-        (Unchanged from Gmail version - works identically for Exchange)
-        """
+    """Extract structured data using LLM (unchanged logic)"""
+    att_info = ""
+    if email_dict.get("attachments"):
+        att_names = [a["filename"] for a in email_dict["attachments"] if not a.get("skipped")]
+        att_info = f"\n📎 Attachments: {', '.join(att_names)}"
+
     prompt = f"""
-        You are an assistant extracting structured data from grocery construction emails.
-        From the email below, return JSON with:
-        - "date": Task date (ISO 8601, e.g. "2025-01-15"). If not explicit, infer from email Date.
-        - "assigned_to": Person/team assigned (string). Null if unclear.
-        - "quote": Monetary figure (string, keep raw like "$12,300"). Null if none.
-        - "notes": Task summary (max 200 chars).
+    You are an assistant extracting structured data from grocery construction emails.
+    From the email below, return JSON with:
+    - "date": Task date (ISO 8601, e.g. "2025-01-15"). If not explicit, infer from email Date.
+    - "assigned_to": Person/team assigned (string). Null if unclear.
+    - "quote": Monetary figure (string, keep raw like "$12,300"). Null if none.
+    - "notes": Task summary (max 200 chars).
 
+    Email:
+    Subject: {email_dict['subject']}
+    From: {email_dict['from']}
+    Date: {email_dict['date']}
+    Body: {email_dict['body'][:1500]}
+    {att_info}
 
-        Email:
-        Subject: {email_dict['subject']}
-        From: {email_dict['from']}
-        Date: {email_dict['date']}
-        Body: {email_dict['body'][:1500]}
-
-
-        Return ONLY JSON object.
-        """
+    Return ONLY JSON object.
+    """
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -162,7 +202,6 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
             max_tokens=200
         )
         content = response.choices[0].message.content.strip()
-        import json
         data = json.loads(content)
         return {
             "date": data.get("date"),
@@ -171,67 +210,35 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
             "notes": (data.get("notes") or "")[:200]
         }
     except Exception as e:
-        # Fallback: Regex-based extraction (more robust than before)
+        logger.warning(f"LLM parsing failed, using fallback: {e}")
         body = email_dict["body"]
-        date_str = None
-        quote_str = None
-        assigned_to = None
+        date_str = quote_str = assigned_to = None
         notes = body.strip().replace("\n", " ")[:200]
         
-        # Date extraction - multiple formats
-        date_patterns = [
-            r"\b(\d{4}-\d{2}-\d{2})\b",  # YYYY-MM-DD
-            r"\b(\w{3}\s+\d{1,2},\s*\d{4})\b",  # Month DD, YYYY
-            r"\b(\d{1,2}/\d{1,2}/\d{4})\b"  # MM/DD/YYYY
-        ]
-        
+        date_patterns = [r"\b(\d{4}-\d{2}-\d{2})\b", r"\b(\w{3}\s+\d{1,2},\s*\d{4})\b", r"\b(\d{1,2}/\d{1,2}/\d{4})\b"]
         for pattern in date_patterns:
-            date_match = re.search(pattern, body, re.IGNORECASE)
-            if date_match:
+            m = re.search(pattern, body, re.IGNORECASE)
+            if m:
                 try:
-                    date_str = date_parser.parse(date_match.group(0)).date().isoformat()
+                    date_str = date_parser.parse(m.group(0)).date().isoformat()
                     break
-                except:
-                    continue
-        
-        # Fallback to email Date header
+                except: continue
         if not date_str:
-            try:
-                date_str = date_parser.parse(email_dict["date"]).date().isoformat()
-            except:
-                date_str = None
-        
-        # Quote extraction - more comprehensive
-        quote_patterns = [
-            r"\$\s*\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?\s*[kK]?\b",  # $1,234.56 or $1.2k
-            r"\b\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?\s*[dD][oO][lL][lL][aA][rRsS]\b",  # 1234 dollars
-            r"\b\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?\s*[bB][uU][cC][kK][sS]\b"  # 1234 bucks
-        ]
-        
+            try: date_str = date_parser.parse(email_dict["date"]).date().isoformat()
+            except: date_str = None
+
+        quote_patterns = [r"\$\s*\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?\s*[kK]?\b", r"\b\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?\s*[dD][oO][lL][lL][aA][rRsS]\b", r"\b\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?\s*[bB][uU][cC][kK][sS]\b"]
         for pattern in quote_patterns:
-            quote_match = re.search(pattern, body, re.IGNORECASE)
-            if quote_match:
-                quote_str = quote_match.group(0)
-                # Clean up extra spaces
-                quote_str = re.sub(r'\s+', ' ', quote_str).strip()
+            m = re.search(pattern, body, re.IGNORECASE)
+            if m:
+                quote_str = re.sub(r'\s+', ' ', m.group(0)).strip()
                 break
-        
-        # Assignee extraction - more patterns
-        assignee_patterns = [
-            r"(?:to|assigned\s+to|for|responsible\s+party|contact)\s*[:]\s*([^\n\r\.]{1,80})",
-            r"(?:please\s+contact|reach\s+out\s+to)\s+([^\n\r\.]{1,80})",
-            r"(?:[fF]or\s+[aA]ttention\s+of)\s+([^\n\r\.]{1,80})"
-        ]
-        
+
+        assignee_patterns = [r"(?:to|assigned\s+to|for|responsible\s+party|contact)\s*[:]\s*([^\n\r\.]{1,80})", r"(?:please\s+contact|reach\s+out\s+to)\s+([^\n\r\.]{1,80})", r"(?:[fF]or\s+[aA]ttention\s+of)\s+([^\n\r\.]{1,80})"]
         for pattern in assignee_patterns:
-            assignee_match = re.search(pattern, body, re.IGNORECASE)
-            if assignee_match:
-                assigned_to = assignee_match.group(1).strip()
+            m = re.search(pattern, body, re.IGNORECASE)
+            if m:
+                assigned_to = m.group(1).strip()
                 break
-        
-        return {
-            "date": date_str,
-            "assigned_to": assigned_to,
-            "quote": quote_str,
-            "notes": notes
-        }
+
+        return {"date": date_str, "assigned_to": assigned_to, "quote": quote_str, "notes": notes}

@@ -59,78 +59,127 @@ with st.form("quote_generator_form"):
     )
 
 # ----------------------------------------------------------------------
-# PDF Generation Function
+# PDF Generation Function (Coordinate-Based)
 # ----------------------------------------------------------------------
 def generate_quote_pdf(data):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(False)  # Disable auto-break since we handle layout manually
+    pdf.set_margins(10, 10, 10)
     pdf.set_font("Helvetica", size=10)
+
+    # 📐 Constants for Layout (A4: 210x297mm)
+    MARGIN = 10
+    CONTENT_W = 190  # 210 - 2*MARGIN
+    X_START = MARGIN
     
-    # 🖼️ FULL PAGE BORDER
+    # Column widths for the 4-column grid (Total: 190)
+    col_widths = [45, 45, 45, 55] 
+
+    # 1. 🖼️ FULL PAGE BORDER
     pdf.set_draw_color(0, 0, 0)
     pdf.set_line_width(0.5)
-    pdf.rect(10, 10, 190, 277)
+    pdf.rect(MARGIN, MARGIN, CONTENT_W, 277)
 
-    # 🏢 LOGO PLACEMENT
+    # 2. 🏢 LOGO & HEADER
     logo_path = "logo.png"
     if os.path.exists(logo_path):
-        pdf.image(logo_path, x=57, y=12, w=95)
-        pdf.ln(12)
-    else:
-        pdf.set_font("Helvetica", "B", 14)
-        pdf.cell(0, 10, "RAVES CONSTRUCTION", new_x="LMARGIN", new_y="NEXT", align="C")
-        pdf.ln(5)
-
+        try:
+            # Center logo: (210 - 96) / 2 = 57
+            pdf.image(logo_path, x=57, y=15, w=96)
+            pdf.ln(12) # Skip logo height
+        except Exception:
+            pass  # Fallback if image fails
+    
+    # Address Line
     pdf.set_font("Helvetica", size=10)
     pdf.cell(0, 7, "1704 E. Highland Rd. Highland, MI. 48356", new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.ln(5)
+    pdf.ln(4)
 
+    # Proposal Title
     pdf.set_font("Helvetica", "B", 14)
     pdf.cell(0, 10, "Proposal", new_x="LMARGIN", new_y="NEXT", align="C")
     pdf.ln(4)
 
-    col_widths = [45, 45, 45, 55]
+    # 3. 📋 INFO GRID (3 Rows: Header, Data1, Data2)
+    y_info = pdf.get_y()
+    row_h = 8
+    
+    headers = ["Customer:", "Date Received:", "Bid Due Date:", "Architect:"]
+    vals1 = [data["customer"], data["date_received"], data["bid_due_date"], data["architect"]]
+    vals2 = ["", "", "", data["project_location"]]
 
-    info_headers = ["Customer:", "Date Received:", "Bid Due Date:", "Architect:"]
-    info_rows = [
-        [data["customer"], data["date_received"], data["bid_due_date"], data["architect"]],
-        ["", "", "", data["project_location"]]
-    ]
-    pdf.table(
-        headers=info_headers, data=info_rows, col_widths=col_widths,
-        padding=2, line_height=7, align="L", fill=True, border=1,
-        line_options={"stroke_style": "S"}
-    )
-    pdf.ln(3)
+    for row_idx, vals in enumerate([headers, vals1, vals2]):
+        y = y_info + (row_idx * row_h)
+        is_header = (row_idx == 0)
+        style = "DF" if is_header else "D" # Fill for header, outline for data
+        
+        for i, val in enumerate(vals):
+            x = X_START + sum(col_widths[:i])
+            # Draw Box
+            pdf.rect(x, y, col_widths[i], row_h, style=style)
+            # Draw Text
+            pdf.set_xy(x + 2, y + 1)
+            pdf.set_font("Helvetica", "B" if is_header else "", size=10)
+            # Truncate text to prevent overflow
+            pdf.cell(col_widths[i] - 4, row_h - 2, str(val)[:25], align="L")
+    
+    pdf.ln(2 * row_h + 4) # Move down past grid
 
-    desc_headers = ["Description of Work:"]
-    desc_rows = [[""] * 4 for _ in range(12)]
-    pdf.table(
-        headers=desc_headers, data=desc_rows, col_widths=col_widths,
-        padding=2, line_height=7, align="L", border=1,
-        line_options={"stroke_style": "S"}
-    )
-    pdf.ln(3)
+    # 4. 📝 DESCRIPTION GRID
+    desc_y = pdf.get_y()
+    
+    # Draw Header Row for Description
+    pdf.rect(X_START, desc_y, CONTENT_W, 8, style="DF")
+    pdf.set_xy(X_START + 2, desc_y + 2)
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.cell(CONTENT_W - 4, 4, "Description of Work:", align="L")
+    
+    # Draw Grid Lines for Description Body
+    row_height = 7
+    for r in range(12):
+        y = desc_y + 8 + (r * row_height)
+        
+        # Horizontal Lines
+        pdf.line(X_START, y, X_START + CONTENT_W, y)
+        pdf.line(X_START, y + row_height, X_START + CONTENT_W, y + row_height)
+        
+        # Vertical Dividers (at 45, 90, 135)
+        for i in range(1, 4):
+            x_v = X_START + sum(col_widths[:i])
+            pdf.line(x_v, y, x_v, y + row_height)
 
-    left_headers = ["Sign:", "Print:", "Date:"]
-    left_rows = [[""], [""], [""]]
-    pdf.table(
-        headers=left_headers, data=left_rows, col_widths=[80],
-        padding=2, line_height=7, align="L", fill=True, border=1,
-        line_options={"stroke_style": "S"}
-    )
-    pdf.ln(2)
+    pdf.ln(12 * row_height + 8) # Move down past description
 
-    right_headers = ["Labor:", "Materials:", "Total:"]
-    right_rows = [[f"${data['labor']:.2f}"], [f"${data['materials']:.2f}"], [f"${data['total']:.2f}"]]
-    pdf.table(
-        headers=right_headers, data=right_rows, col_widths=[80],
-        padding=2, line_height=7, align="L", fill=True, border=1,
-        line_options={"stroke_style": "S"}
-    )
-    pdf.ln(10)
+    # 5. 📦 BOTTOM BOXES
+    bot_y = pdf.get_y() + 2
+    box_w = 90
+    box_h = 25
+
+    # Left Box (Sign/Print/Date)
+    pdf.rect(X_START, bot_y, box_w, box_h, style="DF")
+    left_labels = ["Sign:", "Print:", "Date:"]
+    for i, lbl in enumerate(left_labels):
+        pdf.set_xy(X_START + 2, bot_y + i * 7 + 2)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(box_w - 4, 6, lbl, align="L")
+
+    # Right Box (Labor/Materials/Total)
+    right_x = X_START + box_w + 5
+    pdf.rect(right_x, bot_y, box_w, box_h, style="DF")
+    right_labels = ["Labor:", "Materials:", "Total:"]
+    right_vals = [f"${data['labor']:.2f}", f"${data['materials']:.2f}", f"${data['total']:.2f}"]
+    for i, lbl in enumerate(right_labels):
+        pdf.set_xy(right_x + 2, bot_y + i * 7 + 2)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(35, 6, lbl, align="L")
+        pdf.set_xy(right_x + 40, bot_y + i * 7 + 2)
+        pdf.set_font("Helvetica", size=10)
+        pdf.cell(45, 6, right_vals[i], align="R")
+
+    # ✅ Guaranteed bytes output for Streamlit
     return bytes(pdf.output(dest="S"))
+
 # ----------------------------------------------------------------------
 # Handle form submission
 # ----------------------------------------------------------------------
@@ -170,7 +219,6 @@ if submitted:
     # 3️⃣ Generate PDF
     try:
         pdf_bytes = generate_quote_pdf(quote_data)
-        
         st.success("✅ Proposal PDF generated successfully!")
         st.balloons()
         
@@ -182,8 +230,6 @@ if submitted:
             use_container_width=True
         )
         
-        st.info("💡 Tip: Edit the `generate_quote_pdf()` function to add your company logo image or adjust grid spacing.")
-        
     except Exception as e:
         st.error(f"❌ Failed to generate PDF: {e}")
 
@@ -192,11 +238,7 @@ if submitted:
 # ----------------------------------------------------------------------
 with st.expander("ℹ️ How Proposal Generation Works"):
     st.markdown("""
-    - **Template Match**: The PDF layout exactly matches your RAVES CONSTRUCTION proposal form.  
-    - **Auto-Calculation**: If you enter Labor & Materials costs, the Total updates automatically. Otherwise, it uses the quote type's suggested range.  
-    - **Grid Structure**: Uses `fpdf2`'s table renderer for precise borders and alignment.  
-    - **Customization**: 
-      - Add a logo: Replace the header text with `pdf.image("your_logo.png", x=10, y=10, w=30)` in `generate_quote_pdf()`.  
-      - Adjust grid rows: Modify `desc_rows = [[""] * 4 for _ in range(12)]` to add/remove description lines.  
-      - Change fonts: Use `pdf.add_font("CustomFont", fname="font.ttf")` and `pdf.set_font("CustomFont", size=10)`.  
+    - **Template Match**: The PDF layout uses absolute coordinates to match your RAVES CONSTRUCTION form exactly.  
+    - **Grid System**: Uses manual line drawing to ensure borders never overlap or fall off-page.  
+    - **Auto-Calculation**: If you enter Labor & Materials costs, the Total updates automatically.  
     """)
