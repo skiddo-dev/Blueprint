@@ -4,11 +4,13 @@ from datetime import datetime
 import logging
 import os
 import pandas as pd
+import requests
 
 load_dotenv()
 
-from db import get_tasks, insert_task, update_task_field, delete_task
-from utils import fetch_recent_emails, parse_email_with_llm
+# ✅ ADDED: Import get_graph_token for reuse in attachment loop
+from db import get_tasks, insert_task, update_task_field, delete_task, save_attachment, get_attachment
+from utils import fetch_recent_emails, parse_email_with_llm, get_graph_token
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
@@ -32,14 +34,13 @@ if "syncing" not in st.session_state:
 # ========================
 with st.sidebar:
     st.header("⚙️ Controls")
-    
-    if st.button("🔄 Sync Emails from Exchange", type="primary", use_container_width=True):
+    if st.button("🔄 Sync Emails from Exchange", type="primary", width='stretch'):
         st.session_state.syncing = True
         st.rerun()
         
     st.divider()
     
-    if st.button("🗑️ Clear All Tasks", type="secondary", use_container_width=True):
+    if st.button("🗑️ Clear All Tasks", type="secondary", width='stretch'):
         if st.checkbox("⚠️ I confirm deletion of all tasks", key="confirm_clear"):
             for task in get_tasks():
                 delete_task(task["_id"])
@@ -59,7 +60,7 @@ with st.sidebar:
         st.metric(status, count)
 
 # ========================
-# GRAPH SYNC
+# GRAPH SYNC (MongoDB)
 # ========================
 if st.session_state.syncing:
     with st.spinner("🔄 Fetching emails & attachments from Microsoft 365..."):
@@ -67,6 +68,11 @@ if st.session_state.syncing:
             new_emails = fetch_recent_emails(max_results=30)
             existing_tasks = get_tasks()
             new_count = 0
+            
+            # ✅ REUSE TOKEN: Get token once for the entire sync session
+            # (fetch_recent_emails already calls get_graph_token, but we ensure it's fresh/cached)
+            token = get_graph_token() 
+            headers = {"Authorization": f"Bearer {token}"}
             
             for email in new_emails:
                 if any(t.get("exchange_id") == email["id"] for t in existing_tasks):
@@ -85,10 +91,30 @@ if st.session_state.syncing:
                     "from": email.get("from", "Unknown Sender"),
                     "sender_name": email.get("sender_name", ""),
                     "sender_email": email.get("sender_email", ""),
-                    "attachments": email.get("attachments", []),
+                    "attachment_ids": [],
                     "created_at": datetime.utcnow().isoformat()
                 }
-                insert_task(task)
+                task_id = insert_task(task)
+                
+                # Save attachments to MongoDB
+                for att in email.get("attachments", []):
+                    if att.get("skipped"):
+                        continue
+                    dl_url = att.get("download_url")
+                    if dl_url:
+                        # ✅ USE REUSED TOKEN
+                        att_resp = requests.get(dl_url, headers=headers, timeout=30)
+                        if att_resp.status_code == 200:
+                            att_id = save_attachment(
+                                task_id=task_id,
+                                filename=att["filename"],
+                                content=att_resp.content,
+                                size=att["size"],
+                                content_type=att.get("content_type", "application/octet-stream")
+                            )
+                            task["attachment_ids"].append(att_id)
+                            update_task_field(task_id, "attachment_ids", task["attachment_ids"])
+                
                 new_count += 1
                 
             if new_count > 0:
@@ -120,13 +146,7 @@ for idx, status in enumerate(KANBAN_STATUSES):
             with st.container(border=True):
                 st.markdown(f"**{task.get('title', 'Untitled')}**")
                 
-                # Robust sender display
-                sender_display = (
-                    task.get('from') or 
-                    task.get('sender_name') or 
-                    task.get('sender_email') or 
-                    "Unknown Sender"
-                )
+                sender_display = task.get('from') or task.get('sender_name') or task.get('sender_email') or "Unknown Sender"
                 st.caption(f"📩 From: {sender_display}")
                 
                 desc = task.get('description', '')
@@ -164,27 +184,21 @@ for idx, status in enumerate(KANBAN_STATUSES):
                         if new_person != curr_person:
                             update_task_field(task["_id"], "quote_assignee", new_person)
                             
-                if task.get("attachments"):
+                if task.get("attachment_ids"):
                     st.divider()
                     st.caption("📎 Attachments:")
-                    for att in task["attachments"]:
-                        if att.get("skipped"):
-                            if att.get("is_inline"):
-                                st.caption(f"🖼️ {att['filename']} (Inline)")
-                            else:
-                                st.warning(f"⚠️ {att['filename']} ({att.get('error', 'Error')})")
+                    for att_id in task["attachment_ids"]:
+                        att_data = get_attachment(att_id)
+                        if att_data:
+                            st.download_button(
+                                label=f"⬇️ {att_data['filename']} ({att_data['size'] / 1024:.1f} KB)",
+                                data=att_data["data"],
+                                file_name=att_data["filename"],
+                                width='stretch',
+                                key=f"dl_{task['_id']}_{att_id}_{st.session_state.refresh_key}"
+                            )
                         else:
-                            try:
-                                with open(att["path"], "rb") as f:
-                                    st.download_button(
-                                        label=f"⬇️ {att['filename']} ({att['size'] / 1024:.1f} KB)",
-                                        data=f,
-                                        file_name=att["filename"],
-                                        use_container_width=True,
-                                        key=f"dl_{task['_id']}_{att['filename']}_{st.session_state.refresh_key}"
-                                    )
-                            except FileNotFoundError:
-                                st.warning(f"⚠️ {att['filename']} (File missing)")
+                            st.warning(f"⚠️ {att_id} (Missing from DB)")
                                 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -227,9 +241,9 @@ with st.expander("🛠️ Admin - Raw Task Data"):
     if tasks:
         df = pd.DataFrame(tasks)
         cols_order = ["_id", "title", "sender_name", "sender_email", "date", "assigned_to", "quote", "quote_type", 
-                      "quote_assignee", "notes", "status", "exchange_id", "attachments", "created_at"]
+                      "quote_assignee", "notes", "status", "exchange_id", "attachment_ids", "created_at"]
         available_cols = [c for c in cols_order if c in df.columns]
         df = df[available_cols] if available_cols else df
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width='stretch', hide_index=True)
     else:
         st.write("No tasks in database.")
