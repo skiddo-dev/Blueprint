@@ -211,7 +211,7 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
             "date": data.get("date"),
             "assigned_to": data.get("assigned_to") or None,
             "quote": data.get("quote") or None,
-            "notes": (data.get("notes") or "")[:200]
+            "notes": data.get("notes") or ""  # ✅ Defaults to blank string
         }
     except Exception as e:
         logger.warning(f"LLM parsing failed, using fallback: {e}")
@@ -245,4 +245,4 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
                 assigned_to = m.group(1).strip()
                 break
 
-        return {"date": date_str, "assigned_to": assigned_to, "quote": quote_str, "notes": notes}
+        return {"date": date_str, "assigned_to": assigned_to, "quote": quote_str, "notes": notes or ""}  # ✅ Defaults to blank string
