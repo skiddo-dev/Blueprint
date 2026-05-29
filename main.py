@@ -8,7 +8,6 @@ import requests
 
 load_dotenv()
 
-# ✅ ADDED: Import get_graph_token for reuse in attachment loop
 from db import get_tasks, insert_task, update_task_field, delete_task, save_attachment, get_attachment
 from utils import fetch_recent_emails, parse_email_with_llm, get_graph_token
 
@@ -69,8 +68,6 @@ if st.session_state.syncing:
             existing_tasks = get_tasks()
             new_count = 0
             
-            # ✅ REUSE TOKEN: Get token once for the entire sync session
-            # (fetch_recent_emails already calls get_graph_token, but we ensure it's fresh/cached)
             token = get_graph_token() 
             headers = {"Authorization": f"Bearer {token}"}
             
@@ -96,13 +93,11 @@ if st.session_state.syncing:
                 }
                 task_id = insert_task(task)
                 
-                # Save attachments to MongoDB
                 for att in email.get("attachments", []):
                     if att.get("skipped"):
                         continue
                     dl_url = att.get("download_url")
                     if dl_url:
-                        # ✅ USE REUSED TOKEN
                         att_resp = requests.get(dl_url, headers=headers, timeout=30)
                         if att_resp.status_code == 200:
                             att_id = save_attachment(
@@ -152,6 +147,7 @@ for idx, status in enumerate(KANBAN_STATUSES):
                 desc = task.get('description', '')
                 st.caption(desc[:90] + "..." if len(desc) > 90 else desc)
                 
+                # ✅ STATUS DROPDOWN
                 new_status = st.selectbox(
                     "Status", KANBAN_STATUSES,
                     index=KANBAN_STATUSES.index(task.get("status", "To Do")),
@@ -160,6 +156,8 @@ for idx, status in enumerate(KANBAN_STATUSES):
                 )
                 if new_status != task.get("status"):
                     update_task_field(task["_id"], "status", new_status)
+                    st.session_state.refresh_key += 1
+                    st.rerun()
                     
                 quote_display = f"💰 {task.get('quote', 'Not Set')}"
                 with st.popover(quote_display):
@@ -174,6 +172,8 @@ for idx, status in enumerate(KANBAN_STATUSES):
                         )
                         if new_type != curr_type:
                             update_task_field(task["_id"], "quote_type", new_type)
+                            st.session_state.refresh_key += 1
+                            st.rerun()
                     with q_col2:
                         curr_person = task.get('quote_assignee', QUOTE_PEOPLE[0])
                         new_person = st.selectbox(
@@ -183,6 +183,8 @@ for idx, status in enumerate(KANBAN_STATUSES):
                         )
                         if new_person != curr_person:
                             update_task_field(task["_id"], "quote_assignee", new_person)
+                            st.session_state.refresh_key += 1
+                            st.rerun()
                             
                 if task.get("attachment_ids"):
                     st.divider()
@@ -213,6 +215,8 @@ for idx, status in enumerate(KANBAN_STATUSES):
                     )
                     if new_date != date_val:
                         update_task_field(task["_id"], "date", str(new_date))
+                        st.session_state.refresh_key += 1
+                        st.rerun()
                         
                 with col2:
                     current_notes = task.get('notes', '')
@@ -222,6 +226,8 @@ for idx, status in enumerate(KANBAN_STATUSES):
                     )
                     if new_notes != current_notes:
                         update_task_field(task["_id"], "notes", new_notes)
+                        st.session_state.refresh_key += 1
+                        st.rerun()
                         
                 col_a, col_b = st.columns(2)
                 with col_a:
@@ -233,6 +239,8 @@ for idx, status in enumerate(KANBAN_STATUSES):
                     )
                     if new_assign != curr_assign:
                         update_task_field(task["_id"], "assigned_to", new_assign)
+                        st.session_state.refresh_key += 1
+                        st.rerun()
 
 # ========================
 # ADMIN
