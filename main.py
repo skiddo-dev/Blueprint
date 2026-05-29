@@ -81,7 +81,7 @@ if st.session_state.syncing:
                     "description": email["body"],
                     "quote": parsed["quote"],
                     "assigned_to": parsed["assigned_to"] or "Unassigned",
-                    "notes": parsed["notes"],
+                    "notes": "blank",
                     "date": parsed["date"],
                     "status": "To Do",
                     "exchange_id": email["id"],
@@ -144,10 +144,18 @@ for idx, status in enumerate(KANBAN_STATUSES):
                 sender_display = task.get('from') or task.get('sender_name') or task.get('sender_email') or "Unknown Sender"
                 st.caption(f"📩 From: {sender_display}")
                 
+                # ✅ UPDATED: 4-line preview + Expandable full body
                 desc = task.get('description', '')
-                st.caption(desc[:90] + "..." if len(desc) > 90 else desc)
+                if desc:
+                    # Show first ~4 lines as compact preview
+                    preview = desc.replace('\n', ' ')[:250] + ("..." if len(desc) > 250 else "")
+                    st.caption(preview)
+                    
+                    with st.expander("📄 View Full Email Body", expanded=False):
+                        st.markdown(desc, unsafe_allow_html=True)
+                else:
+                    st.caption("No body content")
                 
-                # ✅ STATUS DROPDOWN
                 new_status = st.selectbox(
                     "Status", KANBAN_STATUSES,
                     index=KANBAN_STATUSES.index(task.get("status", "To Do")),

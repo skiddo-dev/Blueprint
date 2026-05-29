@@ -1,4 +1,8 @@
 # Blueprint/utils.py
+"""
+Microsoft 365 Email Sync & Parsing Module
+Handles OAuth2 authentication, Graph API calls, attachment metadata, and LLM parsing.
+"""
 import os
 import re
 import html
@@ -174,7 +178,7 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
 
 
 def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract structured data using LLM with regex fallback"""
+    """Extract structured data using LLM. Notes are ALWAYS defaulted to 'blank'."""
     att_info = ""
     if email_dict.get("attachments"):
         att_names = [a["filename"] for a in email_dict["attachments"] if not a.get("skipped")]
@@ -186,7 +190,7 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
     - "date": Task date (ISO 8601, e.g. "2025-01-15"). If not explicit, infer from email Date.
     - "assigned_to": Person/team assigned (string). Null if unclear.
     - "quote": Monetary figure (string, keep raw like "$12,300"). Null if none.
-    - "notes": Task summary (max 200 chars).
+    - "notes": DO NOT EXTRACT NOTES. Always return "blank".
 
     Email:
     Subject: {email_dict['subject']}
@@ -211,14 +215,14 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
             "date": data.get("date"),
             "assigned_to": data.get("assigned_to") or None,
             "quote": data.get("quote") or None,
-            "notes": data.get("notes") or ""  # ✅ Defaults to blank string
+            "notes": "blank"  # ✅ ALWAYS defaults to "blank"
         }
     except Exception as e:
         logger.warning(f"LLM parsing failed, using fallback: {e}")
         body = email_dict["body"]
         date_str = quote_str = assigned_to = None
-        notes = body.strip().replace("\n", " ")[:200]
         
+        # Date extraction
         date_patterns = [r"\b(\d{4}-\d{2}-\d{2})\b", r"\b(\w{3}\s+\d{1,2},\s*\d{4})\b", r"\b(\d{1,2}/\d{1,2}/\d{4})\b"]
         for pattern in date_patterns:
             m = re.search(pattern, body, re.IGNORECASE)
@@ -231,6 +235,7 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
             try: date_str = date_parser.parse(email_dict["date"]).date().isoformat()
             except: date_str = None
 
+        # Quote extraction
         quote_patterns = [r"\$\s*\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?\s*[kK]?\b", r"\b\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?\s*[dD][oO][lL][lL][aA][rRsS]\b", r"\b\d{1,3}(?:[,\s]\d{3})*(?:\.\d+)?\s*[bB][uU][cC][kK][sS]\b"]
         for pattern in quote_patterns:
             m = re.search(pattern, body, re.IGNORECASE)
@@ -238,6 +243,7 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
                 quote_str = re.sub(r'\s+', ' ', m.group(0)).strip()
                 break
 
+        # Assignee extraction
         assignee_patterns = [r"(?:to|assigned\s+to|for|responsible\s+party|contact)\s*[:]\s*([^\n\r\.]{1,80})", r"(?:please\s+contact|reach\s+out\s+to)\s+([^\n\r\.]{1,80})", r"(?:[fF]or\s+[aA]ttention\s+of)\s+([^\n\r\.]{1,80})"]
         for pattern in assignee_patterns:
             m = re.search(pattern, body, re.IGNORECASE)
@@ -245,4 +251,5 @@ def parse_email_with_llm(email_dict: Dict[str, Any]) -> Dict[str, Any]:
                 assigned_to = m.group(1).strip()
                 break
 
-        return {"date": date_str, "assigned_to": assigned_to, "quote": quote_str, "notes": notes or ""}  # ✅ Defaults to blank string
+        # ✅ Notes ALWAYS defaults to "blank" (no body mapping)
+        return {"date": date_str, "assigned_to": assigned_to, "quote": quote_str, "notes": "blank"}
