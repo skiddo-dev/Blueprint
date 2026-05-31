@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-800;
+  }
+}
+
+@layer components {
+  .task-card {
+    @apply bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow;
+  }
+  .column {
+    @apply w-72 min-w-[18rem] bg-gray-100 rounded-xl p-4 flex flex-col gap-3;
+  }
+  .column-header {
+    @apply font-bold text-gray-700 flex justify-between items-center mb-1;
+  }
+  .badge {
+    @apply px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+}

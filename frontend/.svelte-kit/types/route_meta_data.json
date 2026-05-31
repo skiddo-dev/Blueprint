@@ -1,0 +1,12 @@
+{
+	"/": [],
+	"/api/tasks": [
+		"src/routes/api/tasks/+server.ts"
+	],
+	"/api/tasks/sync": [
+		"src/routes/api/tasks/sync/+server.ts"
+	],
+	"/api/tasks/sync/attachments/[id]": [
+		"src/routes/api/tasks/sync/attachments/[id]/+server.ts"
+	]
+}
