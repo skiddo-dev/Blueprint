@@ -133,8 +133,9 @@ cython_debug
 .DS_Store
 Thumbs.db
 
-# Streamlit specific (if using local .streamlit config)
-.streamlit/
+# Streamlit secrets (auth client secret + cookie secret) — never commit.
+# .streamlit/config.toml and .streamlit/secrets.toml.example ARE tracked.
+.streamlit/secrets.toml
 
 # Runtime attachment storage (binary files, not source)
 attachments/

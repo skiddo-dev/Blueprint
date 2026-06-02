@@ -5,6 +5,8 @@ import random
 from fpdf import FPDF
 import io
 
+from auth import require_role
+
 # ----------------------------------------------------------------------
 # Page configuration
 # ----------------------------------------------------------------------
@@ -13,6 +15,9 @@ st.set_page_config(
     page_icon="📝",
     layout="centered"
 )
+
+# Admin-only page: hiding the nav link isn't enough, so block direct-URL access.
+require_role("admin")
 
 st.title("📝 RAVES Construction Quote Generator")
 st.caption("Generate professional proposal PDFs matching your company template")

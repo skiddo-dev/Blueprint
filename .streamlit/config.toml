@@ -1,0 +1,4 @@
+# Hide Streamlit's automatic page navigation so admin-only pages aren't exposed
+# in the sidebar to viewers. main.py renders role-appropriate page links instead.
+[client]
+showSidebarNavigation = false

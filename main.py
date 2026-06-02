@@ -8,13 +8,22 @@ import requests
 
 load_dotenv()
 
-from db import get_tasks, get_tasks_signature, insert_task, update_task_field, delete_task, save_attachment, get_attachment
+from db import (
+    get_tasks, get_tasks_signature, insert_task, update_task_field, delete_task,
+    save_attachment, get_attachment, list_users, upsert_user, delete_user,
+)
 from utils import fetch_recent_emails, parse_email_with_llm, get_graph_token
+from auth import current_role
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
 
 st.set_page_config(page_title="Blueprint - Email to Task Kanban", layout="wide")
+
+# Authentication + role gate. Stops here with a sign-in / request-access screen
+# unless the user is logged in AND provisioned. Returns "admin" or "viewer".
+role = current_role()
+
 st.title("🏗️ Blueprint - Email-to-Task Kanban")
 st.caption("For Grocery Construction Companies: Turn Emails into Actionable Tasks")
 
@@ -48,26 +57,56 @@ live_board_watch()
 # SIDEBAR
 # ========================
 with st.sidebar:
-    st.header("⚙️ Controls")
-    if st.button("🔄 Sync Emails from Exchange", type="primary", width='stretch'):
-        st.session_state.syncing = True
-        st.rerun()
-        
+    display = st.user.get("name") or st.user.get("email") or st.user.get("preferred_username") or "Signed in"
+    st.caption(f"👤 {display} · {role}")
+    st.button("Log out", on_click=st.logout, width='stretch')
     st.divider()
-    
-    if st.button("🗑️ Clear All Tasks", type="secondary", width='stretch'):
-        if st.checkbox("⚠️ I confirm deletion of all tasks", key="confirm_clear"):
-            for task in get_tasks():
-                delete_task(task["_id"])
-            st.toast("🗑️ All tasks cleared!", icon="🗑️")
-            st.session_state.refresh_key += 1
+
+    if role == "admin":
+        st.header("⚙️ Controls")
+        if st.button("🔄 Sync Emails from Exchange", type="primary", width='stretch'):
+            st.session_state.syncing = True
             st.rerun()
-            
-    st.divider()
-    st.subheader("🔗 Pages")
-    st.page_link("pages/quote_generator.py", label="💰 Quote Generator", icon="💰")
-    
-    st.divider()
+
+        st.divider()
+
+        if st.button("🗑️ Clear All Tasks", type="secondary", width='stretch'):
+            if st.checkbox("⚠️ I confirm deletion of all tasks", key="confirm_clear"):
+                for task in get_tasks():
+                    delete_task(task["_id"])
+                st.toast("🗑️ All tasks cleared!", icon="🗑️")
+                st.session_state.refresh_key += 1
+                st.rerun()
+
+        st.divider()
+        st.subheader("🔗 Pages")
+        st.page_link("pages/quote_generator.py", label="💰 Quote Generator", icon="💰")
+        st.page_link("pages/dashboard.py", label="📊 Dashboard", icon="📊")
+
+        st.divider()
+        with st.expander("👥 User Access"):
+            st.caption("Provision who can use Blueprint. (Bootstrap admins from "
+                       "ADMIN_EMAILS always have access and aren't listed here.)")
+            for u in list_users():
+                uc1, uc2, uc3 = st.columns([3, 2, 1])
+                uc1.write(u["_id"])
+                uc2.write(u.get("role", "viewer"))
+                if uc3.button("🗑️", key=f"deluser_{u['_id']}"):
+                    delete_user(u["_id"])
+                    st.rerun()
+            st.divider()
+            new_email = st.text_input("Email", key="new_user_email", placeholder="person@ravesinc.com")
+            new_role = st.selectbox("Role", ["viewer", "admin"], key="new_user_role")
+            if st.button("➕ Add / Update user", width='stretch'):
+                if new_email.strip():
+                    upsert_user(new_email.strip(), new_role)
+                    st.toast(f"Saved {new_email.strip()} as {new_role}")
+                    st.rerun()
+                else:
+                    st.warning("Enter an email address.")
+
+        st.divider()
+
     st.subheader("📊 Board Stats")
     tasks = get_tasks()
     for status in KANBAN_STATUSES:
@@ -77,7 +116,7 @@ with st.sidebar:
 # ========================
 # GRAPH SYNC (MongoDB)
 # ========================
-if st.session_state.syncing:
+if st.session_state.syncing and role == "admin":
     with st.spinner("🔄 Fetching emails & attachments from Microsoft 365..."):
         try:
             new_emails = fetch_recent_emails(max_results=30)
@@ -237,13 +276,14 @@ for idx, status in enumerate(KANBAN_STATUSES):
 # ========================
 # ADMIN
 # ========================
-with st.expander("🛠️ Admin - Raw Task Data"):
-    if tasks:
-        df = pd.DataFrame(tasks)
-        cols_order = ["_id", "title", "description", "full_body", "sender_name", "sender_email", "date", "assigned_to", "quote", "quote_type", 
-                      "quote_assignee", "notes", "status", "exchange_id", "attachment_ids", "created_at"]
-        available_cols = [c for c in cols_order if c in df.columns]
-        df = df[available_cols] if available_cols else df
-        st.dataframe(df, width='stretch', hide_index=True)
-    else:
-        st.write("No tasks in database.")
+if role == "admin":
+    with st.expander("🛠️ Admin - Raw Task Data"):
+        if tasks:
+            df = pd.DataFrame(tasks)
+            cols_order = ["_id", "title", "description", "full_body", "sender_name", "sender_email", "date", "assigned_to", "quote", "quote_type",
+                          "quote_assignee", "notes", "status", "exchange_id", "attachment_ids", "created_at"]
+            available_cols = [c for c in cols_order if c in df.columns]
+            df = df[available_cols] if available_cols else df
+            st.dataframe(df, width='stretch', hide_index=True)
+        else:
+            st.write("No tasks in database.")

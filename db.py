@@ -106,3 +106,34 @@ def delete_attachment(attachment_id: str) -> bool:
     db = _get_db()
     result = db.attachments.delete_one({"_id": attachment_id})
     return result.deleted_count > 0
+
+
+# ========================
+# USERS / ROLES
+# ========================
+# Email (lowercased) is the natural unique key, so it's used as _id.
+
+def get_user_role(email: str) -> Optional[str]:
+    db = _get_db()
+    doc = db.users.find_one({"_id": email.lower()})
+    return doc.get("role") if doc else None
+
+
+def list_users() -> List[Dict[str, Any]]:
+    db = _get_db()
+    return list(db.users.find().sort("_id", 1))
+
+
+def upsert_user(email: str, role: str) -> None:
+    db = _get_db()
+    db.users.update_one(
+        {"_id": email.lower()},
+        {"$set": {"role": role, "updated_at": datetime.utcnow().isoformat()}},
+        upsert=True,
+    )
+
+
+def delete_user(email: str) -> bool:
+    db = _get_db()
+    result = db.users.delete_one({"_id": email.lower()})
+    return result.deleted_count > 0

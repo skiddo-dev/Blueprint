@@ -10,6 +10,8 @@ import os
 import pandas as pd
 import numpy as np
 
+from auth import require_role
+
 
 # ======================
 # MOCK DATA MODE SETUP
@@ -125,11 +127,14 @@ logger = logging.getLogger(__name__)
 
 # Page config
 st.set_page_config(
-    page_title="Blueprint Dashboard", 
+    page_title="Blueprint Dashboard",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Admin-only page: hiding the nav link isn't enough, so block direct-URL access.
+require_role("admin")
 
 # Theme-adaptive CSS for metric values (blue)
 st.markdown(
