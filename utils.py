@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # ========================
 AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
+AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
 AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
+AZURE_USER_EMAIL = os.getenv("AZURE_USER_EMAIL")
 SCOPES = ["Mail.Read"]
 
 ATTACHMENT_DIR = os.getenv("ATTACHMENT_DIR", "attachments")
@@ -34,9 +36,27 @@ MAX_ATTACHMENTS_PER_EMAIL = int(os.getenv("MAX_ATTACHMENTS_PER_EMAIL", "5"))
 
 
 def get_graph_token() -> str:
-    """Acquire Microsoft Graph token via interactive OAuth2."""
+    """Acquire Microsoft Graph token.
+
+    Uses app-only client credentials when AZURE_CLIENT_SECRET is set (no browser popup).
+    Falls back to interactive delegated flow for local dev without a secret.
+    """
     authority = f"https://login.microsoftonline.com/{AZURE_TENANT_ID}"
-    
+
+    if AZURE_CLIENT_SECRET:
+        app = msal.ConfidentialClientApplication(
+            AZURE_CLIENT_ID, authority=authority, client_credential=AZURE_CLIENT_SECRET
+        )
+        result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+        if "access_token" in result:
+            logger.info("✅ Client credentials token acquired")
+            return result["access_token"]
+        error = result.get("error", "unknown")
+        desc = result.get("error_description", "No description")
+        raise Exception(f"Client credentials auth failed: {error} | {desc}")
+
+    # Interactive fallback (requires redirect URI configured in Azure AD)
+    logger.info("🔐 AZURE_CLIENT_SECRET not set — falling back to interactive login")
     try:
         app = msal.PublicClientApplication(AZURE_CLIENT_ID, authority=authority, redirect_uri="http://localhost")
         constructor_took_redirect = True
@@ -50,7 +70,6 @@ def get_graph_token() -> str:
         if result and "access_token" in result:
             return result["access_token"]
 
-    logger.info("🔐 Opening browser for Microsoft login...")
     try:
         if constructor_took_redirect:
             result = app.acquire_token_interactive(scopes=SCOPES, prompt="select_account")
@@ -60,7 +79,7 @@ def get_graph_token() -> str:
         result = app.acquire_token_interactive(scopes=SCOPES, prompt="select_account")
 
     if "access_token" in result:
-        logger.info("✅ Authentication successful")
+        logger.info("✅ Interactive authentication successful")
         return result["access_token"]
 
     error = result.get("error", "unknown")
@@ -74,7 +93,11 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
         token = get_graph_token()
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         
-        url = "https://graph.microsoft.com/v1.0/me/messages"
+        if AZURE_CLIENT_SECRET and AZURE_USER_EMAIL:
+            base = f"https://graph.microsoft.com/v1.0/users/{AZURE_USER_EMAIL}"
+        else:
+            base = "https://graph.microsoft.com/v1.0/me"
+        url = f"{base}/messages"
         params = {"$top": max_results, "$orderby": "receivedDateTime DESC", "$select": "id,subject,from,receivedDateTime,bodyPreview,body"}
         response = requests.get(url, headers=headers, params=params, timeout=30)
         response.raise_for_status()
@@ -107,7 +130,7 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
             attachment_ids = []
             msg_id = msg.get("id")
             if msg_id:
-                att_url = f"https://graph.microsoft.com/v1.0/me/messages/{msg_id}/attachments"
+                att_url = f"{base}/messages/{msg_id}/attachments"
                 att_resp = requests.get(att_url, headers=headers, timeout=15)
                 if att_resp.status_code == 200:
                     atts = att_resp.json().get("value", [])
@@ -124,7 +147,7 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
                         else:
                             attachment_ids.append({
                                 "filename": att_name, "size": att_size, "content_type": content_type,
-                                "download_url": f"https://graph.microsoft.com/v1.0/me/messages/{msg_id}/attachments/{att.get('id')}/$value"
+                                "download_url": f"{base}/messages/{msg_id}/attachments/{att.get('id')}/$value"
                             })
 
             emails.append({

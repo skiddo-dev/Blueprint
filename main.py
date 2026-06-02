@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 from dotenv import load_dotenv
 from datetime import datetime
 import logging
@@ -27,6 +28,12 @@ if "refresh_key" not in st.session_state:
     st.session_state.refresh_key = 0
 if "syncing" not in st.session_state:
     st.session_state.syncing = False
+
+# Poll MongoDB so edits made in other browser sessions appear without a manual
+# reload. Paused during sync so the long-running fetch isn't interrupted.
+# (Interim solution — replace with WebSocket push post-prod.)
+if not st.session_state.syncing:
+    st_autorefresh(interval=10000, key="board_poll")
 
 # ========================
 # SIDEBAR

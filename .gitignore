@@ -1,7 +1,7 @@
 # Environment variables (contains secrets)
 .env
 .env.*
-!/example.env  # Optional: keep a template if you want
+!.env.example
 
 # Python bytecode
 __pycache__/
@@ -135,3 +135,6 @@ Thumbs.db
 
 # Streamlit specific (if using local .streamlit config)
 .streamlit/
+
+# Runtime attachment storage (binary files, not source)
+attachments/

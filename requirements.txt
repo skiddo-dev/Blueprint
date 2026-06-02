@@ -1,4 +1,5 @@
 streamlit
+streamlit-autorefresh
 fpdf2
 python-dotenv
 pymongo
