@@ -39,6 +39,16 @@ def get_tasks() -> List[Dict[str, Any]]:
     return tasks
 
 
+def get_tasks_signature() -> tuple:
+    """(count, latest updated_at) — a cheap change-detector so a watcher can tell if
+    any session inserted/edited/deleted a task without fetching every document.
+    update_task_field/insert_task already stamp updated_at; delete changes count."""
+    db = _get_db()
+    count = db.tasks.count_documents({})
+    latest = db.tasks.find_one(sort=[("updated_at", -1)], projection={"updated_at": 1})
+    return (count, latest.get("updated_at") if latest else None)
+
+
 def insert_task(task: Dict[str, Any]) -> str:
     db = _get_db()
     if "_id" not in task:

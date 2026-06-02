@@ -1,5 +1,4 @@
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
 from dotenv import load_dotenv
 from datetime import datetime
 import logging
@@ -9,7 +8,7 @@ import requests
 
 load_dotenv()
 
-from db import get_tasks, insert_task, update_task_field, delete_task, save_attachment, get_attachment
+from db import get_tasks, get_tasks_signature, insert_task, update_task_field, delete_task, save_attachment, get_attachment
 from utils import fetch_recent_emails, parse_email_with_llm, get_graph_token
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
@@ -28,12 +27,22 @@ if "refresh_key" not in st.session_state:
     st.session_state.refresh_key = 0
 if "syncing" not in st.session_state:
     st.session_state.syncing = False
+if "board_sig" not in st.session_state:
+    st.session_state.board_sig = get_tasks_signature()
 
-# Poll MongoDB so edits made in other browser sessions appear without a manual
-# reload. Paused during sync so the long-running fetch isn't interrupted.
-# (Interim solution — replace with WebSocket push post-prod.)
-if not st.session_state.syncing:
-    st_autorefresh(interval=10000, key="board_poll")
+# Live cross-session updates: a lightweight fragment polls a cheap DB signature
+# every 2s and triggers a full rerun ONLY when a task was added/edited/deleted in
+# any session. Idle ticks do nothing, so an in-progress edit isn't disrupted.
+@st.fragment(run_every="2s")
+def live_board_watch():
+    if st.session_state.get("syncing"):
+        return
+    sig = get_tasks_signature()
+    if sig != st.session_state.board_sig:
+        st.session_state.board_sig = sig
+        st.rerun()  # full app rerun -> board repaints with fresh get_tasks()
+
+live_board_watch()
 
 # ========================
 # SIDEBAR
