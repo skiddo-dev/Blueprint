@@ -205,73 +205,89 @@ for idx, status in enumerate(KANBAN_STATUSES):
                 else:
                     st.caption("No body content")
                 
-                new_status = st.selectbox(
-                    "Status", KANBAN_STATUSES,
-                    index=KANBAN_STATUSES.index(task.get("status", "To Do")),
-                    key=f"status_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}",
-                    label_visibility="collapsed"
+                st.divider()
+
+                # --- Status & assignee ---
+                sc, ac = st.columns(2)
+                with sc:
+                    new_status = st.selectbox(
+                        "Status", KANBAN_STATUSES,
+                        index=KANBAN_STATUSES.index(task.get("status", "To Do")),
+                        key=f"status_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}",
+                    )
+                    if new_status != task.get("status"):
+                        update_task_field(task["_id"], "status", new_status)
+                        st.session_state.refresh_key += 1
+                        st.rerun()
+                with ac:
+                    curr_assign = task.get('assigned_to', 'Unassigned')
+                    new_assign = st.selectbox(
+                        "Assigned to", ASSIGNEES,
+                        index=ASSIGNEES.index(curr_assign) if curr_assign in ASSIGNEES else 0,
+                        key=f"assign_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}",
+                    )
+                    if new_assign != curr_assign:
+                        update_task_field(task["_id"], "assigned_to", new_assign)
+                        st.session_state.refresh_key += 1
+                        st.rerun()
+
+                # --- Date & quote ---
+                dc, qc = st.columns(2)
+                with dc:
+                    st.caption("📅 Date")
+                    current_date = task.get('date')
+                    try:
+                        date_val = datetime.strptime(current_date, "%Y-%m-%d").date() if current_date else None
+                    except Exception:
+                        date_val = None
+                    new_date = st.date_input(
+                        "Date", value=date_val, label_visibility="collapsed",
+                        key=f"date_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}",
+                    )
+                    if new_date != date_val:
+                        update_task_field(task["_id"], "date", str(new_date))
+                        st.session_state.refresh_key += 1
+                        st.rerun()
+                with qc:
+                    st.caption("💰 Quote")
+                    with st.popover(task.get('quote') or "Not set", width='stretch'):
+                        qt, qa = st.columns(2)
+                        with qt:
+                            curr_type = task.get('quote_type', QUOTE_TYPES[0])
+                            new_type = st.selectbox("Type", QUOTE_TYPES, index=QUOTE_TYPES.index(curr_type) if curr_type in QUOTE_TYPES else 0, key=f"qtype_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}")
+                            if new_type != curr_type:
+                                update_task_field(task["_id"], "quote_type", new_type)
+                                st.session_state.refresh_key += 1
+                                st.rerun()
+                        with qa:
+                            curr_person = task.get('quote_assignee', QUOTE_PEOPLE[0])
+                            new_person = st.selectbox("Assign", QUOTE_PEOPLE, index=QUOTE_PEOPLE.index(curr_person) if curr_person in QUOTE_PEOPLE else 0, key=f"qperson_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}")
+                            if new_person != curr_person:
+                                update_task_field(task["_id"], "quote_assignee", new_person)
+                                st.session_state.refresh_key += 1
+                                st.rerun()
+
+                # --- Notes ---
+                current_notes = task.get('notes', '')
+                new_notes = st.text_area(
+                    "📝 Notes", value=current_notes, height=68,
+                    key=f"notes_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}",
                 )
-                if new_status != task.get("status"):
-                    update_task_field(task["_id"], "status", new_status)
+                if new_notes != current_notes:
+                    update_task_field(task["_id"], "notes", new_notes)
                     st.session_state.refresh_key += 1
                     st.rerun()
-                    
-                quote_display = f"💰 {task.get('quote', 'Not Set')}"
-                with st.popover(quote_display):
-                    st.caption("Configure Quote Details")
-                    q_col1, q_col2 = st.columns(2)
-                    with q_col1:
-                        curr_type = task.get('quote_type', QUOTE_TYPES[0])
-                        new_type = st.selectbox("Type", QUOTE_TYPES, index=QUOTE_TYPES.index(curr_type) if curr_type in QUOTE_TYPES else 0, key=f"qtype_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}")
-                        if new_type != curr_type:
-                            update_task_field(task["_id"], "quote_type", new_type)
-                            st.session_state.refresh_key += 1
-                            st.rerun()
-                    with q_col2:
-                        curr_person = task.get('quote_assignee', QUOTE_PEOPLE[0])
-                        new_person = st.selectbox("Assign", QUOTE_PEOPLE, index=QUOTE_PEOPLE.index(curr_person) if curr_person in QUOTE_PEOPLE else 0, key=f"qperson_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}")
-                        if new_person != curr_person:
-                            update_task_field(task["_id"], "quote_assignee", new_person)
-                            st.session_state.refresh_key += 1
-                            st.rerun()
-                            
+
+                # --- Attachments ---
                 if task.get("attachment_ids"):
                     st.divider()
-                    st.caption("📎 Attachments:")
+                    st.caption("📎 Attachments")
                     for att_id in task["attachment_ids"]:
                         att_data = get_attachment(att_id)
                         if att_data:
                             st.download_button(label=f"⬇️ {att_data['filename']} ({att_data['size'] / 1024:.1f} KB)", data=att_data["data"], file_name=att_data["filename"], width='stretch', key=f"dl_{task['_id']}_{att_id}_{task.get('updated_at', '')}_{st.session_state.refresh_key}")
                         else:
                             st.warning(f"⚠️ {att_id} (Missing from DB)")
-                                
-                col1, col2 = st.columns(2)
-                with col1:
-                    current_date = task.get('date')
-                    try: date_val = datetime.strptime(current_date, "%Y-%m-%d").date() if current_date else None
-                    except: date_val = None
-                    new_date = st.date_input("📅 Date", value=date_val, key=f"date_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}")
-                    if new_date != date_val:
-                        update_task_field(task["_id"], "date", str(new_date))
-                        st.session_state.refresh_key += 1
-                        st.rerun()
-                        
-                with col2:
-                    current_notes = task.get('notes', '')
-                    new_notes = st.text_area("📝 Notes", value=current_notes, height=60, key=f"notes_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}")
-                    if new_notes != current_notes:
-                        update_task_field(task["_id"], "notes", new_notes)
-                        st.session_state.refresh_key += 1
-                        st.rerun()
-                        
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    curr_assign = task.get('assigned_to', 'Unassigned')
-                    new_assign = st.selectbox("Assign To", ASSIGNEES, index=ASSIGNEES.index(curr_assign) if curr_assign in ASSIGNEES else 0, key=f"assign_{task['_id']}_{task.get('updated_at', '')}_{st.session_state.refresh_key}")
-                    if new_assign != curr_assign:
-                        update_task_field(task["_id"], "assigned_to", new_assign)
-                        st.session_state.refresh_key += 1
-                        st.rerun()
 
 # ========================
 # ADMIN

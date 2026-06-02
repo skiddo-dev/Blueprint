@@ -1,0 +1,15 @@
+# Keep the image small and never bake secrets/local state into it
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.git/
+.gitignore
+.env
+.env.*
+.streamlit/secrets.toml
+attachments/
+*.log
+.DS_Store
+.claude/
+.devcontainer/
