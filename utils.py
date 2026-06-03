@@ -98,15 +98,23 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
         else:
             base = "https://graph.microsoft.com/v1.0/me"
         url = f"{base}/messages"
+        # Graph doesn't support $orderby with $filter on messages — sort client-side instead.
         params = {
             "$top": max_results,
-            "$orderby": "receivedDateTime DESC",
             "$select": "id,subject,from,receivedDateTime,bodyPreview,body",
             "$filter": "flag/flagStatus eq 'flagged'",
         }
         response = requests.get(url, headers=headers, params=params, timeout=30)
-        response.raise_for_status()
-        messages = response.json().get("value", [])
+        if not response.ok:
+            logger.error(f"Graph messages API error {response.status_code}: {response.text}")
+            response.raise_for_status()
+        data = response.json()
+        messages = sorted(
+            data.get("value", []),
+            key=lambda m: m.get("receivedDateTime", ""),
+            reverse=True,
+        )
+        logger.info(f"Fetched {len(messages)} flagged message(s)")
 
         emails = []
         for msg in messages:
