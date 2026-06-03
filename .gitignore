@@ -16,8 +16,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -140,3 +140,9 @@ Thumbs.db
 # Runtime attachment storage (binary files, not source)
 attachments/
 .claude/settings.local.json
+
+# Node.js / SvelteKit
+node_modules/
+build/
+.svelte-kit/
+*.tsbuildinfo

@@ -1,22 +1,26 @@
-# Blueprint — Streamlit Kanban container
-FROM python:3.12-slim
-
-ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
-
+# Blueprint — SvelteKit Kanban container
+FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Install deps first for better layer caching
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY package*.json ./
+RUN npm ci
 
-# App code (see .dockerignore — secrets/.env/.venv are excluded)
 COPY . .
-RUN chmod +x entrypoint.sh
+RUN npm run build
 
-# Streamlit listens here. Tell Azure this port:
-#   App Service:  set WEBSITES_PORT=8501
-#   Container Apps: set ingress targetPort=8501
+# ─── Runtime image ────────────────────────────────────────────────────────────
+FROM node:22-alpine
+WORKDIR /app
+
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/package*.json ./
+COPY logo.png ./
+
+RUN npm ci --omit=dev
+
+ENV NODE_ENV=production
+# Azure App Service / Container Apps: set WEBSITES_PORT=8501
+ENV PORT=8501
 EXPOSE 8501
 
-ENTRYPOINT ["sh", "entrypoint.sh"]
+CMD ["node", "build"]
