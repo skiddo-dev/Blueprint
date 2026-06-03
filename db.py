@@ -9,7 +9,7 @@ from pymongo.errors import ConnectionFailure
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger(__name__)
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+MONGO_URI = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 DB_NAME = os.getenv("MONGO_DB_NAME", "blueprint")
 
 client = None
@@ -24,8 +24,9 @@ def _get_db():
             client.admin.command('ping')
             db = client[DB_NAME]
             logger.info("✅ Successfully connected to MongoDB")
-        except ConnectionFailure as e:
+        except Exception as e:
             logger.error(f"❌ MongoDB connection failed: {e}")
+            client = None  # reset so the next call retries instead of returning None
             raise
     return db
 
