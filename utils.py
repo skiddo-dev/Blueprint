@@ -98,7 +98,12 @@ def fetch_recent_emails(max_results: int = 20) -> List[Dict[str, Any]]:
         else:
             base = "https://graph.microsoft.com/v1.0/me"
         url = f"{base}/messages"
-        params = {"$top": max_results, "$orderby": "receivedDateTime DESC", "$select": "id,subject,from,receivedDateTime,bodyPreview,body"}
+        params = {
+            "$top": max_results,
+            "$orderby": "receivedDateTime DESC",
+            "$select": "id,subject,from,receivedDateTime,bodyPreview,body",
+            "$filter": "flag/flagStatus eq 'flagged'",
+        }
         response = requests.get(url, headers=headers, params=params, timeout=30)
         response.raise_for_status()
         messages = response.json().get("value", [])

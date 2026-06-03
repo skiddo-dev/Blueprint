@@ -40,6 +40,18 @@ def get_tasks() -> List[Dict[str, Any]]:
     return tasks
 
 
+def get_tasks_for_user(user_name: str) -> List[Dict[str, Any]]:
+    """Tasks visible to a PM: those assigned to them or created by them."""
+    db = _get_db()
+    tasks = list(db.tasks.find({
+        "$or": [{"assigned_to": user_name}, {"created_by": user_name}]
+    }).sort("created_at", -1))
+    for task in tasks:
+        task["_id"] = str(task["_id"])
+        task["attachment_ids"] = [str(aid) for aid in task.get("attachment_ids", [])]
+    return tasks
+
+
 def get_tasks_signature() -> tuple:
     """(count, latest updated_at) — a cheap change-detector so a watcher can tell if
     any session inserted/edited/deleted a task without fetching every document.
@@ -114,9 +126,13 @@ def delete_attachment(attachment_id: str) -> bool:
 # ========================
 # Email (lowercased) is the natural unique key, so it's used as _id.
 
-def get_user_role(email: str) -> Optional[str]:
+def get_user(email: str) -> Optional[Dict[str, Any]]:
     db = _get_db()
-    doc = db.users.find_one({"_id": email.lower()})
+    return db.users.find_one({"_id": email.lower()})
+
+
+def get_user_role(email: str) -> Optional[str]:
+    doc = get_user(email)
     return doc.get("role") if doc else None
 
 
@@ -125,11 +141,16 @@ def list_users() -> List[Dict[str, Any]]:
     return list(db.users.find().sort("_id", 1))
 
 
-def upsert_user(email: str, role: str) -> None:
+def list_users_by_role(role: str) -> List[Dict[str, Any]]:
+    db = _get_db()
+    return list(db.users.find({"role": role}).sort("name", 1))
+
+
+def upsert_user(email: str, role: str, name: str = "") -> None:
     db = _get_db()
     db.users.update_one(
         {"_id": email.lower()},
-        {"$set": {"role": role, "updated_at": datetime.utcnow().isoformat()}},
+        {"$set": {"role": role, "name": name, "updated_at": datetime.utcnow().isoformat()}},
         upsert=True,
     )
 

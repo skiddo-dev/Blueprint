@@ -9,12 +9,16 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 
-from db import get_user_role
+from db import get_user_role, get_user
 
 load_dotenv()
 
 # Bootstrap admins so you're never locked out before provisioning anyone in Mongo.
 ADMIN_EMAILS = {e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()}
+# Display name used for the admin (Ben) in task ownership / "view as" filtering.
+ADMIN_NAME = os.getenv("ADMIN_NAME", "Ben")
+# Supervisors are login-less assignment targets (PMs delegate to them).
+SUPERVISORS = ["Kris", "Vlad", "Bogdan", "Frank Crew"]
 
 
 def _user_email() -> str:
@@ -62,6 +66,24 @@ def current_role() -> str:
         st.button("Log out", on_click=st.logout)
         st.stop()
     return role
+
+
+def _display_name(email: str, role: str) -> str:
+    """Resolve a user's display name (used for task ownership + 'view as' filtering)."""
+    doc = get_user(email)
+    if doc and doc.get("name"):
+        return doc["name"]
+    if role == "admin":
+        return ADMIN_NAME
+    nm = (st.user.get("name") or st.user.get("given_name") or "").strip()
+    return nm or email.split("@")[0]
+
+
+def current_user() -> dict:
+    """Require login + provisioning, then return {email, role, name}."""
+    role = current_role()
+    email = _user_email()
+    return {"email": email, "role": role, "name": _display_name(email, role)}
 
 
 def require_role(required: str) -> str:
