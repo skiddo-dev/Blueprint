@@ -1,16 +1,14 @@
 # Blueprint/pages/dashboard.py
 import streamlit as st
 from dotenv import load_dotenv
-load_dotenv()                  
-import streamlit as st
+load_dotenv()
+
 from datetime import datetime, timedelta
 import logging
-from typing import List, Dict, Any
 import os
 import pandas as pd
-import numpy as np
 
-from auth import require_role
+from auth import require_role, current_user
 
 
 # ======================
@@ -18,17 +16,12 @@ from auth import require_role
 # ======================
 USE_MOCK = os.getenv("USE_MOCK_DATA", "false").lower() == "true"
 
-
 if USE_MOCK:
-    # Shared mock data generation function
     def _generate_mock_tasks():
-        # Configuration arrays
         quote_types = ["assign Quote", "T&M", "Service Call", "Maintenance Request", "Emergency Repair", "Inspection Fee"]
         quote_people = ["Bob", "Ben", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Dean", "Vickie", "Sarah"]
         assignees = ["Unassigned", "Andrew", "Mike", "Riley", "Kris", "Bogdan", "Ady", "Frank Crew", "Bob", "Dean", "Vickie", "Sarah", "Tom", "Lisa"]
         statuses = ["To Do", "In Progress", "Review", "Approval", "Done", "On Hold", "Cancelled"]
-        
-        # Task templates (25 unique titles, descriptions, notes)
         templates = [
             ("Site Inspection Required", "Requires immediate attention from site supervisor", "Follow up with vendor on delivery date"),
             ("Equipment Delivery Scheduled", "Pending approval from project manager", "Schedule work within permit validity period"),
@@ -50,305 +43,379 @@ if USE_MOCK:
             ("HVAC Installation", "Final inspection scheduling", "Check for moisture barrier installation"),
             ("Roofing Materials Delivered", "Client satisfaction survey", "Verify proper flashing details"),
             ("Flooring Installation Started", "Post-project cleanup coordination", "Ensure adequate ventilation during installation"),
-            ("Painting Prep Work", "Exterior lighting installation", "Check electrical grounding"),
             ("Final Walkthrough Scheduled", "Parking lot resurfacing", "Verify fire alarm connectivity"),
             ("Client Presentation Prepared", "ADA compliance upgrades", "Check refrigerant levels"),
             ("As-Built Drawings Updated", "Energy efficiency audit", "Verify irrigation system"),
             ("Warranty Registration Filed", "Fire suppression system check", "Check door hardware specifications"),
-            ("Final Invoice Generated", "Roof membrane replacement", "Verify insulation R-values"),
             ("Project Closeout Meeting", "Interior demolition work", "Check paint adhesion"),
-            ("Safety Audit Conducted", "Structural engineering review", "Verify concrete slump test"),
-            ("Environmental Compliance Check", "Plumbing fixture upgrades", "Check electrical conduit fill"),
-            ("Accessibility Review", "Electrical load calculation", "Verify HVAC airflow measurements")
         ]
-        
-        # Generate 35 tasks with varied data
         import random
         tasks = []
         for i in range(1, 36):
-            # Select random template (with repetition to get 35 tasks)
             title, desc, notes = random.choice(templates)
-            
-            # Random dates
             task_date = (datetime.now() - timedelta(days=random.randint(0, 270))).strftime("%Y-%m-%d")
             created_at = (datetime.now() - timedelta(days=random.randint(0, 60))).isoformat()
-            
-            # Random selections
             quote_type = random.choice(quote_types)
             quote_person = random.choice(quote_people)
             assignee = random.choice(assignees)
             status = random.choice(statuses)
-            
-            # Quote amount by type
-            if quote_type == "assign Quote":
-                quote_amount = f"${random.randint(8000, 75000):,}.00"
-            elif quote_type == "T&M":
-                quote_amount = f"${random.randint(1500, 25000):,}.00"
-            elif quote_type == "Service Call":
-                quote_amount = f"${random.randint(300, 8000):,}.00"
-            elif quote_type == "Maintenance Request":
-                quote_amount = f"${random.randint(500, 12000):,}.00"
-            elif quote_type == "Emergency Repair":
-                quote_amount = f"${random.randint(2000, 30000):,}.00"
-            else:  # Inspection Fee
-                quote_amount = f"${random.randint(250, 5000):,}.00"
-            
+            ranges = {"assign Quote": (8000, 75000), "T&M": (1500, 25000),
+                      "Service Call": (300, 8000), "Maintenance Request": (500, 12000),
+                      "Emergency Repair": (2000, 30000)}
+            lo, hi = ranges.get(quote_type, (250, 5000))
+            quote_amount = f"${random.randint(lo, hi):,}.00"
             tasks.append({
-                "_id": f"mock_{i:02d}",
-                "title": title,
-                "description": desc,
-                "quote": quote_amount,
-                "quote_type": quote_type,
-                "quote_assignee": quote_person,
-                "assigned_to": assignee,
-                "notes": notes,
-                "date": task_date,
-                "status": status,
+                "_id": f"mock_{i:02d}", "title": title, "description": desc,
+                "quote": quote_amount, "quote_type": quote_type, "quote_assignee": quote_person,
+                "assigned_to": assignee, "notes": notes, "date": task_date, "status": status,
                 "exchange_id": f"mock_exchange_{i:03d}_{int(datetime.utcnow().timestamp())}",
-                "created_at": created_at
+                "created_at": created_at,
             })
         return tasks
 
     def get_tasks():
-        # Always generate fresh mock data in mock mode
         st.session_state.mock_tasks = _generate_mock_tasks()
         return st.session_state.mock_tasks
-
-
 else:
-    # Real mode: Import actual implementations
     from db import get_tasks
 
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Page config
+# ========================
+# PAGE CONFIG
+# ========================
 st.set_page_config(
     page_title="Blueprint Dashboard",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-# Admin-only page: hiding the nav link isn't enough, so block direct-URL access.
 require_role("admin")
 
-# Theme-adaptive CSS for metric values (blue)
-st.markdown(
-    """
+
+# ========================
+# DESIGN SYSTEM
+# ========================
+STATUS_META = {
+    "To Do":       {"color": "#6366f1", "bg": "#eef2ff", "text": "#4338ca"},
+    "In Progress": {"color": "#f59e0b", "bg": "#fffbeb", "text": "#b45309"},
+    "Review":      {"color": "#3b82f6", "bg": "#dbeafe", "text": "#1d4ed8"},
+    "Approval":    {"color": "#f59e0b", "bg": "#fffbeb", "text": "#b45309"},
+    "Done":        {"color": "#10b981", "bg": "#d1fae5", "text": "#047857"},
+    "On Hold":     {"color": "#94a3b8", "bg": "#f1f5f9", "text": "#475569"},
+    "Cancelled":   {"color": "#f87171", "bg": "#fee2e2", "text": "#dc2626"},
+}
+
+KANBAN_STATUSES = ["To Do", "In Progress", "Review", "Approval", "Done", "On Hold", "Cancelled"]
+
+
+def inject_css():
+    st.markdown("""
     <style>
-    div[data-testid="stMetric"] > div:nth-child(2) {
-        color: var(--primary-color) !important;
-        font-weight: 600 !important;
+    html, body, [class*="css"], .stApp {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
+                     Arial, system-ui, sans-serif;
     }
-    div[data-testid="stMetric"] > div:nth-child(1) {
-        opacity: 0.8 !important;
+    #MainMenu { display: none !important; }
+    footer    { display: none !important; }
+    .stDeployButton { display: none !important; }
+    [data-testid="stStatusWidget"] { display: none !important; }
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+    }
+    .stApp { background: #f8fafc; }
+    .main .block-container { padding-top: 1.2rem !important; max-width: 100% !important; }
+    [data-testid="stSidebar"] {
+        background: #ffffff !important;
+        border-right: 1px solid #e2e8f0 !important;
+    }
+    .stButton > button {
+        border-radius: 7px !important;
+        font-weight: 500 !important;
+        font-size: 13px !important;
+        transition: all 0.15s ease !important;
+    }
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%) !important;
+        box-shadow: 0 2px 8px rgba(99,102,241,0.35) !important;
+    }
+    .stButton > button[kind="secondary"] {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #374151 !important;
+    }
+    [data-testid="stAlert"] { border-radius: 8px !important; font-size: 13px !important; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+    /* Metric card tweaks */
+    div[data-testid="stMetric"] > div:nth-child(2) {
+        color: #6366f1 !important;
+        font-weight: 700 !important;
+    }
+    div[data-testid="stMetric"] {
+        background: #ffffff;
+        border: 1px solid #e8ecf1;
+        border-radius: 10px;
+        padding: 14px 16px;
+        box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+    }
+
+    /* Page-link nav buttons in sidebar */
+    [data-testid="stPageLink"] a {
+        display: flex !important;
+        align-items: center !important;
+        border-radius: 7px !important;
+        padding: 8px 10px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        color: #374151 !important;
+        text-decoration: none !important;
+        border: 1px solid #e2e8f0 !important;
+        background: #f8fafc !important;
+        transition: background 0.15s ease, border-color 0.15s ease !important;
+        margin-bottom: 4px !important;
+    }
+    [data-testid="stPageLink"] a:hover {
+        background: #eef2ff !important;
+        border-color: #c7d2fe !important;
+        color: #4338ca !important;
     }
     </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.title("📊 Blueprint Task Dashboard")
-st.caption("View and analyze raw task data with theme-adaptive quote analytics")
+    """, unsafe_allow_html=True)
 
 
-# Sidebar controls
-with st.sidebar:
-    st.header("🔧 Dashboard Controls")
-    if st.button("🔄 Refresh Data", use_container_width=True):
-        st.rerun()
-    st.divider()
-    st.subheader("📊 Stats")
-    tasks = get_tasks()
-    statuses = ["To Do", "In Progress", "Review", "Approval", "Done", "On Hold", "Cancelled"]
-    status_colors = {
-        "To Do": "var(--primary-color)",
-        "In Progress": "orange", 
-        "Review": "gold",
-        "Approval": "#ff8c00",
-        "Done": "green",
-        "On Hold": "gray",
-        "Cancelled": "red"
-    }
-    for status in statuses:
-        count = len([t for t in tasks if t["status"] == status])
-        color = status_colors[status]
-        st.markdown(f'<p style="margin: 5px 0; display: flex; align-items: center;"><span style="color: var(--primary-color); margin-right: 8px;">●</span> <strong>{status}:</strong> <span style="color: {color}; font-weight: 500;">{count}</span></p>', 
-                   unsafe_allow_html=True)
+def sidebar_stat_row(status: str, count: int):
+    m = STATUS_META.get(status, STATUS_META["To Do"])
+    st.markdown(f"""
+    <div style="display:flex;justify-content:space-between;align-items:center;
+                padding:7px 10px;border-radius:7px;margin-bottom:4px;
+                background:#ffffff;border:1px solid #f1f5f9">
+        <span style="font-size:13px;color:#374151;display:flex;align-items:center;gap:7px">
+            <span style="width:8px;height:8px;border-radius:50%;background:{m['color']};
+                         display:inline-block;flex-shrink:0"></span>
+            {status}
+        </span>
+        <span style="font-size:13px;font-weight:700;color:{m['color']}">{count}</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 
-# Helper function to convert quote string to float
 def parse_quote(quote_str):
     if not isinstance(quote_str, str):
         return 0.0
-    cleaned = quote_str.replace('$', '').replace(',', '')
     try:
-        return float(cleaned)
+        return float(quote_str.replace('$', '').replace(',', ''))
     except ValueError:
         return 0.0
 
 
-# Main dashboard content
+inject_css()
+user = current_user()
+user_name = user["name"]
+
+
+# ========================
+# SIDEBAR
+# ========================
+with st.sidebar:
+    st.markdown(f"""
+    <div style="padding:12px 4px 8px 4px">
+        <div style="font-size:13px;font-weight:600;color:#1e293b">{user_name}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:2px">
+            <span style="background:#e0e7ff;color:#4338ca;padding:1px 7px;
+                         border-radius:10px;font-weight:600">Admin</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.button("Log out", on_click=st.logout, use_container_width=True)
+
+    st.divider()
+
+    st.markdown('<p style="font-size:11px;font-weight:600;color:#94a3b8;letter-spacing:0.06em;'
+                'text-transform:uppercase;margin-bottom:6px">Navigation</p>',
+                unsafe_allow_html=True)
+    st.page_link("main.py", label="🏗️ Kanban Board", use_container_width=True)
+    st.page_link("pages/quote_generator.py", label="💰 Quote Generator", use_container_width=True)
+
+    st.divider()
+
+    if st.button("🔄 Refresh Data", use_container_width=True):
+        st.rerun()
+
+    st.divider()
+
+    tasks = get_tasks()
+    st.markdown('<p style="font-size:11px;font-weight:600;color:#94a3b8;letter-spacing:0.06em;'
+                'text-transform:uppercase;margin-bottom:8px">Board Stats</p>',
+                unsafe_allow_html=True)
+    for status in KANBAN_STATUSES:
+        sidebar_stat_row(status, len([t for t in tasks if t.get("status") == status]))
+
+    total = len(tasks)
+    done  = len([t for t in tasks if t.get("status") == "Done"])
+    if total > 0:
+        pct = int(done / total * 100)
+        st.markdown(f"""
+        <div style="margin-top:10px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:11px;color:#94a3b8">Completion</span>
+                <span style="font-size:11px;font-weight:600;color:#10b981">{pct}%</span>
+            </div>
+            <div style="background:#e2e8f0;border-radius:4px;height:5px">
+                <div style="background:#10b981;border-radius:4px;height:5px;width:{pct}%"></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ========================
+# PAGE HEADER
+# ========================
+st.markdown(
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px">'
+    '<span style="font-size:22px;font-weight:800;color:#1e293b;letter-spacing:-0.02em">'
+    '📊 Dashboard</span></div>',
+    unsafe_allow_html=True,
+)
+st.caption("Quote analytics & raw task data · Admin only")
+st.divider()
+
+
+# ========================
+# MAIN CONTENT
+# ========================
 tasks = get_tasks()
 
 if not tasks:
     st.warning("No tasks found in the database.")
-    st.info("Try syncing emails from the main Kanban board to generate some tasks.")
+    st.info("Sync flagged emails from the Kanban board to generate tasks.")
 else:
-    # Convert to DataFrame for better display
     df = pd.DataFrame(tasks)
-    
-    # Ensure quote_type and quote_assignee exist with defaults
+
     if 'quote_type' not in df.columns:
         df['quote_type'] = 'Not Set'
     if 'quote_assignee' not in df.columns:
         df['quote_assignee'] = 'Unassigned'
-    
-    # Add quote value column for charts
+
     df['quote_value'] = df['quote'].apply(parse_quote)
-    
-    # Reorder columns for clarity
-    cols_order = [
-        "_id", "title", "date", "assigned_to", "quote", "quote_value",
-        "quote_type", "quote_assignee", "notes", "status", 
-        "exchange_id", "created_at"
-    ]
-    existing_cols = [col for col in cols_order if col in df.columns]
-    df = df[existing_cols]
-    
-    # Display the dataframe
+
+    # ── Summary metrics ──────────────────────────────────────────────────
+    st.subheader("💰 Quote Summary")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        st.metric("Total Value", f"${df['quote_value'].sum():,.0f}")
+    with col2:
+        st.metric("Average Quote", f"${df['quote_value'].mean():,.0f}")
+    with col3:
+        st.metric("Highest Quote", f"${df['quote_value'].max():,.0f}")
+    with col4:
+        st.metric("Lowest Quote", f"${df['quote_value'].min():,.0f}")
+    with col5:
+        st.metric("Quoted Tasks", f"{len(df[df['quote_value'] > 0])}")
+
+    # ── Charts: row 1 ────────────────────────────────────────────────────
+    st.divider()
+    st.subheader("📈 Analytics")
+    r1c1, r1c2 = st.columns(2)
+
+    with r1c1:
+        st.markdown("**💰 Total Quote Value by Type**")
+        st.bar_chart(df.groupby('quote_type')['quote_value'].sum().to_frame().T)
+
+    with r1c2:
+        st.markdown("**📊 Task Distribution by Quote Type**")
+        st.bar_chart(df['quote_type'].value_counts().to_frame().T)
+
+    # ── Charts: row 2 ────────────────────────────────────────────────────
+    r2c1, r2c2 = st.columns(2)
+
+    with r2c1:
+        st.markdown("**📈 Quote Value Trend Over Time (by Type)**")
+        df_temp = df.copy()
+        df_temp['date_dt'] = pd.to_datetime(df_temp['date'])
+        pivot_df = (
+            df_temp.pivot_table(index='date_dt', columns='quote_type',
+                                values='quote_value', aggfunc='sum', fill_value=0)
+            .sort_index()
+        )
+        st.line_chart(pivot_df)
+
+    with r2c2:
+        st.markdown("**👥 Top 7 Assignees by Quote Value**")
+        top_assignees = (
+            df.groupby('assigned_to')['quote_value'].sum()
+            .sort_values(ascending=False).head(7)
+            .to_frame().T
+        )
+        st.bar_chart(top_assignees)
+
+    # ── Charts: row 3 ────────────────────────────────────────────────────
+    r3c1, r3c2 = st.columns(2)
+
+    with r3c1:
+        st.markdown("**📊 Average Quote by Status**")
+        status_avg = (
+            df.groupby('status')['quote_value'].mean()
+            .sort_values(ascending=False)
+            .to_frame().T
+        )
+        st.bar_chart(status_avg)
+
+    with r3c2:
+        st.markdown("**🔵 Task Status Distribution**")
+        ordered = [s for s in KANBAN_STATUSES if s in df['status'].values]
+        st.bar_chart(df['status'].value_counts().reindex(ordered).to_frame().T)
+
+    # ── Charts: row 4 ────────────────────────────────────────────────────
+    r4c1, r4c2 = st.columns(2)
+
+    with r4c1:
+        st.markdown("**📊 Quote Value Distribution**")
+        df['quote_bin'] = pd.cut(
+            df['quote_value'],
+            bins=[0, 1000, 5000, 10000, 25000, 50000, 100000],
+            labels=['$0–1K', '$1K–5K', '$5K–10K', '$10K–25K', '$25K–50K', '$50K+'],
+        )
+        st.bar_chart(df['quote_bin'].value_counts().sort_index().to_frame().T)
+
+    with r4c2:
+        st.markdown("**👤 Most Active Quote Assignees**")
+        st.bar_chart(df['quote_assignee'].value_counts().head(6).to_frame().T)
+
+    # ── Raw data table ───────────────────────────────────────────────────
+    st.divider()
     st.subheader("📋 Raw Task Data")
+
+    cols_order = ["_id", "title", "date", "assigned_to", "quote", "quote_value",
+                  "quote_type", "quote_assignee", "notes", "status", "exchange_id", "created_at"]
+    existing_cols = [c for c in cols_order if c in df.columns]
     st.dataframe(
-        df,
+        df[existing_cols],
         use_container_width=True,
         hide_index=True,
         column_config={
-            "_id": "Task ID",
-            "title": "Task Title",
-            "date": "Due Date",
-            "assigned_to": "Assigned To",
-            "quote": "Quote Amount",
-            "quote_value": "Quote Value ($)",
-            "quote_type": "Quote Type",
-            "quote_assignee": "Quote Assignee",
-            "notes": "Notes",
-            "status": "Status",
-            "exchange_id": "Exchange ID",
-            "created_at": "Created At"
-        }
+            "_id": "Task ID", "title": "Task Title", "date": "Due Date",
+            "assigned_to": "Assigned To", "quote": "Quote Amount",
+            "quote_value": "Quote Value ($)", "quote_type": "Quote Type",
+            "quote_assignee": "Quote Assignee", "notes": "Notes",
+            "status": "Status", "exchange_id": "Exchange ID", "created_at": "Created At",
+        },
     )
-    
-    # Enhanced quote analytics section
+
     st.divider()
-    st.subheader("💰 Quote Analytics Dashboard")
-    
-    # Summary statistics
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        st.metric("Total Quote Value", f"${df['quote_value'].sum():,.2f}")
-    with col2:
-        st.metric("Average Quote", f"${df['quote_value'].mean():,.2f}")
-    with col3:
-        st.metric("Highest Quote", f"${df['quote_value'].max():,.2f}")
-    with col4:
-        st.metric("Lowest Quote", f"${df['quote_value'].min():,.2f}")
-    with col5:
-        st.metric("Quote Tasks", f"{len(df[df['quote_value'] > 0])}")
-    
-    # Charts section - 2x2 grid
-    chart_row1_col1, chart_row1_col2 = st.columns(2)
-    chart_row2_col1, chart_row2_col2 = st.columns(2)
-    
-    with chart_row1_col1:
-        # Quote Value by Type
-        st.write("**💰 Total Quote Value by Type**")
-        quote_type_data = df.groupby('quote_type')['quote_value'].sum()
-        quote_type_df = quote_type_data.to_frame().T
-        st.bar_chart(quote_type_df)
-        
-    with chart_row1_col2:
-        # Task Count by Quote Type
-        st.write("**📊 Task Distribution by Quote Type**")
-        type_counts = df['quote_type'].value_counts()
-        type_df = type_counts.to_frame().T
-        st.bar_chart(type_df)
-        
-    with chart_row2_col1:
-        # Quote Value Trend Over Time by Quote Type
-        st.write("**📈 Quote Value Trend Over Time (by Type)**")
-        df_temp = df.copy()
-        df_temp['date_dt'] = pd.to_datetime(df_temp['date'])
-        df_temp = df_temp.sort_values('date_dt')
-        pivot_df = df_temp.pivot_table(
-            index='date_dt', 
-            columns='quote_type', 
-            values='quote_value', 
-            aggfunc='sum',
-            fill_value=0
-        )
-        pivot_df = pivot_df.sort_index()
-        st.line_chart(pivot_df)
-        
-    with chart_row2_col2:
-        # Top Assignees by Quote Value
-        st.write("**👥 Top 7 Assignees by Quote Value**")
-        assignee_quote = df.groupby('assigned_to')['quote_value'].sum().reset_index()
-        assignee_quote = assignee_quote.sort_values('quote_value', ascending=False).head(7)
-        assignee_df = assignee_quote.set_index('assigned_to')['quote_value'].to_frame().T
-        st.bar_chart(assignee_df)
-    
-    # Additional insights section
-    st.divider()
-    st.subheader("📈 Advanced Quote Insights")
-    
-    insight_row1_col1, insight_row1_col2 = st.columns(2)
-    insight_row2_col1, insight_row2_col2 = st.columns(2)
-    
-    with insight_row1_col1:
-        # Average Quote by Status
-        st.write("**📊 Average Quote by Status**")
-        status_quote = df.groupby('status')['quote_value'].mean().reset_index()
-        status_quote = status_quote.sort_values('quote_value', ascending=False)
-        status_df = status_quote.set_index('status')['quote_value'].to_frame().T
-        st.bar_chart(status_df)
-    
-    with insight_row1_col2:
-        # Quote Assignee Popularity
-        st.write("**👤 Most Active Quote Assignees**")
-        assignee_counts = df['quote_assignee'].value_counts().head(6)
-        assignee_count_df = assignee_counts.to_frame().T
-        st.bar_chart(assignee_count_df)
-    
-    with insight_row2_col1:
-        # Quote Value Distribution
-        st.write("**📊 Quote Value Distribution**")
-        df['quote_bin'] = pd.cut(df['quote_value'], 
-                                bins=[0, 1000, 5000, 10000, 25000, 50000, 100000],
-                                labels=['$0-1K', '$1K-5K', '$5K-10K', '$10K-25K', '$25K-50K', '$50K+'])
-        bin_counts = df['quote_bin'].value_counts().sort_index()
-        bin_df = bin_counts.to_frame().T
-        st.bar_chart(bin_df)
-    
-    with insight_row2_col2:
-        # Status Distribution
-        st.write("**🔵 Task Status Distribution**")
-        status_counts = df['status'].value_counts()
-        status_order = ["To Do", "In Progress", "Review", "Approval", "Done", "On Hold", "Cancelled"]
-        status_counts_ordered = status_counts.reindex([s for s in status_order if s in status_counts])
-        status_chart_df = status_counts_ordered.to_frame().T
-        st.bar_chart(status_chart_df)
-    
-    # Download button for CSV
-    st.divider()
-    csv = df.to_csv(index=False).encode('utf-8')
+    csv = df[existing_cols].to_csv(index=False).encode('utf-8')
     st.download_button(
-        label="📥 Download Data as CSV",
+        label="📥 Download as CSV",
         data=csv,
         file_name="blueprint_tasks.csv",
         mime="text/csv",
-        use_container_width=True
+        use_container_width=True,
     )
