@@ -1,47 +1,77 @@
-# Blueprint: Email-to-Task Kanban for Grocery Construction (Exchange Integration)
+# Blueprint — Email-to-Task Kanban for Grocery Construction
 
-Convert vendor emails, permits, and site alerts into actionable tasks with AI-powered parsing.
+Turns flagged vendor emails, permits, and site alerts into actionable Kanban tasks, with AI-powered parsing. A SvelteKit full-stack app backed by MongoDB, with Microsoft Entra sign-in and a native iOS client.
 
-## 🔑 Microsoft Exchange Setup Required
-1. **Register App in Azure Portal**:
-   - [Azure Portal > Azure AD > App registrations](https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps)
-   - New registration → Name: `Blueprint-Exchange-Integration`
-   - Supported accounts: `Accounts in this organizational directory only`
-   - Redirect URI: `http://localhost:8501`
+## Stack
 
-2. **Configure Permissions**:
-   - API permissions → Add permission → Microsoft Graph → Delegated → `Mail.Read` → Grant admin consent
+- **SvelteKit 2 + Svelte 5** (runes), `@sveltejs/adapter-node`
+- **Auth.js** (`@auth/sveltekit`) with **Microsoft Entra ID** sign-in
+- **MongoDB** (Atlas) for tasks, users, and attachments
+- **Microsoft Graph** for email sync + **OpenAI** for parsing
+- **pdfkit** for quote PDFs, **DOMPurify** for safe email-HTML rendering
+- Ships as a **Docker** image to **Azure Container Apps**
+- Native **iOS** app (SwiftUI) in [`ios/`](ios/)
 
-3. **Collect Credentials**:
-   - Directory (tenant) ID: Azure AD > Properties
-   - Application (client) ID: App registration Overview
-   - Client secret: Certificates & secrets → New client secret
+## Features
 
-4. **Update `.env`**:
-   ```dotenv
-   AZURE_TENANT_ID=your-tenant-id
-   AZURE_CLIENT_ID=your-client-id
-   AZURE_CLIENT_SECRET=your-client-secret
-   AZURE_SCOPES=["https://graph.microsoft.com/Mail.Read"]
-   ```
+- Drag-and-drop Kanban board (drag from the `⠿` grip; columns: To Do → Cancelled)
+- **Sync Emails** — pulls flagged messages from a shared mailbox, parses date / assignee / quote / summary with OpenAI, and creates tasks (with attachments stored in MongoDB)
+- Per-card editing (status, assignee, date, quote, notes) with ~2s live refresh
+- PDF quote generation and a Dashboard (admin)
+- Entra SSO with roles (admin / pm)
 
-## 🔐 Access Control (sign-in + roles)
+## Local development
 
-Users sign in with their Microsoft account (Entra SSO). Each user has a role:
-- **admin** — full app: board, Sync Emails, Clear All, Quote Generator / Dashboard pages, and the User Access panel.
-- **viewer** — board only: can view and edit cards (status/date/notes/assignee), but no sync, clear, or admin pages.
+**Prerequisites:** Node 22+, a MongoDB connection string, an Entra app registration, and an OpenAI API key.
 
-### One-time setup
-1. **Azure app registration → Authentication →** add a **Web** redirect URI
-   `http://localhost:8501/oauth2callback` (and `<your-prod-url>/oauth2callback` for the deployed app).
-2. **Create `.streamlit/secrets.toml`** from `.streamlit/secrets.toml.example`, filling in
-   `client_id`/`client_secret` (same as your Azure values), the tenant `server_metadata_url`,
-   and a random `cookie_secret` (`python -c "import secrets; print(secrets.token_hex(32))"`).
-3. **Set `ADMIN_EMAILS`** in `.env` to your address (comma-separated) — these are always admin,
-   so you can sign in and provision everyone else even before the `users` collection exists.
+```bash
+npm install
+cp .env.example .env      # then fill in the values below
+npm run dev               # http://localhost:8501  (PORT is configurable)
+```
 
-### Provisioning users
-Sign in as an admin → sidebar **👥 User Access** panel → add a colleague's email and pick a role
-(`viewer`/`admin`), or remove them. Roles are stored in the MongoDB `users` collection. An
-authenticated user who hasn't been provisioned (and isn't in `ADMIN_EMAILS`) sees a
-"request access" screen until an admin adds them.
+### `.env`
+
+```dotenv
+AUTH_SECRET=              # session secret — generate with: openssl rand -base64 32
+AZURE_CLIENT_ID=          # Entra app (client) ID
+AZURE_CLIENT_SECRET=      # Entra client secret
+AZURE_TENANT_ID=          # Entra directory (tenant) ID
+AZURE_USER_EMAIL=         # shared mailbox to sync flagged emails from
+ADMIN_EMAILS=             # comma-separated; these addresses are always admin
+MONGODB_URI=              # mongodb+srv://...
+OPENAI_API_KEY=           # sk-...
+# optional: MONGODB_DB_NAME (default "blueprint"), MAX_ATTACHMENT_SIZE_MB, MAX_ATTACHMENTS_PER_EMAIL
+```
+
+All secrets are read at **runtime** via `$env/*/private` (never baked into the build).
+
+## Microsoft Entra setup
+
+1. **App registration → Authentication → Web → Redirect URIs**, add:
+   - `http://localhost:8501/auth/callback/microsoft-entra-id` (dev)
+   - `https://<your-prod-domain>/auth/callback/microsoft-entra-id` (prod)
+2. **Certificates & secrets** → new client secret → `AZURE_CLIENT_SECRET`.
+3. **API permissions → Microsoft Graph → Application → `Mail.Read`** → grant admin consent. Email sync uses the app-only (`client_credentials`) flow to read `AZURE_USER_EMAIL`'s flagged messages. (You can scope this to just that mailbox with an [Application Access Policy](https://learn.microsoft.com/graph/auth-limit-mailbox-access).)
+
+## Access control (roles)
+
+- **admin** — full app: board, Sync Emails, Clear All, Dashboard/Quotes pages, and the User Access panel.
+- **pm** — board only: view/edit cards, no sync/clear/admin pages.
+
+`ADMIN_EMAILS` are always admin (so you can sign in and provision everyone else before the `users` collection exists). Add colleagues via the sidebar **👥 User Access** panel (roles stored in the MongoDB `users` collection). An authenticated user who isn't provisioned and isn't in `ADMIN_EMAILS` sees a "request access" screen.
+
+## Build & deploy
+
+```bash
+npm run build     # adapter-node output in build/
+node build        # run the production server (defaults to PORT 8501)
+```
+
+Production runs as the Docker image in [`Dockerfile`](Dockerfile) on **Azure Container Apps**. Set the runtime env vars (above) as **Azure App Settings**, register the prod redirect URI, and — since the app sits behind the HTTPS ingress — set `ORIGIN=https://<your-prod-domain>` so SvelteKit's CSRF/origin check passes.
+
+One-time deploy setup (registry, role assignment, optional GitHub Actions OIDC auto-deploy) is documented in [`.github/DEPLOY.md`](.github/DEPLOY.md).
+
+## iOS app
+
+A native SwiftUI client lives in [`ios/`](ios/) and talks to the same API — see `ios/README.md`.
