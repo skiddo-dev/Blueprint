@@ -1,0 +1,24 @@
+import type { TaskStatus, StatusMeta } from './types'
+
+export const KANBAN_STATUSES: TaskStatus[] = [
+  'To Do', 'In Progress', 'Review', 'Done', 'On Hold', 'Cancelled',
+]
+
+export const STATUS_META: Record<TaskStatus, StatusMeta> = {
+  'To Do':       { color: '#6366f1', bg: '#eef2ff', text: '#4338ca', icon: '○' },
+  'In Progress': { color: '#f59e0b', bg: '#fffbeb', text: '#b45309', icon: '◑' },
+  'Review':      { color: '#3b82f6', bg: '#dbeafe', text: '#1d4ed8', icon: '◎' },
+  'Done':        { color: '#10b981', bg: '#d1fae5', text: '#047857', icon: '●' },
+  'On Hold':     { color: '#94a3b8', bg: '#f1f5f9', text: '#475569', icon: '⊘' },
+  'Cancelled':   { color: '#f87171', bg: '#fee2e2', text: '#dc2626', icon: '✕' },
+}
+
+export const QUOTE_TYPES = [
+  'Assign Quote', 'T&M', 'Service Call', 'Maintenance Request', 'Emergency Repair',
+]
+
+export const QUOTE_PEOPLE = [
+  'Bob', 'Ben', 'Andrew', 'Mike', 'Riley', 'Kris', 'Bogdan', 'Ady',
+]
+
+export const SUPERVISORS = ['Kris', 'Vlad', 'Bogdan', 'Frank Crew']
