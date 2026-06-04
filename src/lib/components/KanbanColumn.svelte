@@ -56,9 +56,12 @@
   <!-- Empty hint is an overlay OUTSIDE the dndzone: svelte-dnd-action treats
        every direct child of a zone as a draggable item. -->
   <div class="dropzone-wrap">
+    <!-- delayTouchStart: on touch, require a ~200ms press-and-hold before a drag
+         begins, so quick swipes scroll the board instead of accidentally
+         grabbing a card. Mouse dragging is unaffected (instant). -->
     <div
       class="dropzone"
-      use:dndzone={{ items, type: 'task', flipDurationMs }}
+      use:dndzone={{ items, type: 'task', flipDurationMs, delayTouchStart: 200 }}
       onconsider={handleConsider}
       onfinalize={handleFinalize}
     >
