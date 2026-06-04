@@ -1,9 +1,14 @@
 import { MongoClient, type Db } from 'mongodb'
 import { env } from '$env/dynamic/private'
 import type { Task, User } from '$lib/types'
+import { generateMockTasks } from './mock'
 
 let client: MongoClient | null = null
 let db: Db | null = null
+
+// Dev escape hatch: serve generated tasks instead of hitting Mongo. Lets the
+// dashboard/board render with realistic data when no Atlas/seed is available.
+const USE_MOCK = env.USE_MOCK_DATA === 'true'
 
 export async function getDb(): Promise<Db> {
   if (db) return db
@@ -34,12 +39,18 @@ function normalizeTask(t: Record<string, unknown>): Task {
 }
 
 export async function getTasks(): Promise<Task[]> {
+  if (USE_MOCK) return generateMockTasks()
   const d = await getDb()
   const tasks = await col(d, 'tasks').find().sort({ created_at: -1 }).toArray()
   return tasks.map(normalizeTask)
 }
 
 export async function getTasksForUser(userName: string): Promise<Task[]> {
+  if (USE_MOCK) {
+    return generateMockTasks().filter(
+      t => t.assigned_to === userName || t.created_by === userName,
+    )
+  }
   const d = await getDb()
   const tasks = await col(d, 'tasks').find({
     $or: [{ assigned_to: userName }, { created_by: userName }],
@@ -48,6 +59,7 @@ export async function getTasksForUser(userName: string): Promise<Task[]> {
 }
 
 export async function getTasksSignature(): Promise<string> {
+  if (USE_MOCK) return 'mock'
   const d = await getDb()
   const count = await col(d, 'tasks').countDocuments()
   const latest = await col(d, 'tasks').findOne(
