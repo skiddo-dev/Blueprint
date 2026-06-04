@@ -1,0 +1,49 @@
+name: Deploy to Azure Container Apps
+
+# Builds the Docker image in ACR and rolls it out to the Container App
+# whenever main advances (i.e. when a PR merges). Manual runs allowed too.
+# One-time setup (secrets + Azure OIDC + app runtime env): see .github/DEPLOY.md
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false # never cancel a deploy mid-rollout
+
+permissions:
+  id-token: write # required for Azure OIDC login (no stored credential)
+  contents: read
+
+env:
+  IMAGE_NAME: blueprint
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build & push image (server-side build in ACR from Dockerfile)
+        run: |
+          az acr build \
+            --registry "${{ secrets.ACR_NAME }}" \
+            --image "${IMAGE_NAME}:${{ github.sha }}" \
+            --image "${IMAGE_NAME}:latest" \
+            --file Dockerfile .
+
+      - name: Roll out new image to the Container App
+        run: |
+          az config set extension.use_dynamic_install=yes_without_prompt
+          az containerapp update \
+            --name "${{ secrets.CONTAINERAPP_NAME }}" \
+            --resource-group "${{ secrets.RESOURCE_GROUP }}" \
+            --image "${{ secrets.ACR_NAME }}.azurecr.io/${IMAGE_NAME}:${{ github.sha }}"
