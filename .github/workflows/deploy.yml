@@ -1,12 +1,16 @@
 name: Deploy to Azure Container Apps
 
-# Builds the Docker image in ACR and rolls it out to the Container App
-# whenever main advances (i.e. when a PR merges). Manual runs allowed too.
+# Builds the Docker image in ACR and rolls it out to the Container App.
 # One-time setup (secrets + Azure OIDC + app runtime env): see .github/DEPLOY.md
+#
+# Auto-deploy on push to main is intentionally DISABLED until that OIDC setup
+# is done — otherwise every merge fails at the Azure-login step. For now, run
+# it manually ("Actions → Deploy → Run workflow"). Once OIDC + secrets exist,
+# uncomment the `push` trigger below.
 on:
-  push:
-    branches: [main]
   workflow_dispatch: {}
+  # push:
+  #   branches: [main]
 
 concurrency:
   group: deploy-main
