@@ -4,20 +4,26 @@
   import type { Task, TaskStatus } from '$lib/types'
   import { STATUS_META } from '$lib/constants'
 
+  // `items` is $bindable — bound to the parent's `columns[status]`. The zone
+  // OWNS and updates it synchronously in consider/finalize (svelte-dnd-action's
+  // requirement); the binding propagates changes to the parent for stats +
+  // persistence, and external refreshes (poll/sync) flow back down. No local
+  // copy + $effect (that caused snap-back); no callback round-trip (that lost
+  // the card mid-drag).
   let {
     status,
-    tasks,
+    items = $bindable(),
     assignees,
-    onConsider,
-    onFinalize,
+    onMoved,
+    onDragStateChange,
     onFieldUpdate,
     onDelete,
   }: {
     status: TaskStatus
-    tasks: Task[]
+    items: Task[]
     assignees: string[]
-    onConsider: (status: TaskStatus, items: Task[]) => void
-    onFinalize: (status: TaskStatus, items: Task[], droppedId: string | null) => void
+    onMoved: (status: TaskStatus, taskId: string) => void
+    onDragStateChange: (dragging: boolean) => void
     onFieldUpdate: (id: string, field: string, value: unknown) => void
     onDelete: (id: string) => void
   } = $props()
@@ -25,27 +31,17 @@
   const meta = $derived(STATUS_META[status])
   const flipDurationMs = 200
 
-  let items = $state<Task[]>([...tasks])
-  let isDragging = $state(false)
-
-  $effect(() => {
-    if (!isDragging) items = [...tasks]
-  })
-
   function handleConsider(e: CustomEvent) {
-    isDragging = true
+    onDragStateChange(true)
     items = e.detail.items as Task[]
-    onConsider(status, items)
   }
 
   function handleFinalize(e: CustomEvent) {
-    isDragging = false
     items = e.detail.items as Task[]
-    const droppedId =
-      e.detail.info.trigger === TRIGGERS.DROPPED_INTO_ZONE
-        ? (e.detail.info.id as string)
-        : null
-    onFinalize(status, items, droppedId)
+    onDragStateChange(false)
+    if (e.detail.info.trigger === TRIGGERS.DROPPED_INTO_ZONE) {
+      onMoved(status, e.detail.info.id as string)
+    }
   }
 </script>
 
@@ -54,25 +50,31 @@
     <span class="col-title" style:color={meta.text}>
       {meta.icon}&nbsp;{status}
     </span>
-    <span class="count" style:background={meta.color}>{tasks.length}</span>
+    <span class="count" style:background={meta.color}>{items.length}</span>
   </div>
 
-  <!-- svelte-dnd-action dispatches consider/finalize as custom DOM events -->
-  <!-- svelte-ignore event_directive_deprecated -->
-  <div
-    class="dropzone"
-    use:dndzone={{ items, type: 'task', flipDurationMs }}
-    on:consider={handleConsider}
-    on:finalize={handleFinalize}
-  >
-    {#each items as task (task._id)}
-      <TaskCard
-        {task}
-        {assignees}
-        {onFieldUpdate}
-        {onDelete}
-      />
-    {/each}
+  <!-- Empty hint is an overlay OUTSIDE the dndzone: svelte-dnd-action treats
+       every direct child of a zone as a draggable item. -->
+  <div class="dropzone-wrap">
+    <div
+      class="dropzone"
+      use:dndzone={{ items, type: 'task', flipDurationMs }}
+      onconsider={handleConsider}
+      onfinalize={handleFinalize}
+    >
+      <!-- Key by `id`, NOT `_id`: svelte-dnd-action identifies items by `id`
+           and gives the drag shadow a unique placeholder `id` while keeping the
+           original `_id`. Keying by `_id` makes the shadow collide with the real
+           card and the card disappears mid-drag. (id === String(_id).) -->
+      {#each items as task (task.id)}
+        <TaskCard
+          {task}
+          {assignees}
+          {onFieldUpdate}
+          {onDelete}
+        />
+      {/each}
+    </div>
 
     {#if items.length === 0}
       <div class="empty-zone">No tasks</div>
@@ -113,9 +115,19 @@
     text-align: center;
   }
 
+  .dropzone-wrap {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
   .dropzone {
     flex: 1;
-    min-height: 80px;
+    /* Tall minimum so EMPTY columns are still a real drop target.
+       svelte-dnd-action picks the target zone by the dragged card's CENTER;
+       an 80px-tall empty zone can't contain a ~270px card's center, so drops
+       into empty columns were snapping back. */
+    min-height: 60vh;
     border-radius: 8px;
     padding: 4px 2px;
     outline: none;
@@ -125,8 +137,12 @@
   }
 
   .empty-zone {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    padding: 24px 8px;
     color: #cbd5e1;
     border: 2px dashed #e2e8f0;
     border-radius: 8px;

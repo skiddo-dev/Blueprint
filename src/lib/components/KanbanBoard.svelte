@@ -38,6 +38,7 @@
   let syncing = $state(false)
   let syncMessage = $state('')
   let currentSig = $state('')
+  let dragging = $state(false)
 
   // ── Real-time polling (2 s) ──────────────────────────────────────────
   let pollTimer: ReturnType<typeof setInterval>
@@ -46,6 +47,9 @@
     const r = await fetch('/api/tasks/signature')
     if (r.ok) currentSig = (await r.json()).sig
     pollTimer = setInterval(async () => {
+      // Don't refetch mid-drag — replacing `columns` would yank the card out
+      // from under svelte-dnd-action and snap it back.
+      if (dragging) return
       const r = await fetch('/api/tasks/signature')
       if (!r.ok) return
       const { sig } = await r.json()
@@ -60,20 +64,15 @@
   onDestroy(() => clearInterval(pollTimer))
 
   // ── Drag-and-drop handlers ───────────────────────────────────────────
-  function handleConsider(status: TaskStatus, items: Task[]) {
-    // Keep columns in sync during drag hover (smooth animation)
-    columns[status] = items
-  }
-
-  async function handleFinalize(status: TaskStatus, items: Task[], droppedId: string | null) {
-    columns[status] = items
-    if (droppedId) {
-      await fetch(`/api/tasks/${droppedId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ field: 'status', value: status }),
-      })
-    }
+  // Persist a card's new column after a drag drop. The board's `columns` state
+  // is updated directly by the column via `bind:items`, so we only handle the
+  // server write here.
+  async function handleMoved(status: TaskStatus, taskId: string) {
+    await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field: 'status', value: status }),
+    })
   }
 
   // ── Inline field update (optimistic) ────────────────────────────────
@@ -166,10 +165,10 @@
   {#each KANBAN_STATUSES as status}
     <KanbanColumn
       {status}
-      tasks={columns[status]}
+      bind:items={columns[status]}
       {assignees}
-      onConsider={handleConsider}
-      onFinalize={handleFinalize}
+      onMoved={handleMoved}
+      onDragStateChange={(d) => (dragging = d)}
       onFieldUpdate={handleFieldUpdate}
       onDelete={handleDelete}
     />
