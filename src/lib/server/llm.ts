@@ -1,9 +1,12 @@
 import OpenAI from 'openai'
+import { env } from '$env/dynamic/private'
 
-// Lazily initialized — avoids throwing during build when OPENAI_API_KEY isn't set
+// Lazily initialized — avoids throwing during build when OPENAI_API_KEY isn't set.
+// Reads via $env/dynamic/private, NOT process.env (empty under Vite 8 SSR — an
+// empty key silently degrades parsing via the catch below). See src/lib/server/db.ts.
 let _client: OpenAI | null = null
 function getClient() {
-  if (!_client) _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  if (!_client) _client = new OpenAI({ apiKey: env.OPENAI_API_KEY })
   return _client
 }
 
