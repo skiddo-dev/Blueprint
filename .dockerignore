@@ -13,3 +13,9 @@ attachments/
 .DS_Store
 .claude/
 .devcontainer/
+
+# Node / SvelteKit — reinstalled & rebuilt inside the image
+node_modules/
+build/
+.svelte-kit/
+bench/
