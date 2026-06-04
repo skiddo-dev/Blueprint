@@ -86,8 +86,9 @@ Blueprint/
 
 Not in this MVP — create-task, email sync, "clear all", dashboard/quotes,
 attachments, drag-to-reorder, offline cache, a native MSAL/token auth flow, and
-all App Store submission assets (app icon, launch screen art, screenshots,
-archive & upload). The current `AppIcon` is an empty placeholder.
+the remaining App Store submission assets (launch screen art, screenshots,
+archive & upload). A real 1024×1024 app icon **is** included
+(`Assets.xcassets/AppIcon.appiconset/AppIcon.png`).
 
 ## Notes
 
