@@ -1,0 +1,10 @@
+# Xcode user-specific & build output
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad
+build/
+DerivedData/
+.DS_Store
+
+# If you regenerate the project with XcodeGen, the committed .xcodeproj is the
+# generated artifact — keep it tracked. (Do not ignore Blueprint.xcodeproj.)

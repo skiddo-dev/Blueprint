@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { dndzone, TRIGGERS } from 'svelte-dnd-action'
+  import { dragHandleZone, TRIGGERS } from 'svelte-dnd-action'
   import TaskCard from './TaskCard.svelte'
   import type { Task, TaskStatus } from '$lib/types'
   import { STATUS_META } from '$lib/constants'
@@ -56,12 +56,13 @@
   <!-- Empty hint is an overlay OUTSIDE the dndzone: svelte-dnd-action treats
        every direct child of a zone as a draggable item. -->
   <div class="dropzone-wrap">
-    <!-- delayTouchStart: on touch, require a ~200ms press-and-hold before a drag
-         begins, so quick swipes scroll the board instead of accidentally
-         grabbing a card. Mouse dragging is unaffected (instant). -->
+    <!-- A drag is initiated ONLY from the ⠿⠿ handle in each card (use:dragHandle
+         in TaskCard). This keeps the whole card body — quote dropdown, selects,
+         notes, links — tappable and the board scrollable on touch, instead of a
+         tap/scroll accidentally grabbing the card. -->
     <div
       class="dropzone"
-      use:dndzone={{ items, type: 'task', flipDurationMs, delayTouchStart: 200 }}
+      use:dragHandleZone={{ items, type: 'task', flipDurationMs }}
       onconsider={handleConsider}
       onfinalize={handleFinalize}
     >

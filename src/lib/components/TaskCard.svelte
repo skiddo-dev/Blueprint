@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { dragHandle } from 'svelte-dnd-action'
   import DOMPurify from 'dompurify'
   import type { Task } from '$lib/types'
   import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, STATUS_META } from '$lib/constants'
@@ -60,8 +61,9 @@
 </script>
 
 <div class="card" style:border-top="3px solid {meta.color}">
-  <!-- Drag handle hint -->
-  <div class="drag-hint">⠿⠿</div>
+  <!-- Drag handle — the ONLY element that initiates a drag, so the rest of the
+       card (quote dropdown, selects, notes, links) stays tappable/scrollable. -->
+  <div class="drag-hint" use:dragHandle aria-label="Drag to move this task">⠿⠿</div>
 
   <!-- Title -->
   <div class="title">{task.title}</div>
@@ -123,7 +125,7 @@
   </div>
 
   <!-- Date + Quote -->
-  <div class="row-2">
+  <div class="row-2" class:single={!task.quote}>
     <input
       type="date"
       value={task.date ?? ''}
@@ -212,9 +214,7 @@
     position: relative;
     box-shadow: 0 1px 4px rgba(15,23,42,0.06);
     transition: box-shadow 0.18s, transform 0.18s;
-    cursor: grab;
   }
-  .card:active { cursor: grabbing; }
   .card:hover {
     box-shadow: 0 6px 20px rgba(15,23,42,0.11);
     transform: translateY(-2px);
@@ -222,13 +222,20 @@
 
   .drag-hint {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    color: #cbd5e1;
-    font-size: 11px;
-    letter-spacing: -1px;
+    top: 2px;
+    right: 2px;
+    padding: 6px 8px;
+    color: #94a3b8;
+    font-size: 15px;
+    line-height: 1;
+    letter-spacing: -2px;
     user-select: none;
+    cursor: grab;
+    /* touch starting on the handle initiates a drag instead of scrolling */
+    touch-action: none;
+    border-radius: 6px;
   }
+  .drag-hint:active { cursor: grabbing; }
 
   .title {
     font-size: 13px;
@@ -236,7 +243,7 @@
     color: #1e293b;
     line-height: 1.4;
     margin-bottom: 6px;
-    padding-right: 20px;
+    padding-right: 30px;
   }
 
   .store-tags {
@@ -305,6 +312,8 @@
     gap: 6px;
     margin-bottom: 6px;
   }
+  /* No quote → let the date field take the full width instead of a lone half box */
+  .row-2.single { grid-template-columns: 1fr; }
 
   select, input[type="date"], input[type="text"], textarea {
     font-size: 12px;
@@ -314,7 +323,22 @@
     background: #fff;
     color: #374151;
     width: 100%;
+    box-sizing: border-box;
     outline: none;
+  }
+  /* iOS Safari renders <input type="date"> taller than other fields and centers
+     its value via an internal pseudo-element. Strip the native appearance and
+     normalize the value so it matches the selects / quote box beside it. */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: left;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+    padding: 0;
+    font-size: 12px;
   }
   select:focus, input:focus, textarea:focus {
     border-color: #6366f1;

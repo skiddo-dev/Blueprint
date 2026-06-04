@@ -1,0 +1,34 @@
+# XcodeGen spec — the reliable way to (re)generate Blueprint.xcodeproj.
+#   brew install xcodegen   # one-time
+#   cd ios && xcodegen generate
+#
+# The committed Blueprint.xcodeproj is hand-written and should open directly in
+# Xcode 16+; if it ever misbehaves (or you add files/dependencies), regenerate
+# from this spec instead.
+name: Blueprint
+options:
+  bundleIdPrefix: com.blueprint
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""        # set your Apple Developer Team ID to run on device
+targets:
+  Blueprint:
+    type: application
+    platform: iOS
+    sources:
+      - path: Blueprint
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.blueprint.app
+        INFOPLIST_FILE: Blueprint/Info.plist
+        GENERATE_INFOPLIST_FILE: "NO"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
