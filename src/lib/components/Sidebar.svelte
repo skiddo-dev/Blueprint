@@ -25,7 +25,9 @@
   const role = $derived(session.user.role)
   const userName = $derived(session.user.displayName)
 
-  let sidebarOpen = $state(true)
+  // Hidden by default on mobile (the toggle reveals it); on desktop CSS keeps
+  // the sidebar always visible regardless of this flag.
+  let sidebarOpen = $state(false)
   let newEmail = $state('')
   let newName = $state('')
   let newRole = $state('pm')
@@ -49,8 +51,7 @@
   {sidebarOpen ? '‹' : '›'}
 </button>
 
-{#if sidebarOpen}
-  <aside class="sidebar">
+  <aside class="sidebar" class:open={sidebarOpen}>
     <!-- User info -->
     <div class="user-info">
       <div class="user-name">{userName}</div>
@@ -182,7 +183,6 @@
       </details>
     {/if}
   </aside>
-{/if}
 
 <style>
   .sidebar {
@@ -334,6 +334,8 @@
       top: 0;
       z-index: 40;
       box-shadow: 4px 0 20px rgba(15,23,42,0.12);
+      display: none;          /* hidden by default on mobile */
     }
+    .sidebar.open { display: flex; }   /* shown when the toggle is tapped */
   }
 </style>
