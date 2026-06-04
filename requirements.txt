@@ -1,7 +1,0 @@
-streamlit
-Authlib>=1.3.2
-fpdf2
-python-dotenv
-pymongo[srv]
-msal
-openai
