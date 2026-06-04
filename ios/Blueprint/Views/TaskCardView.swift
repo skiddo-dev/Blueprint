@@ -51,3 +51,15 @@ struct StatusPill: View {
             .foregroundStyle(status.textColor)
     }
 }
+
+#if DEBUG
+#Preview("Cards") {
+    VStack(spacing: 12) {
+        TaskCardView(task: BoardTask.samples[0])
+        TaskCardView(task: BoardTask.samples[2])
+        TaskCardView(task: BoardTask.samples[4])
+    }
+    .padding()
+    .background(Color(hex: 0xE9EDF2))
+}
+#endif

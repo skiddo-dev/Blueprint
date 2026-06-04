@@ -60,3 +60,11 @@ struct LoginView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Login") {
+    LoginView()
+        .environment(AppConfig())
+        .environment(SessionStore())
+}
+#endif

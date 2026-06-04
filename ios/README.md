@@ -62,6 +62,19 @@ sign-in — **no backend or Azure changes are required.**
    - The board loads. Tap a card, change its status, **Save** — refresh the web
      app to confirm it persisted (same database).
 
+## Preview a screen (no Simulator, no backend)
+
+Every screen ships a SwiftUI `#Preview`, so you can see it render live in Xcode's
+Canvas without building the whole app or running a backend:
+
+1. Open a view file — e.g. `Blueprint/Views/LoginView.swift`, `TaskCardView.swift`,
+   `ColumnView.swift`, or `TaskDetailView.swift`.
+2. Show the Canvas: **Editor ▸ Canvas** (⌥⌘↩), then **Resume** if it's paused.
+
+Previews use built-in sample data (`BoardTask.samples`, guarded by `#if DEBUG`).
+The full board (`BoardView`) loads from the API, so preview that one by running in
+the Simulator (**⌘R**) against a backend.
+
 ## Configuration
 
 The backend URL is set in-app (persisted in `UserDefaults`) — there's nothing to

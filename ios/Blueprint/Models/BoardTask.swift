@@ -52,3 +52,33 @@ struct BoardTask: Identifiable, Decodable, Hashable {
         updatedAt = try? c.decode(String.self, forKey: .updatedAt)
     }
 }
+
+#if DEBUG
+extension BoardTask {
+    /// Memberwise initialiser for SwiftUI previews only. (Production code builds
+    /// `BoardTask` via `Decodable`; this DEBUG-only init exists so #Preview blocks
+    /// can construct sample data without a network round-trip.)
+    init(id: String, title: String, assignedTo: String = "", notes: String? = nil,
+         date: String? = nil, status: TaskStatus, createdBy: String = "preview") {
+        self.id = id
+        self.title = title
+        self.description = nil
+        self.assignedTo = assignedTo
+        self.notes = notes
+        self.date = date
+        self.status = status
+        self.createdBy = createdBy
+        self.attachmentIds = []
+        self.createdAt = nil
+        self.updatedAt = nil
+    }
+
+    static let samples: [BoardTask] = [
+        BoardTask(id: "1", title: "Pour foundation — Lot 14", assignedTo: "Bob", date: "2026-06-12", status: .toDo),
+        BoardTask(id: "2", title: "Framing inspection scheduling", assignedTo: "Andrew", date: "2026-06-15", status: .toDo),
+        BoardTask(id: "3", title: "Vendor quote: rooftop HVAC unit", assignedTo: "Mike", status: .inProgress),
+        BoardTask(id: "4", title: "Permit resubmittal — electrical", assignedTo: "Riley", date: "2026-06-09", status: .review),
+        BoardTask(id: "5", title: "Final walkthrough punch list", assignedTo: "Kris", status: .done),
+    ]
+}
+#endif

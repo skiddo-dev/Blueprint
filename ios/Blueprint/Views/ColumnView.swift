@@ -54,3 +54,17 @@ struct ColumnView: View {
             .padding(.vertical, 24)
     }
 }
+
+#if DEBUG
+#Preview("Column") {
+    ColumnView(
+        status: .toDo,
+        tasks: BoardTask.samples.filter { $0.status == .toDo },
+        onSelect: { _ in },
+        onRefresh: {}
+    )
+    .frame(width: 290, height: 560)
+    .padding()
+    .background(Color(hex: 0xE9EDF2))
+}
+#endif

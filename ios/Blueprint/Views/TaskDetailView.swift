@@ -123,3 +123,11 @@ struct TaskDetailView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Task detail") {
+    TaskDetailView(task: BoardTask.samples[2]) { _ in }
+        .environment(AppConfig())
+        .environment(SessionStore())
+}
+#endif
