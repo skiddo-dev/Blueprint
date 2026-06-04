@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
+  import DOMPurify from 'dompurify'
   import type { Task } from '$lib/types'
   import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, STATUS_META } from '$lib/constants'
 
@@ -15,6 +17,18 @@
   } = $props()
 
   let meta = $derived(STATUS_META[task.status] ?? STATUS_META['To Do'])
+
+  // Raw email HTML is rendered client-side only: {@html} of (often malformed)
+  // email markup parses differently server-side vs in the browser, which breaks
+  // hydration. Deferring to after mount makes the SSR and initial client render
+  // match (both render nothing), then fills it in on the client.
+  let mounted = $state(false)
+  onMount(() => { mounted = true })
+
+  // Sanitize the raw email HTML before injecting it (stored-XSS guard against
+  // crafted emails, e.g. <img onerror>, <svg onload>). Gated on `mounted` so
+  // DOMPurify only runs in the browser, where it has a DOM/window.
+  let safeBody = $derived(mounted ? DOMPurify.sanitize(task.full_body ?? '') : '')
 
   // Local editable notes to avoid resetting while user types
   // Local editable copy — task prop won't reactively update notesValue while user types
@@ -79,7 +93,9 @@
     {#if task.full_body}
       <details class="email-expand">
         <summary>📄 Full Email</summary>
-        <div class="email-body">{@html task.full_body}</div>
+        {#if mounted}
+          <div class="email-body">{@html safeBody}</div>
+        {/if}
       </details>
     {/if}
   {/if}
