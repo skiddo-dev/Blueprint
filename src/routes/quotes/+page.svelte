@@ -14,6 +14,7 @@
   let error = $state('')
   let downloadUrl = $state('')
   let filename = $state('')
+  let sidebarOpen = $state(false)
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -52,10 +53,20 @@
 
 <svelte:head><title>Quote Generator · Blueprint</title></svelte:head>
 
+<!-- Mobile menu toggle (hidden on desktop via CSS) -->
+<button
+  class="sidebar-toggle"
+  onclick={() => (sidebarOpen = !sidebarOpen)}
+  aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+  aria-expanded={sidebarOpen}
+>
+  {sidebarOpen ? '‹' : '›'}
+</button>
+
 <div class="app-layout">
-  <aside class="sidebar">
-    <a href="/" class="nav-link">← Back to Board</a>
-    <a href="/dashboard" class="nav-link">📊 Dashboard</a>
+  <aside class="sidebar" class:open={sidebarOpen}>
+    <a href="/" class="nav-link" onclick={() => (sidebarOpen = false)}>← Back to Board</a>
+    <a href="/dashboard" class="nav-link" onclick={() => (sidebarOpen = false)}>📊 Dashboard</a>
   </aside>
 
   <main class="main-content">
@@ -145,6 +156,21 @@
     padding: 14px 12px; display: flex; flex-direction: column; gap: 6px;
     flex-shrink: 0;
   }
+  /* Off-canvas menu button — only shown on mobile (see media query below). */
+  .sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 50;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
   .nav-link { display: block; padding: 8px 10px; font-size: 13px; color: #374151; text-decoration: none; border: 1px solid #e2e8f0; border-radius: 7px; background: #f8fafc; }
   .nav-link:hover { background: #eef2ff; color: #4338ca; }
   .main-content { flex: 1; padding: 1.4rem; max-width: 720px; }
@@ -174,6 +200,25 @@
   .how-it-works summary { font-size: 13px; color: #374151; cursor: pointer; }
   .how-it-works ul { font-size: 12px; color: #64748b; margin-top: 8px; padding-left: 16px; }
   .how-it-works li { margin-bottom: 4px; }
+
+  /* Collapse the sidebar off-canvas on mobile; the toggle reveals it.
+     Matches the Kanban Sidebar pattern (768px breakpoint). */
+  @media (max-width: 768px) {
+    .sidebar-toggle { display: block; }
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 40;
+      padding-top: 3rem; /* clear the fixed toggle button */
+      box-shadow: 4px 0 20px rgba(15, 23, 42, 0.12);
+      display: none;
+    }
+    .sidebar.open { display: flex; }
+    .main-content { padding: 3.25rem 1rem 1.5rem; } /* clear the fixed toggle */
+  }
 
   @media (max-width: 640px) {
     .form-grid { grid-template-columns: 1fr; }

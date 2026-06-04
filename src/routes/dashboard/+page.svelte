@@ -8,6 +8,8 @@
   let { data }: { data: PageData } = $props()
   const tasks: Task[] = data.tasks
 
+  let sidebarOpen = $state(false)
+
   // ── Palette & formatters ────────────────────────────────────────────────
   const PALETTE = [
     '#6366f1', '#f59e0b', '#10b981', '#3b82f6', '#ec4899',
@@ -262,8 +264,18 @@
 
 <svelte:head><title>Dashboard · Blueprint</title></svelte:head>
 
+<!-- Mobile menu toggle (hidden on desktop via CSS) -->
+<button
+  class="sidebar-toggle"
+  onclick={() => (sidebarOpen = !sidebarOpen)}
+  aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+  aria-expanded={sidebarOpen}
+>
+  {sidebarOpen ? '‹' : '›'}
+</button>
+
 <div class="app-layout">
-  <aside class="sidebar">
+  <aside class="sidebar" class:open={sidebarOpen}>
     <div class="user-info">
       <strong>Admin</strong>
       <span class="badge">Admin</span>
@@ -273,8 +285,8 @@
     </form>
     <hr />
     <nav>
-      <a href="/" class="nav-link">🏗️ Kanban Board</a>
-      <a href="/quotes" class="nav-link">💰 Quote Generator</a>
+      <a href="/" class="nav-link" onclick={() => (sidebarOpen = false)}>🏗️ Kanban Board</a>
+      <a href="/quotes" class="nav-link" onclick={() => (sidebarOpen = false)}>💰 Quote Generator</a>
     </nav>
   </aside>
 
@@ -378,6 +390,21 @@
     padding: 14px 12px; overflow-y: auto; flex-shrink: 0; display: flex;
     flex-direction: column; gap: 8px;
   }
+  /* Off-canvas menu button — only shown on mobile (see media query below). */
+  .sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 50;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
   .user-info { font-size: 13px; color: #1e293b; display: flex; align-items: center; gap: 8px; }
   .badge { background: #e0e7ff; color: #4338ca; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
   .full-w { width: 100%; }
@@ -416,4 +443,22 @@
   tr:hover td { background: #fafafa; }
   .title-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .status-pill { border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+
+  /* Collapse the sidebar off-canvas on mobile; the toggle reveals it.
+     Matches the Kanban Sidebar pattern (768px breakpoint). */
+  @media (max-width: 768px) {
+    .sidebar-toggle { display: block; }
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100vh;
+      z-index: 40;
+      padding-top: 3rem; /* clear the fixed toggle button */
+      box-shadow: 4px 0 20px rgba(15, 23, 42, 0.12);
+      display: none;
+    }
+    .sidebar.open { display: flex; }
+    .main-content { padding: 3.25rem 1rem 1.5rem; } /* clear the fixed toggle */
+  }
 </style>
