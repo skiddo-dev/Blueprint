@@ -1,12 +1,17 @@
 import { SvelteKitAuth } from '@auth/sveltekit'
 import MicrosoftEntraID from '@auth/sveltekit/providers/microsoft-entra-id'
 import { getDb } from '$lib/server/db'
+import {
+  AUTH_SECRET,
+  AZURE_CLIENT_ID,
+  AZURE_CLIENT_SECRET,
+  AZURE_TENANT_ID,
+  ADMIN_EMAILS,
+} from '$env/static/private'
 
-// Auth.js reads AUTH_MICROSOFT_ENTRA_ID_* automatically.
-// We also accept the legacy AZURE_* names used by the Python version.
-const clientId = process.env.AUTH_MICROSOFT_ENTRA_ID_ID ?? process.env.AZURE_CLIENT_ID ?? ''
-const clientSecret = process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET ?? process.env.AZURE_CLIENT_SECRET ?? ''
-const tenantId = process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID ?? process.env.AZURE_TENANT_ID ?? ''
+const clientId = AZURE_CLIENT_ID ?? ''
+const clientSecret = AZURE_CLIENT_SECRET ?? ''
+const tenantId = AZURE_TENANT_ID ?? ''
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
   providers: [
@@ -16,7 +21,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
       issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
     }),
   ],
-  secret: process.env.AUTH_SECRET,
+  secret: AUTH_SECRET,
   trustHost: true,
   callbacks: {
     async session({ session }) {
@@ -24,8 +29,10 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
       if (email) {
         try {
           const db = await getDb()
-          const userDoc = await db.collection<Record<string, unknown>>('users' as never).findOne({ _id: email } as never)
-          const adminEmails = (process.env.ADMIN_EMAILS ?? '')
+          const userDoc = await db
+            .collection<Record<string, unknown>>('users' as never)
+            .findOne({ _id: email } as never)
+          const adminEmails = (ADMIN_EMAILS ?? '')
             .split(',')
             .map(e => e.trim().toLowerCase())
             .filter(Boolean)
@@ -36,14 +43,17 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
             (userDoc?.name as string) || (session.user.name ?? '') || email.split('@')[0]
           Object.assign(session.user, { role, displayName })
         } catch {
-          // DB not yet reachable on cold start — degrade gracefully
+          // DB not reachable yet on cold start — degrade gracefully
         }
       }
       return session
     },
   },
   pages: {
-    signIn: '/auth/signin',
-    error: '/auth/signin',
+    // Custom branded sign-in page. It must live OUTSIDE the Auth.js base path
+    // (`/auth`), otherwise GET /auth/signin is intercepted by Auth.js and a
+    // pages.signIn of '/auth/signin' would redirect to itself (infinite loop).
+    signIn: '/login',
+    error: '/login',
   },
 })

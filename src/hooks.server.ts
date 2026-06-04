@@ -7,6 +7,7 @@ const guard: Handle = async ({ event, resolve }) => {
 
   // Auth.js routes and the sign-in / unauthorized pages are always public
   if (
+    path === '/login' ||
     path.startsWith('/auth/') ||
     path.startsWith('/api/auth/')
   ) {
@@ -17,7 +18,8 @@ const guard: Handle = async ({ event, resolve }) => {
   const user = session?.user as Record<string, unknown> | undefined
 
   if (!user) {
-    throw redirect(302, '/auth/signin')
+    const callbackUrl = encodeURIComponent(event.url.pathname)
+    throw redirect(302, `/login?callbackUrl=${callbackUrl}`)
   }
 
   // Provisioned check — role is attached by the session callback in auth.ts

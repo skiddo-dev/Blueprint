@@ -11,6 +11,10 @@
     <h1>Blueprint</h1>
     <p class="sub">Grocery Construction Task Management</p>
 
+    {#if data.error}
+      <p class="error" role="alert">{data.error}</p>
+    {/if}
+
     <form class="signin-form" action="/auth/signin/microsoft-entra-id" method="POST">
       <button class="primary full-w" type="submit">
         🔐 Sign in with Microsoft
@@ -43,6 +47,17 @@
   .logo { font-size: 48px; margin-bottom: 8px; }
   h1 { font-size: 24px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
   .sub { font-size: 13px; color: #94a3b8; margin-bottom: 28px; }
+  .error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    font-size: 13px;
+    line-height: 1.4;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
   .signin-form { margin-bottom: 16px; }
   .full-w { width: 100%; justify-content: center; padding: 12px; font-size: 14px; }
   .footer-note { font-size: 12px; color: #94a3b8; }
