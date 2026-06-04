@@ -65,125 +65,117 @@ with st.form("quote_generator_form"):
 
 # ----------------------------------------------------------------------
 # PDF Generation Function (Coordinate-Based)
+#
+# Each section is its own outlined box stacked with gaps, mirroring the
+# RAVES "Rough Draft Quote Form" template:
+#   header (logo + address) -> Proposal -> info -> description -> footer.
+# Boxes are stroked outlines only (style="D"); we never fill, because
+# FPDF's default fill colour is black and "DF" would paint solid boxes.
 # ----------------------------------------------------------------------
+MARGIN = 10
+PAGE_W = 210                      # A4 width in mm
+CONTENT_W = PAGE_W - 2 * MARGIN   # 190
+X0 = MARGIN                       # left content edge (10)
+X1 = MARGIN + CONTENT_W           # right content edge (200)
+LOGO_ASPECT = 244 / 74           # logo.png native width / height
+
+
+def _field(pdf, x, y, label, value, label_w, value_w):
+    """Draw a bold label followed by a regular-weight value on one line."""
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_xy(x, y)
+    pdf.cell(label_w, 6, label, align="L")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_xy(x + label_w, y)
+    pdf.cell(value_w, 6, str(value), align="L")
+
+
 def generate_quote_pdf(data):
-    pdf = FPDF()
+    pdf = FPDF(format="A4")
     pdf.add_page()
-    pdf.set_auto_page_break(False)  # Disable auto-break since we handle layout manually
-    pdf.set_margins(10, 10, 10)
-    pdf.set_font("Helvetica", size=10)
-
-    # 📐 Constants for Layout (A4: 210x297mm)
-    MARGIN = 10
-    CONTENT_W = 190  # 210 - 2*MARGIN
-    X_START = MARGIN
-    
-    # Column widths for the 4-column grid (Total: 190)
-    col_widths = [45, 45, 45, 55] 
-
-    # 1. 🖼️ FULL PAGE BORDER
+    pdf.set_auto_page_break(False)  # Manual layout: we place every box ourselves
+    pdf.set_margins(MARGIN, MARGIN, MARGIN)
     pdf.set_draw_color(0, 0, 0)
-    pdf.set_line_width(0.5)
-    pdf.rect(MARGIN, MARGIN, CONTENT_W, 277)
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_line_width(0.5)         # "medium" weight, matching the template
 
-    # 2. 🏢 LOGO & HEADER
+    # 1. HEADER BOX -- logo on top, company address along the bottom.
+    hdr_y, hdr_h = MARGIN, 38
+    pdf.rect(X0, hdr_y, CONTENT_W, hdr_h, style="D")
     logo_path = "logo.png"
     if os.path.exists(logo_path):
         try:
-            # Center logo: (210 - 96) / 2 = 57
-            pdf.image(logo_path, x=57, y=15, w=96)
-            pdf.ln(12) # Skip logo height
+            logo_w = 78
+            pdf.image(logo_path, x=(PAGE_W - logo_w) / 2, y=hdr_y + 3, w=logo_w)
         except Exception:
-            pass  # Fallback if image fails
-    
-    # Address Line
-    pdf.set_font("Helvetica", size=10)
-    pdf.cell(0, 7, "1704 E. Highland Rd. Highland, MI. 48356", new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.ln(4)
+            pass  # Fall back to text-only header if the image can't be read
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_xy(X0, hdr_y + hdr_h - 9)
+    pdf.cell(CONTENT_W, 6, "1704 E. Highland Rd. Highland, MI. 48356", align="C")
 
-    # Proposal Title
-    pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, "Proposal", new_x="LMARGIN", new_y="NEXT", align="C")
-    pdf.ln(4)
+    # 2. PROPOSAL TITLE BOX
+    title_y, title_h = hdr_y + hdr_h + 4, 14
+    pdf.rect(X0, title_y, CONTENT_W, title_h, style="D")
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.set_xy(X0, title_y + 2)
+    pdf.cell(CONTENT_W, title_h - 4, "Proposal", align="C")
 
-    # 3. 📋 INFO GRID (3 Rows: Header, Data1, Data2)
-    y_info = pdf.get_y()
-    row_h = 8
-    
-    headers = ["Customer:", "Date Received:", "Bid Due Date:", "Architect:"]
-    vals1 = [data["customer"], data["date_received"], data["bid_due_date"], data["architect"]]
-    vals2 = ["", "", "", data["project_location"]]
+    # 3. INFO BOX -- customer details left, architect/location right.
+    info_y, info_h = title_y + title_h + 4, 28
+    pdf.rect(X0, info_y, CONTENT_W, info_h, style="D")
+    LX, RX = X0 + 4, X0 + 100        # left / right column x positions
+    r1, r2, r3 = info_y + 5, info_y + 13, info_y + 21
+    _field(pdf, LX, r1, "Customer:", data["customer"], 30, 66)
+    _field(pdf, RX, r1, "Architect:", data["architect"], 26, 64)
+    _field(pdf, LX, r2, "Date Received:", data["date_received"], 30, 66)
+    _field(pdf, RX, r2, "Project Location:", data["project_location"], 33, 57)
+    _field(pdf, LX, r3, "Bid Due Date:", data["bid_due_date"], 30, 66)
 
-    for row_idx, vals in enumerate([headers, vals1, vals2]):
-        y = y_info + (row_idx * row_h)
-        is_header = (row_idx == 0)
-        style = "DF" if is_header else "D" # Fill for header, outline for data
-        
-        for i, val in enumerate(vals):
-            x = X_START + sum(col_widths[:i])
-            # Draw Box
-            pdf.rect(x, y, col_widths[i], row_h, style=style)
-            # Draw Text
-            pdf.set_xy(x + 2, y + 1)
-            pdf.set_font("Helvetica", "B" if is_header else "", size=10)
-            # Truncate text to prevent overflow
-            pdf.cell(col_widths[i] - 4, row_h - 2, str(val)[:25], align="L")
-    
-    pdf.ln(2 * row_h + 4) # Move down past grid
+    # 4. DESCRIPTION OF WORK BOX -- label on top, wrapped body text below.
+    desc_y, desc_h = info_y + info_h + 4, 151
+    pdf.rect(X0, desc_y, CONTENT_W, desc_h, style="D")
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_xy(X0 + 4, desc_y + 3)
+    pdf.cell(CONTENT_W - 8, 6, "Description of Work:", align="L")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_xy(X0 + 4, desc_y + 12)
+    if data.get("description"):
+        pdf.multi_cell(CONTENT_W - 8, 6, str(data["description"]), align="L")
+    if data.get("notes"):
+        pdf.ln(2)
+        pdf.set_x(X0 + 4)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.cell(18, 6, "Notes:", align="L")
+        pdf.set_font("Helvetica", "", 11)
+        pdf.multi_cell(CONTENT_W - 26, 6, str(data["notes"]), align="L")
 
-    # 4. 📝 DESCRIPTION GRID
-    desc_y = pdf.get_y()
-    
-    # Draw Header Row for Description
-    pdf.rect(X_START, desc_y, CONTENT_W, 8, style="DF")
-    pdf.set_xy(X_START + 2, desc_y + 2)
-    pdf.set_font("Helvetica", "B", 10)
-    pdf.cell(CONTENT_W - 4, 4, "Description of Work:", align="L")
-    
-    # Draw Grid Lines for Description Body
-    row_height = 7
-    for r in range(12):
-        y = desc_y + 8 + (r * row_height)
-        
-        # Horizontal Lines
-        pdf.line(X_START, y, X_START + CONTENT_W, y)
-        pdf.line(X_START, y + row_height, X_START + CONTENT_W, y + row_height)
-        
-        # Vertical Dividers (at 45, 90, 135)
-        for i in range(1, 4):
-            x_v = X_START + sum(col_widths[:i])
-            pdf.line(x_v, y, x_v, y + row_height)
+    # 5. FOOTER BOXES -- signature block (left) and cost summary (right).
+    bot_y, bot_h = desc_y + desc_h + 4, 28
+    left_w = 95
+    pdf.rect(X0, bot_y, left_w, bot_h, style="D")
+    for i, lbl in enumerate(("Sign:", "Print:", "Date:")):
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_xy(X0 + 4, bot_y + 4 + i * 8)
+        pdf.cell(left_w - 8, 6, lbl, align="L")
 
-    pdf.ln(12 * row_height + 8) # Move down past description
+    right_x, right_w = 129, 71
+    pdf.rect(right_x, bot_y, right_w, bot_h, style="D")
+    cost_rows = (
+        ("Labor:", f"${data['labor']:,.2f}", False),
+        ("Materials:", f"${data['materials']:,.2f}", False),
+        ("Total:", f"${data['total']:,.2f}", True),  # Total emphasised
+    )
+    for i, (lbl, val, bold) in enumerate(cost_rows):
+        yy = bot_y + 4 + i * 8
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_xy(right_x + 4, yy)
+        pdf.cell(30, 6, lbl, align="L")
+        pdf.set_font("Helvetica", "B" if bold else "", 11)
+        pdf.set_xy(right_x + 4, yy)
+        pdf.cell(right_w - 8, 6, val, align="R")
 
-    # 5. 📦 BOTTOM BOXES
-    bot_y = pdf.get_y() + 2
-    box_w = 90
-    box_h = 25
-
-    # Left Box (Sign/Print/Date)
-    pdf.rect(X_START, bot_y, box_w, box_h, style="DF")
-    left_labels = ["Sign:", "Print:", "Date:"]
-    for i, lbl in enumerate(left_labels):
-        pdf.set_xy(X_START + 2, bot_y + i * 7 + 2)
-        pdf.set_font("Helvetica", "B", 10)
-        pdf.cell(box_w - 4, 6, lbl, align="L")
-
-    # Right Box (Labor/Materials/Total)
-    right_x = X_START + box_w + 5
-    pdf.rect(right_x, bot_y, box_w, box_h, style="DF")
-    right_labels = ["Labor:", "Materials:", "Total:"]
-    right_vals = [f"${data['labor']:.2f}", f"${data['materials']:.2f}", f"${data['total']:.2f}"]
-    for i, lbl in enumerate(right_labels):
-        pdf.set_xy(right_x + 2, bot_y + i * 7 + 2)
-        pdf.set_font("Helvetica", "B", 10)
-        pdf.cell(35, 6, lbl, align="L")
-        pdf.set_xy(right_x + 40, bot_y + i * 7 + 2)
-        pdf.set_font("Helvetica", size=10)
-        pdf.cell(45, 6, right_vals[i], align="R")
-
-    # ✅ Guaranteed bytes output for Streamlit
-    return bytes(pdf.output(dest="S"))
+    # Return bytes for Streamlit's download_button.
+    return bytes(pdf.output())
 
 # ----------------------------------------------------------------------
 # Handle form submission
