@@ -1,27 +1,21 @@
 import { SvelteKitAuth } from '@auth/sveltekit'
 import MicrosoftEntraID from '@auth/sveltekit/providers/microsoft-entra-id'
 import { getDb } from '$lib/server/db'
-import {
-  AUTH_SECRET,
-  AZURE_CLIENT_ID,
-  AZURE_CLIENT_SECRET,
-  AZURE_TENANT_ID,
-  ADMIN_EMAILS,
-} from '$env/static/private'
+import { env } from '$env/dynamic/private'
 
-const clientId = AZURE_CLIENT_ID ?? ''
-const clientSecret = AZURE_CLIENT_SECRET ?? ''
-const tenantId = AZURE_TENANT_ID ?? ''
-
-export const { handle, signIn, signOut } = SvelteKitAuth({
+// Async config form so secrets are read at RUNTIME via $env/dynamic/private
+// (from the host environment / Azure App Settings), NOT inlined at build time.
+// This keeps secrets out of the build artifact and lets the container image
+// build without them. Consistent with db/email/llm.
+export const { handle, signIn, signOut } = SvelteKitAuth(async () => ({
   providers: [
     MicrosoftEntraID({
-      clientId,
-      clientSecret,
-      issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
+      clientId: env.AZURE_CLIENT_ID ?? '',
+      clientSecret: env.AZURE_CLIENT_SECRET ?? '',
+      issuer: `https://login.microsoftonline.com/${env.AZURE_TENANT_ID ?? ''}/v2.0`,
     }),
   ],
-  secret: AUTH_SECRET,
+  secret: env.AUTH_SECRET,
   trustHost: true,
   callbacks: {
     async session({ session }) {
@@ -32,7 +26,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
           const userDoc = await db
             .collection<Record<string, unknown>>('users' as never)
             .findOne({ _id: email } as never)
-          const adminEmails = (ADMIN_EMAILS ?? '')
+          const adminEmails = (env.ADMIN_EMAILS ?? '')
             .split(',')
             .map(e => e.trim().toLowerCase())
             .filter(Boolean)
@@ -56,4 +50,4 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
     signIn: '/login',
     error: '/login',
   },
-})
+}))
