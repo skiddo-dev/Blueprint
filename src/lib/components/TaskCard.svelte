@@ -125,7 +125,7 @@
   </div>
 
   <!-- Date + Quote -->
-  <div class="row-2">
+  <div class="row-2" class:single={!task.quote}>
     <input
       type="date"
       value={task.date ?? ''}
@@ -312,6 +312,8 @@
     gap: 6px;
     margin-bottom: 6px;
   }
+  /* No quote → let the date field take the full width instead of a lone half box */
+  .row-2.single { grid-template-columns: 1fr; }
 
   select, input[type="date"], input[type="text"], textarea {
     font-size: 12px;
@@ -321,7 +323,22 @@
     background: #fff;
     color: #374151;
     width: 100%;
+    box-sizing: border-box;
     outline: none;
+  }
+  /* iOS Safari renders <input type="date"> taller than other fields and centers
+     its value via an internal pseudo-element. Strip the native appearance and
+     normalize the value so it matches the selects / quote box beside it. */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: left;
+  }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+    margin: 0;
+    padding: 0;
+    font-size: 12px;
   }
   select:focus, input:focus, textarea:focus {
     border-color: #6366f1;
