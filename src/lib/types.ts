@@ -32,22 +32,23 @@ export interface User {
   updated_at?: string
 }
 
-// A quote produced by the Quote Generator (`/quotes`). Persisted to the
-// `quotes` collection so it can be tracked in the dashboard analytics.
+// A tracked quote — mirrors the RAVES Quote Log (one row per quote). Stored in
+// the `quotes` collection and surfaced in the dashboard analytics. Rows come
+// from two sources: the historical log import and the Quote Generator.
 export interface Quote {
   _id: string
-  customer: string
-  quote_type: string
-  architect: string          // the quote person (QUOTE_PEOPLE)
-  project_location?: string
-  description?: string
+  quote_number?: number      // sequential per year (from the log)
+  year: number               // calendar year of the quote
+  store_number?: string      // store #, may be empty or 'N/A'
+  point_of_contact: string   // estimator / rep who sent the quote
+  description: string        // work category (Minor Remodel, Extras, …)
+  amount: number             // quoted $ (negative = credit)
+  date_sent?: string         // ISO YYYY-MM-DD
+  sitefolio?: boolean        // tracked in Sitefolio
+  po?: string                // purchase order
   notes?: string
-  labor: number
-  materials: number
-  total: number              // final quote amount (numeric)
-  date_received: string      // YYYY-MM-DD
-  bid_due_date?: string
-  created_by?: string        // who generated it
+  source: 'imported' | 'generated'
+  created_by?: string        // who generated it (generated quotes only)
   created_at: string
 }
 

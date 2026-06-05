@@ -56,10 +56,10 @@
         date: t.date,
       })),
     ...genQuotes.map(q => ({
-      value: q.total,
-      type: q.quote_type || 'Not Set',
-      person: q.architect || 'Unassigned',
-      date: q.date_received,
+      value: q.amount,
+      type: q.description || 'Not Set',
+      person: q.point_of_contact || 'Unassigned',
+      date: q.date_sent,
     })),
   ]
 
@@ -141,6 +141,10 @@
   // Monthly quote-value trend, one line per top-4 quote type
   const monthKey = (s?: string): string | null => {
     if (!s) return null
+    // Read the YYYY-MM directly so date-only strings aren't shifted a month by
+    // Date's UTC parsing (e.g. '2026-06-01' → May 31 in a negative-offset tz).
+    const m = /^(\d{4})-(\d{2})/.exec(s)
+    if (m) return `${m[1]}-${m[2]}`
     const d = new Date(s)
     return isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   }

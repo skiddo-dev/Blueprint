@@ -46,21 +46,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     quote_type: body.quote_type ?? '',
   }
 
-  // Track the generated quote so it shows up in the dashboard analytics.
-  // Best-effort: a tracking failure must never block the PDF download.
+  // Track the generated quote (RAVES Quote Log shape) so it shows up in the
+  // dashboard analytics. Best-effort: a failure must never block the PDF.
+  // NOTE: mapping from the current proposal form is approximate until the
+  // generator form is reshaped to capture store #, point of contact, and the
+  // work-category description directly.
   try {
+    const year = new Date(data.date_received).getFullYear() || new Date().getFullYear()
     await insertQuote({
-      customer: data.customer,
-      quote_type: data.quote_type,
-      architect: data.architect,
-      project_location: data.project_location,
-      description: data.description,
-      notes: data.notes,
-      labor: data.labor,
-      materials: data.materials,
-      total: data.total,
-      date_received: data.date_received,
-      bid_due_date: data.bid_due_date,
+      year,
+      store_number: data.project_location,
+      point_of_contact: data.architect,
+      description: data.quote_type,
+      amount: data.total,
+      date_sent: data.date_received,
+      sitefolio: false,
+      po: '',
+      notes: [data.description, data.notes].filter(Boolean).join(' — '),
+      source: 'generated',
       created_by: (user.displayName as string) || (user.email as string) || '',
     })
   } catch (e) {
