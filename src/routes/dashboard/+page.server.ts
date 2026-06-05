@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types'
-import { getTasks } from '$lib/server/db'
+import { getTasks, getQuotes } from '$lib/server/db'
 
 export const load: PageServerLoad = async () => {
-  const tasks = await getTasks()
-  return { tasks }
+  const [tasks, quotes] = await Promise.all([getTasks(), getQuotes()])
+  return { tasks, quotes }
 }

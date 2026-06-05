@@ -1,6 +1,6 @@
 import { MongoClient, type Db } from 'mongodb'
 import { env } from '$env/dynamic/private'
-import type { Task, User } from '$lib/types'
+import type { Task, User, Quote } from '$lib/types'
 import { generateMockTasks } from './mock'
 
 let client: MongoClient | null = null
@@ -122,6 +122,40 @@ export async function deleteTask(taskId: string): Promise<boolean> {
   await col(d, 'attachments').deleteMany({ task_id: taskId })
   const result = await col(d, 'tasks').deleteOne({ _id: taskId })
   return result.deletedCount > 0
+}
+
+// ── Generated quotes ─────────────────────────────────────────────────────────
+// Quotes produced by the Quote Generator are stored in their own `quotes`
+// collection (kept separate from Kanban tasks so the board stays clean) and
+// merged into the dashboard's quote analytics.
+
+export async function insertQuote(quote: Record<string, unknown>): Promise<string> {
+  const d = await getDb()
+  const id = crypto.randomUUID()
+  await col(d, 'quotes').insertOne({
+    ...quote,
+    _id: id,
+    created_at: quote.created_at ?? new Date().toISOString(),
+  })
+  return id
+}
+
+export async function getQuotes(): Promise<Quote[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const quotes = await col(d, 'quotes').find().sort({ created_at: -1 }).toArray()
+  return quotes.map(q => ({ ...q, _id: String(q._id) })) as Quote[]
+}
+
+// Next sequential quote number for a given year (mirrors the per-year numbering
+// in the RAVES Quote Log).
+export async function getNextQuoteNumber(year: number): Promise<number> {
+  if (USE_MOCK) return 1
+  const d = await getDb()
+  const top = await col(d, 'quotes')
+    .find({ year }).sort({ quote_number: -1 }).limit(1).toArray()
+  const max = top.length ? Number(top[0].quote_number ?? 0) : 0
+  return (Number.isFinite(max) ? max : 0) + 1
 }
 
 export async function saveAttachment(

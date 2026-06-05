@@ -32,6 +32,26 @@ export interface User {
   updated_at?: string
 }
 
+// A tracked quote — mirrors the RAVES Quote Log (one row per quote). Stored in
+// the `quotes` collection and surfaced in the dashboard analytics. Rows come
+// from two sources: the historical log import and the Quote Generator.
+export interface Quote {
+  _id: string
+  quote_number?: number      // sequential per year (from the log)
+  year: number               // calendar year of the quote
+  store_number?: string      // store #, may be empty or 'N/A'
+  point_of_contact: string   // estimator / rep who sent the quote
+  description: string        // work category (Minor Remodel, Extras, …)
+  amount: number             // quoted $ (negative = credit)
+  date_sent?: string         // ISO YYYY-MM-DD
+  sitefolio?: boolean        // tracked in Sitefolio
+  po?: string                // purchase order
+  notes?: string
+  source: 'imported' | 'generated'
+  created_by?: string        // who generated it (generated quotes only)
+  created_at: string
+}
+
 export interface StatusMeta {
   color: string
   bg: string

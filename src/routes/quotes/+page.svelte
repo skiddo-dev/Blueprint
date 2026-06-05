@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { QUOTE_TYPES, QUOTE_PEOPLE } from '$lib/constants'
+  import { QUOTE_CONTACTS, QUOTE_WORK_TYPES } from '$lib/constants'
   import NavDrawer from '$lib/components/NavDrawer.svelte'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -10,14 +10,16 @@
   const user = { name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' }
 
   let customer = $state('')
-  let quotePerson = $state(QUOTE_PEOPLE[0])
-  let location = $state('')
-  let quoteType = $state(QUOTE_TYPES[0])
+  let storeNumber = $state('')
+  let pointOfContact = $state('')
+  let workType = $state('')
+  let amount = $state(0)
+  let dateSent = $state(new Date().toISOString().slice(0, 10))
   let bidDue = $state('')
-  let description = $state('Generated proposal via Quote Generator')
+  let po = $state('')
+  let sitefolio = $state(false)
+  let description = $state('')
   let notes = $state('')
-  let labor = $state(0)
-  let materials = $state(0)
   let generating = $state(false)
   let error = $state('')
   let downloadUrl = $state('')
@@ -29,22 +31,21 @@
   async function generate() {
     generating = true; error = ''; downloadUrl = ''
     try {
-      const total = (labor + materials) > 0 ? labor + materials : undefined
       const r = await fetch('/api/quotes/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer: customer || 'TBD',
-          date_received: today,
-          bid_due_date: bidDue || today,
-          architect: quotePerson,
-          project_location: location || 'TBD',
+          store_number: storeNumber,
+          point_of_contact: pointOfContact,
+          work_type: workType,
+          amount: Number(amount) || 0,
+          date_sent: dateSent || today,
+          bid_due_date: bidDue,
+          po,
+          sitefolio,
           description,
           notes,
-          labor,
-          materials,
-          total,
-          quote_type: quoteType,
         }),
       })
       if (!r.ok) throw new Error(await r.text())
@@ -83,45 +84,51 @@
         <input type="text" bind:value={customer} placeholder="Client name" />
       </label>
       <label>
-        Architect / Quote Person
-        <select bind:value={quotePerson}>
-          {#each QUOTE_PEOPLE as p}
-            <option value={p}>{p}</option>
-          {/each}
-        </select>
+        Store #
+        <input type="text" bind:value={storeNumber} placeholder="e.g. 642" />
       </label>
       <label>
-        Project Location
-        <input type="text" bind:value={location} placeholder="Site or project address" />
+        Point of Contact
+        <input type="text" list="contacts" bind:value={pointOfContact} placeholder="Estimator" />
+        <datalist id="contacts">
+          {#each QUOTE_CONTACTS as c}<option value={c}></option>{/each}
+        </datalist>
       </label>
       <label>
-        Quote Type
-        <select bind:value={quoteType}>
-          {#each QUOTE_TYPES as qt}
-            <option value={qt}>{qt}</option>
-          {/each}
-        </select>
+        Work Type
+        <input type="text" list="worktypes" bind:value={workType} placeholder="e.g. Minor Remodel" />
+        <datalist id="worktypes">
+          {#each QUOTE_WORK_TYPES as w}<option value={w}></option>{/each}
+        </datalist>
+      </label>
+      <label>
+        Amount ($)
+        <input type="number" bind:value={amount} min="0" step="0.01" />
+      </label>
+      <label>
+        Date Sent
+        <input type="date" bind:value={dateSent} />
       </label>
       <label>
         Bid Due Date
         <input type="date" bind:value={bidDue} />
       </label>
+      <label>
+        PO (optional)
+        <input type="text" bind:value={po} placeholder="Purchase order" />
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" bind:checked={sitefolio} />
+        Sitefolio
+      </label>
       <div></div>
       <label class="span-2">
         Description of Work
-        <textarea bind:value={description} rows="3"></textarea>
+        <textarea bind:value={description} rows="3" placeholder="Scope of work (appears on the proposal PDF)"></textarea>
       </label>
       <label class="span-2">
         Notes (Optional)
         <textarea bind:value={notes} rows="2" placeholder="Additional terms or conditions"></textarea>
-      </label>
-      <label>
-        Labor Cost ($)
-        <input type="number" bind:value={labor} min="0" step="0.01" />
-      </label>
-      <label>
-        Materials Cost ($)
-        <input type="number" bind:value={materials} min="0" step="0.01" />
       </label>
     </div>
 
@@ -144,9 +151,8 @@
     <details class="how-it-works" style="margin-top: 24px">
       <summary>ℹ️ How Proposal Generation Works</summary>
       <ul>
-        <li>The PDF layout uses coordinates matching your RAVES CONSTRUCTION form.</li>
-        <li>If you enter Labor & Materials, the Total updates automatically.</li>
-        <li>If both are 0, a suggested total is calculated based on quote type.</li>
+        <li>The PDF layout matches your RAVES CONSTRUCTION proposal form.</li>
+        <li>Each quote is logged (auto Quote #/year, Store #, Point of Contact, Work Type, Amount) and tracked in the Dashboard analytics.</li>
       </ul>
     </details>
   </main>
@@ -165,6 +171,8 @@
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .span-2 { grid-column: span 2; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 500; color: #374151; }
+  label.checkbox { flex-direction: row; align-items: center; gap: 8px; }
+  label.checkbox input { width: auto; }
 
   .error { color: #dc2626; font-size: 13px; margin-top: 10px; }
   .actions { display: flex; gap: 10px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
