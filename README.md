@@ -46,6 +46,24 @@ OPENAI_API_KEY=           # sk-...
 
 All secrets are read at **runtime** via `$env/*/private` (never baked into the build).
 
+## Testing
+
+```bash
+npm test          # run the Vitest unit suite once
+npm run test:watch # watch mode while developing
+npm run check     # svelte-check typecheck
+```
+
+Tests run through SvelteKit's Vite plugin, so `$lib` and `$env/*` resolve and
+server-only modules (`$lib/server/*`) are importable. The OpenAI SDK is mocked,
+so the suite makes no network calls and needs no real keys. Current coverage
+focuses on the pure logic with the highest blast radius — store-number
+extraction, name normalization, and the email parser's field-mapping plus its
+never-block-a-sync fallback.
+
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) gates every pull
+request on `npm run check`, `npm test`, and a production `npm run build`.
+
 ## Microsoft Entra setup
 
 1. **App registration → Authentication → Web → Redirect URIs**, add:

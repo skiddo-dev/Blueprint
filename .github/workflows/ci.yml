@@ -1,0 +1,41 @@
+name: CI
+
+# Gates pull requests (and post-merge main) on typecheck, unit tests, and a
+# production build smoke. Deploy stays separate (see deploy.yml) — this never
+# touches Azure and needs no secrets: the app reads all config at runtime via
+# $env/dynamic/private, so `vite build` succeeds without any of them.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push to the same branch/PR supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (svelte-check)
+        run: npm run check
+
+      - name: Unit tests (vitest)
+        run: npm test
+
+      - name: Production build smoke
+        run: npm run build
