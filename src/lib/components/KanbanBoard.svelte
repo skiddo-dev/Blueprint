@@ -4,6 +4,7 @@
   import NewTaskModal from './NewTaskModal.svelte'
   import type { Task, TaskStatus, AppSession } from '$lib/types'
   import { KANBAN_STATUSES, STATUS_META, SUPERVISORS } from '$lib/constants'
+  import { extractStoreNumbers } from '$lib/storeNumbers'
 
   let {
     initialTasks,
@@ -45,6 +46,19 @@
   // Which column is visible on mobile (phones show one status at a time via the
   // pill switcher below; desktop shows them all side by side).
   let activeStatus = $state<TaskStatus>('To Do')
+
+  // Store-number filter (set by tapping a #store tag on a card; toggles off when
+  // the same store is tapped again). Cards are hidden in KanbanColumn via CSS.
+  let storeFilter = $state<string | null>(null)
+  function setStoreFilter(n: string) {
+    storeFilter = storeFilter === n ? null : n
+  }
+  const taskStores = (t: Task) => t.store_numbers ?? extractStoreNumbers(t.title)
+  let filterCount = $derived(
+    storeFilter
+      ? KANBAN_STATUSES.reduce((acc, s) => acc + columns[s].filter(t => taskStores(t).includes(storeFilter!)).length, 0)
+      : 0,
+  )
 
   // ── Real-time polling (2 s) ──────────────────────────────────────────
   let pollTimer: ReturnType<typeof setInterval>
@@ -193,6 +207,13 @@
   </nav>
 </div>
 
+{#if storeFilter}
+  <div class="store-filter-bar">
+    <span class="sf-label">📍 Store <strong>#{storeFilter}</strong> · {filterCount} task{filterCount === 1 ? '' : 's'}</span>
+    <button class="sf-clear" onclick={() => (storeFilter = null)}>✕ Clear filter</button>
+  </div>
+{/if}
+
 <div class="board-columns">
   {#each KANBAN_STATUSES as status}
     <!-- `display: contents` on desktop so this wrapper disappears and the inner
@@ -203,10 +224,12 @@
         {status}
         bind:items={columns[status]}
         {assignees}
+        {storeFilter}
         onMoved={handleMoved}
         onDragStateChange={(d) => (dragging = d)}
         onFieldUpdate={handleFieldUpdate}
         onDelete={handleDelete}
+        onStoreFilter={setStoreFilter}
       />
     </div>
   {/each}
@@ -247,6 +270,32 @@
     font-size: 13px;
     margin-bottom: 10px;
   }
+
+  .store-filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: var(--primary-bg);
+    border: 1px solid #c7d2fe;
+    color: #3730a3;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .sf-label strong { font-weight: 800; }
+  .sf-clear {
+    background: #fff;
+    border: 1px solid #c7d2fe;
+    color: #4338ca;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .sf-clear:hover { background: #eef2ff; }
 
   .board-columns {
     display: flex;

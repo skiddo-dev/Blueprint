@@ -2,6 +2,7 @@
   import type { PageData } from './$types'
   import { KANBAN_STATUSES, STATUS_META } from '$lib/constants'
   import type { Task, AppSession } from '$lib/types'
+  import { extractStoreNumbers } from '$lib/storeNumbers'
   import Chart from '$lib/components/Chart.svelte'
   import NavDrawer from '$lib/components/NavDrawer.svelte'
   import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
@@ -347,17 +348,23 @@
           <thead>
             <tr>
               <th>Title</th><th>Status</th><th>Assigned To</th>
-              <th>Quote</th><th>Quote Type</th><th>Due Date</th><th>Created</th>
+              <th>Quote</th><th>Quote Type</th><th>Stores</th><th>Due Date</th><th>Created</th>
             </tr>
           </thead>
           <tbody>
             {#each tasks as t}
+              {@const stores = t.store_numbers ?? extractStoreNumbers(t.title)}
               <tr>
                 <td class="title-cell">{t.title}</td>
                 <td><span class="status-pill" style:background={STATUS_META[t.status]?.bg} style:color={STATUS_META[t.status]?.text}>{t.status}</span></td>
                 <td>{t.assigned_to}</td>
                 <td>{t.quote ?? '—'}</td>
                 <td>{t.quote_type ?? '—'}</td>
+                <td class="store-cell">
+                  {#if stores.length}
+                    {#each stores as s}<span class="store-mini">#{s}</span>{/each}
+                  {:else}—{/if}
+                </td>
                 <td>{t.date ?? '—'}</td>
                 <td>{t.created_at?.slice(0, 10) ?? '—'}</td>
               </tr>
@@ -409,6 +416,13 @@
   tr:hover td { background: #fafafa; }
   .title-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .status-pill { border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+  .store-cell { white-space: nowrap; }
+  .store-mini {
+    display: inline-block;
+    background: #1e3a8a; color: #fff;
+    border-radius: 4px; padding: 1px 6px; margin-right: 3px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+  }
 
   @media (max-width: 768px) {
     /* The page title lives in the .mobile-topbar on small screens. */
