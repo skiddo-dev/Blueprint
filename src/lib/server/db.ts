@@ -28,6 +28,18 @@ export async function getDb(): Promise<Db> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function col(d: Db, name: string) { return d.collection<any>(name) }
 
+// Canonical form for comparing a person's name across sources (Entra display
+// name vs. the "Assign to" dropdown vs. LLM-extracted text). Case- and
+// surrounding-whitespace-insensitive so trivial drift doesn't hide a user's
+// own tasks. Used by both getTasksForUser and the task ownership check.
+export function normName(s: string | null | undefined): string {
+  return (s ?? '').trim().toLowerCase()
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function normalizeTask(t: Record<string, unknown>): Task {
   const id = String(t._id)
   return {
@@ -46,16 +58,29 @@ export async function getTasks(): Promise<Task[]> {
 }
 
 export async function getTasksForUser(userName: string): Promise<Task[]> {
+  const target = normName(userName)
   if (USE_MOCK) {
     return generateMockTasks().filter(
-      t => t.assigned_to === userName || t.created_by === userName,
+      t => normName(t.assigned_to) === target || normName(t.created_by) === target,
     )
   }
   const d = await getDb()
+  // Match case-insensitively and ignore surrounding whitespace (mirrors normName)
+  // so a user's tasks still surface if casing/padding drifts between their Entra
+  // display name and the stored assigned/created name. Escape the name so any
+  // regex metacharacters in it are treated literally.
+  const pattern = { $regex: `^\\s*${escapeRegex(userName.trim())}\\s*$`, $options: 'i' }
   const tasks = await col(d, 'tasks').find({
-    $or: [{ assigned_to: userName }, { created_by: userName }],
+    $or: [{ assigned_to: pattern }, { created_by: pattern }],
   }).sort({ created_at: -1 }).toArray()
   return tasks.map(normalizeTask)
+}
+
+export async function getTask(taskId: string): Promise<Task | null> {
+  if (USE_MOCK) return generateMockTasks().find(t => t._id === taskId) ?? null
+  const d = await getDb()
+  const task = await col(d, 'tasks').findOne({ _id: taskId })
+  return task ? normalizeTask(task) : null
 }
 
 export async function getTasksSignature(): Promise<string> {
