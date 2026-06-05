@@ -180,3 +180,50 @@ export async function deleteUser(email: string): Promise<boolean> {
   const result = await col(d, 'users').deleteOne({ _id: email.toLowerCase() })
   return result.deletedCount > 0
 }
+
+// ── App metadata + distributed leases ────────────────────────────────────────
+// A small `meta` collection keyed by string id. Persists the Graph
+// change-notification subscription, and coordinates background work across the
+// (up to 2) replicas so they don't double-fire.
+
+export async function getMeta(id: string): Promise<Record<string, unknown> | null> {
+  const d = await getDb()
+  return col(d, 'meta').findOne({ _id: id })
+}
+
+export async function setMeta(id: string, doc: Record<string, unknown>): Promise<void> {
+  const d = await getDb()
+  await col(d, 'meta').updateOne(
+    { _id: id },
+    { $set: { ...doc, updated_at: new Date().toISOString() } },
+    { upsert: true },
+  )
+}
+
+/** Best-effort distributed lease. Returns true if this caller acquired `name`
+ *  for `ttlMs`. Only one replica wins; the lease auto-expires so a crash can't
+ *  deadlock it. Used to debounce email syncs and single-thread the
+ *  subscription-renewal timer. */
+export async function tryAcquireLease(name: string, ttlMs: number): Promise<boolean> {
+  const d = await getDb()
+  const now = new Date()
+  const until = new Date(now.getTime() + ttlMs)
+  try {
+    const res = await col(d, 'meta').updateOne(
+      { _id: `lease:${name}`, lockedUntil: { $lt: now } },
+      { $set: { lockedUntil: until } },
+      { upsert: true },
+    )
+    return res.modifiedCount > 0 || res.upsertedCount > 0
+  } catch {
+    // Duplicate-key error → the doc exists and is still locked (the filter's
+    // lockedUntil<now didn't match), so another caller holds the lease.
+    return false
+  }
+}
+
+/** Release a lease early (otherwise it just expires after its TTL). */
+export async function releaseLease(name: string): Promise<void> {
+  const d = await getDb()
+  await col(d, 'meta').updateOne({ _id: `lease:${name}` }, { $set: { lockedUntil: new Date(0) } })
+}
