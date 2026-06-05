@@ -14,6 +14,10 @@
   let viewAsUser = $state<string | null>(null)
   let boardTasks = $state(data.tasks)
 
+  // Sidebar open/close lives here so the board's mobile top bar (in KanbanBoard)
+  // can open the same off-canvas drawer the Sidebar renders.
+  let sidebarOpen = $state(false)
+
   async function loadUsers() {
     const r = await fetch('/api/users')
     if (r.ok) users = await r.json()
@@ -58,6 +62,7 @@
 
 <div class="app-layout">
   <Sidebar
+    bind:open={sidebarOpen}
     {session}
     tasks={boardTasks}
     {users}
@@ -72,6 +77,7 @@
       initialTasks={boardTasks}
       {session}
       pmUsers={data.pmUsers}
+      onMenu={() => (sidebarOpen = true)}
     />
   </main>
 </div>
