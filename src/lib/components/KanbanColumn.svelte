@@ -16,6 +16,8 @@
     items = $bindable(),
     assignees,
     storeFilter = null,
+    viewMine = false,
+    myName = '',
     onMoved,
     onDragStateChange,
     onFieldUpdate,
@@ -26,6 +28,8 @@
     items: Task[]
     assignees: string[]
     storeFilter?: string | null
+    viewMine?: boolean
+    myName?: string
     onMoved: (status: TaskStatus, taskId: string) => void
     onDragStateChange: (dragging: boolean) => void
     onFieldUpdate: (id: string, field: string, value: unknown) => void
@@ -36,11 +40,15 @@
   const meta = $derived(STATUS_META[status])
   const flipDurationMs = 200
 
-  // Store-filter visibility. Non-matching cards are hidden via CSS (kept in the
-  // dnd `items` list so the bound array — and drag/drop — stays intact).
+  // View ("My Work") + store-filter visibility. Non-matching cards are hidden via
+  // CSS (kept in the dnd `items` list so the bound array — and drag/drop — stays
+  // intact).
+  const norm = (s?: string | null) => (s ?? '').trim().toLowerCase()
   const taskStores = (t: Task) => t.store_numbers ?? extractStoreNumbers(t.title)
-  const matches = (t: Task) => !storeFilter || taskStores(t).includes(storeFilter)
-  const visibleCount = $derived(storeFilter ? items.filter(matches).length : items.length)
+  const matches = (t: Task) =>
+    (!viewMine || norm(t.assigned_to) === norm(myName)) &&
+    (!storeFilter || taskStores(t).includes(storeFilter))
+  const visibleCount = $derived(items.filter(matches).length)
 
   function handleConsider(e: CustomEvent) {
     onDragStateChange(true)
@@ -61,7 +69,7 @@
     <span class="col-title" style:color={meta.text}>
       {meta.icon}&nbsp;{status}
     </span>
-    <span class="count" style:background={meta.color}>{items.length}</span>
+    <span class="count" style:background={meta.color}>{visibleCount}</span>
   </div>
 
   <!-- Empty hint is an overlay OUTSIDE the dndzone: svelte-dnd-action treats
@@ -95,7 +103,9 @@
     </div>
 
     {#if visibleCount === 0}
-      <div class="empty-zone">{storeFilter ? `No #${storeFilter} here` : 'No tasks'}</div>
+      <div class="empty-zone">
+        {storeFilter ? `No #${storeFilter} here` : viewMine ? 'None assigned to you' : 'No tasks'}
+      </div>
     {/if}
   </div>
 </div>

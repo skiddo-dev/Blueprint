@@ -60,6 +60,30 @@
       : 0,
   )
 
+  // ── "My Work" view (default) ─────────────────────────────────────────
+  // Each user lands on just their assigned tasks (the board-of-everything is a
+  // manager view); a toggle flips to all. Remembered per browser. Composes with
+  // the store filter.
+  let view = $state<'mine' | 'all'>('mine')
+  function setView(v: 'mine' | 'all') {
+    view = v
+    try { localStorage.setItem('blueprint:boardView', v) } catch { /* ignore */ }
+  }
+  const viewMine = $derived(view === 'mine')
+  const norm = (s?: string | null) => (s ?? '').trim().toLowerCase()
+  const today = new Date().toISOString().slice(0, 10)
+  const isMine = (t: Task) => norm(t.assigned_to) === norm(userName)
+  const isOverdue = (t: Task) =>
+    !!t.date && t.date < today && t.status !== 'Done' && t.status !== 'Cancelled'
+  // Visible under the current view + store filter — used for the column-nav pill
+  // counts so they reflect what's actually shown.
+  const matchesView = (t: Task) =>
+    (!viewMine || isMine(t)) && (!storeFilter || taskStores(t).includes(storeFilter))
+  let myOverdue = $derived(
+    KANBAN_STATUSES.reduce((n, s) => n + columns[s].filter(t => isMine(t) && isOverdue(t)).length, 0),
+  )
+  let myTotal = $derived(KANBAN_STATUSES.reduce((n, s) => n + columns[s].filter(isMine).length, 0))
+
   // ── Connectivity + real-time polling (2 s) ───────────────────────────
   // The 2s poll doubles as a connectivity heartbeat: a failed fetch flags the
   // board offline, a successful one clears it. Window online/offline events add
@@ -115,6 +139,8 @@
   })
 
   onMount(async () => {
+    const savedView = localStorage.getItem('blueprint:boardView')
+    if (savedView === 'mine' || savedView === 'all') view = savedView
     online = navigator.onLine
     try {
       const r = await fetch('/api/tasks/signature')
@@ -241,6 +267,16 @@
   </div>
 </div>
 
+<div class="view-toggle" role="group" aria-label="Board view">
+  <button class="vt-btn" class:active={view === 'mine'} aria-pressed={view === 'mine'} onclick={() => setView('mine')}>
+    🙋 My Work
+    {#if myOverdue > 0}<span class="vt-overdue">{myOverdue} overdue</span>{/if}
+  </button>
+  <button class="vt-btn" class:active={view === 'all'} aria-pressed={view === 'all'} onclick={() => setView('all')}>
+    📋 All Tasks
+  </button>
+</div>
+
 {#if syncMessage}
   <div class="sync-toast">{syncMessage}</div>
 {/if}
@@ -265,7 +301,7 @@
       >
         <span class="tab-dot" style:background={m.color}></span>
         {status}
-        <span class="tab-count">{columns[status].length}</span>
+        <span class="tab-count">{columns[status].filter(matchesView).length}</span>
       </button>
     {/each}
   </nav>
@@ -275,6 +311,13 @@
   <div class="store-filter-bar">
     <span class="sf-label">📍 Store <strong>#{storeFilter}</strong> · {filterCount} task{filterCount === 1 ? '' : 's'}</span>
     <button class="sf-clear" onclick={() => (storeFilter = null)}>✕ Clear filter</button>
+  </div>
+{/if}
+
+{#if viewMine && myTotal === 0 && !storeFilter}
+  <div class="mywork-empty">
+    Nothing’s assigned to you right now.
+    <button class="link-btn" onclick={() => setView('all')}>Show all tasks →</button>
   </div>
 {/if}
 
@@ -289,6 +332,8 @@
         bind:items={columns[status]}
         {assignees}
         {storeFilter}
+        {viewMine}
+        myName={userName}
         onMoved={handleMoved}
         onDragStateChange={(d) => (dragging = d)}
         onFieldUpdate={handleFieldUpdate}
@@ -323,6 +368,61 @@
     display: flex;
     gap: 8px;
     align-items: center;
+  }
+
+  /* Segmented My Work / All toggle */
+  .view-toggle {
+    display: inline-flex;
+    gap: 2px;
+    background: #eef2ff;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 2px;
+    margin-bottom: 12px;
+  }
+  .vt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 7px;
+    padding: 6px 12px;
+  }
+  .vt-btn.active {
+    background: #fff;
+    color: var(--primary-dark);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+  }
+  .vt-overdue {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-radius: 999px;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .mywork-empty {
+    background: #f8fafc;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 10px;
+  }
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--primary-dark);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 0 2px;
+    text-decoration: underline;
   }
 
   .sync-toast {

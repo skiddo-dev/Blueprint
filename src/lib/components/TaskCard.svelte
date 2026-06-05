@@ -54,6 +54,14 @@
   // Prefer the server-extracted field (covers stores found in the email body);
   // fall back to deriving from the title for tasks created before that field.
   let storeNums = $derived(task.store_numbers ?? extractStoreNumbers(task.title))
+
+  // Past-due and still open → flag the date red.
+  let overdue = $derived(
+    !!task.date &&
+    task.date < new Date().toISOString().slice(0, 10) &&
+    task.status !== 'Done' &&
+    task.status !== 'Cancelled',
+  )
   let source = $derived(
     task.exchange_id
       ? `📩 ${task.sender_name || task.sender_email || 'Email'}`
@@ -135,6 +143,8 @@
   <div class="row-2" class:single={!task.quote}>
     <input
       type="date"
+      class:overdue
+      title={overdue ? 'Overdue' : undefined}
       value={task.date ?? ''}
       onchange={(e) => onFieldUpdate(task._id, 'date', e.currentTarget.value)}
     />
@@ -360,6 +370,13 @@
     margin: 0;
     padding: 0;
     font-size: 12px;
+  }
+  /* Overdue, still-open task → red date. */
+  input[type="date"].overdue {
+    border-color: #ef4444;
+    color: #b91c1c;
+    background: #fef2f2;
+    font-weight: 600;
   }
   select:focus, input:focus, textarea:focus {
     border-color: #6366f1;
