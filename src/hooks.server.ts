@@ -4,14 +4,15 @@ import { redirect, type Handle } from '@sveltejs/kit'
 import { env } from '$env/dynamic/private'
 import { ensureGraphSubscription } from '$lib/server/graphSubscription'
 import { runEmailSync } from '$lib/server/emailSync'
-import { tryAcquireLease } from '$lib/server/db'
 
 // ── Background jobs ──────────────────────────────────────────────────────────
 // Keep the Microsoft Graph push subscription alive (renew before it expires) and
 // run a low-frequency safety-net sync so a missed webhook is never permanently
-// lost. Runs in the always-on server process (min 1 replica); a Mongo lease lets
-// only one replica act per tick. Skipped unless APP_BASE_URL is a public https
-// origin — so it never starts in local dev or during build.
+// lost. Runs in the always-on server process (min 1 replica). No cross-replica
+// lock here: ensureGraphSubscription() is idempotent (creates only if missing,
+// renews only near expiry) and runEmailSync() holds its own debounce lease — so
+// the worst case across the 2 replicas is a harmless duplicate, not a conflict.
+// Skipped unless APP_BASE_URL is a public https origin — never runs in dev/build.
 let _bgStarted = false
 function startBackgroundJobs() {
   if (_bgStarted) return
@@ -20,17 +21,16 @@ function startBackgroundJobs() {
   if (!isPublic) return
   _bgStarted = true
 
-  const tick = async () => {
+  const run = async (label: string) => {
     try {
-      if (!(await tryAcquireLease('graph_manager', 9 * 60_000))) return
       await ensureGraphSubscription()
       await runEmailSync({ triggeredBy: 'Email sync' })
     } catch (e) {
-      console.error('[bg] tick error:', e)
+      console.error('[bg]', label, e)
     }
   }
-  setTimeout(tick, 15_000) // shortly after boot: create the subscription + initial sync
-  setInterval(tick, 10 * 60_000) // every 10 min: renew-if-needed + safety-net sync
+  setTimeout(() => run('boot'), 15_000) // shortly after boot: create the subscription + initial sync
+  setInterval(() => run('interval'), 10 * 60_000) // every 10 min: renew-if-needed + safety-net sync
 }
 startBackgroundJobs()
 
