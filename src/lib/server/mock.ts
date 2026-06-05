@@ -1,7 +1,7 @@
 // Dev-only mock task generator. Enabled by USE_MOCK_DATA=true so the app
 // (dashboard, board) renders without a populated MongoDB.
 import type { Task, TaskStatus } from '$lib/types'
-import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE } from '$lib/constants'
+import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES } from '$lib/constants'
 
 const ASSIGNEES = [
   'Unassigned', 'Andrew', 'Mike', 'Riley', 'Kris', 'Bogdan', 'Ady',
@@ -57,6 +57,7 @@ export function generateMockTasks(count = 35): Task[] {
       quote: `$${amount.toLocaleString('en-US')}.00`,
       quote_type: quoteType,
       quote_assignee: pick(QUOTE_PEOPLE),
+      quote_status: pick(QUOTE_STATUSES),
       assigned_to: pick(ASSIGNEES),
       date: new Date(Date.now() - randInt(270) * DAY_MS).toISOString().slice(0, 10),
       status: pick(KANBAN_STATUSES) as TaskStatus,

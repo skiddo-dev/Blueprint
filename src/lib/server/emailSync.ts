@@ -58,6 +58,7 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
         full_body: email.body,
         quote: parsed.quote,
         quote_type: parsed.quote_type,
+        quote_status: parsed.quote ? 'Draft' : null,
         store_numbers: storeNumbers,
         assigned_to: parsed.assigned_to ?? 'Unassigned',
         notes: '',

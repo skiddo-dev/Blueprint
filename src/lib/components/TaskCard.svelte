@@ -3,7 +3,7 @@
   import { dragHandle } from 'svelte-dnd-action'
   import DOMPurify from 'dompurify'
   import type { Task } from '$lib/types'
-  import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, STATUS_META } from '$lib/constants'
+  import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, QUOTE_STATUS_META, STATUS_META } from '$lib/constants'
   import { extractStoreNumbers } from '$lib/storeNumbers'
 
   let {
@@ -54,6 +54,10 @@
   // Prefer the server-extracted field (covers stores found in the email body);
   // fall back to deriving from the title for tasks created before that field.
   let storeNums = $derived(task.store_numbers ?? extractStoreNumbers(task.title))
+
+  // Quote pipeline stage (unset → Draft).
+  let qStatus = $derived(task.quote_status ?? 'Draft')
+  let qMeta = $derived(QUOTE_STATUS_META[qStatus] ?? QUOTE_STATUS_META['Draft'])
 
   // Past-due and still open → flag the date red.
   let overdue = $derived(
@@ -151,8 +155,20 @@
 
     {#if task.quote}
       <details class="quote-pop">
-        <summary>💰 {task.quote}</summary>
+        <summary>
+          💰 {task.quote}
+          <span class="qs-badge" style:background={qMeta.bg} style:color={qMeta.text}>{qStatus}</span>
+        </summary>
         <div class="pop-body">
+          <select
+            class="qs-select"
+            value={task.quote_status ?? 'Draft'}
+            onchange={(e) => onFieldUpdate(task._id, 'quote_status', e.currentTarget.value)}
+          >
+            {#each QUOTE_STATUSES as qs}
+              <option value={qs}>{qs}</option>
+            {/each}
+          </select>
           <select
             value={task.quote_type ?? QUOTE_TYPES[0]}
             onchange={(e) => onFieldUpdate(task._id, 'quote_type', e.currentTarget.value)}
@@ -392,6 +408,15 @@
     padding: 5px 8px;
     cursor: pointer;
     user-select: none;
+  }
+  .qs-badge {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 0 7px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    vertical-align: middle;
   }
   .pop-body {
     display: flex;

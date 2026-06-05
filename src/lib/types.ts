@@ -9,6 +9,7 @@ export interface Task {
   quote?: string
   quote_type?: string
   quote_assignee?: string
+  quote_status?: string
   store_numbers?: string[]
   assigned_to: string
   notes?: string
