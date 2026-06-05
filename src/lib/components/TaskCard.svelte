@@ -4,6 +4,7 @@
   import DOMPurify from 'dompurify'
   import type { Task } from '$lib/types'
   import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, STATUS_META } from '$lib/constants'
+  import { extractStoreNumbers } from '$lib/storeNumbers'
 
   let {
     task,
@@ -44,15 +45,9 @@
     }
   }
 
-  function findStoreNums(text: string): string[] {
-    if (!text) return []
-    const found = new Set<string>()
-    for (const m of text.matchAll(/\bD[-\s]?(\d{3})\b/gi)) found.add(m[1])
-    for (const m of text.matchAll(/(?<![,$\d])(\d{3})(?![,\d])/g)) found.add(m[1])
-    return [...found].sort()
-  }
-
-  let storeNums = $derived(findStoreNums(task.title))
+  // Prefer the server-extracted field (covers stores found in the email body);
+  // fall back to deriving from the title for tasks created before that field.
+  let storeNums = $derived(task.store_numbers ?? extractStoreNumbers(task.title))
   let source = $derived(
     task.exchange_id
       ? `📩 ${task.sender_name || task.sender_email || 'Email'}`

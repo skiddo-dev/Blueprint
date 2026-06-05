@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import { env } from '$env/dynamic/private'
 import { QUOTE_TYPES } from '$lib/constants'
+import { normalizeStoreNumbers } from '$lib/storeNumbers'
 
 // Lazily initialized — avoids throwing during build when OPENAI_API_KEY isn't set.
 // Reads via $env/dynamic/private, NOT process.env (empty under Vite 8 SSR — an
@@ -22,6 +23,7 @@ export interface ParsedEmail {
   assigned_to: string | null
   quote: string | null
   quote_type: string | null
+  store_numbers: string[]
   summary: string
 }
 
@@ -47,7 +49,7 @@ function buildSchema(assignees: string[]) {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['date', 'assigned_to', 'quote', 'quote_type', 'summary'],
+    required: ['date', 'assigned_to', 'quote', 'quote_type', 'store_numbers', 'summary'],
     properties: {
       date: {
         type: ['string', 'null'],
@@ -62,6 +64,12 @@ function buildSchema(assignees: string[]) {
         type: ['string', 'null'],
         enum: [...QUOTE_TYPES, null],
         description: 'Category of the request. Null if the email is not a quote/estimate request.',
+      },
+      store_numbers: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Store/site numbers referenced anywhere in the email, as 3-digit strings (e.g. "412"); strip any "D-" prefix. Empty array if none. Do NOT include phone numbers, zip codes, suite numbers, or dollar amounts.',
       },
       summary: {
         type: 'string',
@@ -131,6 +139,7 @@ export async function parseEmailWithLLM(
       assigned_to: data.assigned_to ?? null,
       quote: data.quote ?? null,
       quote_type: data.quote_type ?? null,
+      store_numbers: normalizeStoreNumbers(Array.isArray(data.store_numbers) ? data.store_numbers : []),
       summary: String(data.summary ?? '').slice(0, 200),
     }
   } catch {
@@ -140,6 +149,7 @@ export async function parseEmailWithLLM(
       assigned_to: null,
       quote: null,
       quote_type: null,
+      store_numbers: [],
       summary: email.body.slice(0, 200),
     }
   }
