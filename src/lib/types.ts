@@ -32,6 +32,25 @@ export interface User {
   updated_at?: string
 }
 
+// A quote produced by the Quote Generator (`/quotes`). Persisted to the
+// `quotes` collection so it can be tracked in the dashboard analytics.
+export interface Quote {
+  _id: string
+  customer: string
+  quote_type: string
+  architect: string          // the quote person (QUOTE_PEOPLE)
+  project_location?: string
+  description?: string
+  notes?: string
+  labor: number
+  materials: number
+  total: number              // final quote amount (numeric)
+  date_received: string      // YYYY-MM-DD
+  bid_due_date?: string
+  created_by?: string        // who generated it
+  created_at: string
+}
+
 export interface StatusMeta {
   color: string
   bg: string

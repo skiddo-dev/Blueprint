@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PageData } from './$types'
   import { KANBAN_STATUSES, STATUS_META, QUOTE_STATUSES, QUOTE_STATUS_META } from '$lib/constants'
-  import type { Task, AppSession } from '$lib/types'
+  import type { Task, AppSession, Quote } from '$lib/types'
   import { extractStoreNumbers } from '$lib/storeNumbers'
   import Chart from '$lib/components/Chart.svelte'
   import NavDrawer from '$lib/components/NavDrawer.svelte'
@@ -40,12 +40,38 @@
   type Valued = Task & { quote_value: number }
   const withValues: Valued[] = tasks.map(t => ({ ...t, quote_value: parseQuote(t.quote) }))
 
+  // Generated quotes (the `quotes` collection) are merged into every VALUE-based
+  // analytic: value summary metrics, value-by-type, value-by-person, value
+  // distribution, and the trend. Status charts, the Task-Mix doughnut, the quote
+  // pipeline, and the raw-task table stay task-only.
+  const genQuotes: Quote[] = data.quotes ?? []
+  type QuoteRec = { value: number; type: string; person: string; date?: string }
+  const quoteRecs: QuoteRec[] = [
+    ...withValues
+      .filter(t => t.quote_value > 0)
+      .map(t => ({
+        value: t.quote_value,
+        type: t.quote_type ?? 'Not Set',
+        person: t.assigned_to || 'Unassigned',
+        date: t.date,
+      })),
+    ...genQuotes.map(q => ({
+      value: q.total,
+      type: q.quote_type || 'Not Set',
+      person: q.architect || 'Unassigned',
+      date: q.date_received,
+    })),
+  ]
+
   // ── Summary metrics ─────────────────────────────────────────────────────
-  const totalValue = withValues.reduce((s, t) => s + t.quote_value, 0)
+  // `quoted` = task quotes only; drives the task-based pipeline below.
   const quoted = withValues.filter(t => t.quote_value > 0)
-  const avgQuote = quoted.length ? totalValue / quoted.length : 0
-  const maxQuote = quoted.length ? Math.max(...quoted.map(t => t.quote_value)) : 0
-  const minQuote = quoted.length ? Math.min(...quoted.map(t => t.quote_value)) : 0
+  // Value metrics span task quotes + generated quotes.
+  const totalValue = quoteRecs.reduce((s, r) => s + r.value, 0)
+  const quoteCount = quoteRecs.length
+  const avgQuote = quoteCount ? totalValue / quoteCount : 0
+  const maxQuote = quoteCount ? Math.max(...quoteRecs.map(r => r.value)) : 0
+  const minQuote = quoteCount ? Math.min(...quoteRecs.map(r => r.value)) : 0
 
   const sumInto = (map: Map<string, number>, key: string, val: number) =>
     map.set(key, (map.get(key) ?? 0) + val)
@@ -74,18 +100,16 @@
     { label: 'Total Value', value: money(totalValue), accent: '#6366f1' },
     { label: 'Average Quote', value: money(avgQuote), accent: '#f59e0b' },
     { label: 'Highest Quote', value: money(maxQuote), accent: '#3b82f6' },
-    { label: 'Quoted Tasks', value: String(quoted.length), accent: '#ec4899' },
+    { label: 'Quotes', value: String(quoteCount), accent: '#ec4899' },
   ]
 
   // ── Aggregations ────────────────────────────────────────────────────────
-  // Quote value by type / count by type
+  // Quote value by type — merged (task quotes + generated quotes)
   const valueByType = new Map<string, number>()
+  for (const r of quoteRecs) sumInto(valueByType, r.type, r.value)
+  // Task count by quote type — task-only (drives the Task-Mix doughnut)
   const countByType = new Map<string, number>()
-  for (const t of withValues) {
-    const k = t.quote_type ?? 'Not Set'
-    sumInto(valueByType, k, t.quote_value)
-    sumInto(countByType, k, 1)
-  }
+  for (const t of withValues) sumInto(countByType, t.quote_type ?? 'Not Set', 1)
   const typeByValue = [...valueByType.entries()].sort((a, b) => b[1] - a[1])
   const typeByCount = [...countByType.entries()].sort((a, b) => b[1] - a[1])
 
@@ -96,9 +120,9 @@
     return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0
   })
 
-  // Top assignees by quote value
+  // Top people by quote value — merged (task assignees + quote architects)
   const valueByAssignee = new Map<string, number>()
-  for (const t of withValues) sumInto(valueByAssignee, t.assigned_to ?? 'Unassigned', t.quote_value)
+  for (const r of quoteRecs) sumInto(valueByAssignee, r.person, r.value)
   const topAssignees = [...valueByAssignee.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7)
 
   // Quote value distribution (histogram bins)
@@ -111,7 +135,7 @@
     ['$50K+', 50_000, Infinity],
   ]
   const binCounts = binDefs.map(
-    ([, lo, hi]) => withValues.filter(t => t.quote_value > lo && t.quote_value <= hi).length,
+    ([, lo, hi]) => quoteRecs.filter(r => r.value > lo && r.value <= hi).length,
   )
 
   // Monthly quote-value trend, one line per top-4 quote type
@@ -122,11 +146,11 @@
   }
   const monthsSet = new Set<string>()
   const trendAgg = new Map<string, number>() // `${month}|${type}` -> value
-  for (const t of withValues) {
-    const m = monthKey(t.date)
+  for (const r of quoteRecs) {
+    const m = monthKey(r.date)
     if (!m) continue
     monthsSet.add(m)
-    sumInto(trendAgg, `${m}|${t.quote_type ?? 'Not Set'}`, t.quote_value)
+    sumInto(trendAgg, `${m}|${r.type}`, r.value)
   }
   const months = [...monthsSet].sort()
   const trendTypes = typeByValue.slice(0, 4).map(([k]) => k)
@@ -320,12 +344,12 @@
 
     <div class="page-head">
       <h1 class="page-title">📊 Dashboard</h1>
-      <p class="page-sub">Quote analytics &amp; raw task data · Admin only</p>
+      <p class="page-sub">Quote analytics (incl. generated quotes) &amp; raw task data · Admin only</p>
       <hr style="margin: 12px 0 20px" />
     </div>
 
-    {#if tasks.length === 0}
-      <p class="empty">No tasks found. Sync flagged emails from the Kanban board.</p>
+    {#if tasks.length === 0 && genQuotes.length === 0}
+      <p class="empty">No tasks or generated quotes found yet.</p>
     {:else}
       <!-- Metrics -->
       <h2 class="section-heading">💰 Quote Summary</h2>
@@ -373,7 +397,7 @@
         </article>
 
         <article class="chart-card">
-          <h3>👥 Top 7 Assignees by Quote Value</h3>
+          <h3>👥 Top 7 by Quote Value</h3>
           <div class="canvas-wrap"><Chart type="bar" data={assigneeData} options={hMoneyBarOpts} /></div>
         </article>
 
