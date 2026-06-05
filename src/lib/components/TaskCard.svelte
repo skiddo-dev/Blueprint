@@ -11,11 +11,17 @@
     assignees,
     onFieldUpdate,
     onDelete,
+    onStoreFilter,
+    activeStore = null,
+    hidden = false,
   }: {
     task: Task
     assignees: string[]
     onFieldUpdate: (id: string, field: string, value: unknown) => void
     onDelete: (id: string) => void
+    onStoreFilter?: (n: string) => void
+    activeStore?: string | null
+    hidden?: boolean
   } = $props()
 
   let meta = $derived(STATUS_META[task.status] ?? STATUS_META['To Do'])
@@ -55,7 +61,7 @@
   )
 </script>
 
-<div class="card" style:border-top="3px solid {meta.color}">
+<div class="card" class:card-hidden={hidden} style:border-top="3px solid {meta.color}">
   <!-- Drag handle — the ONLY element that initiates a drag, so the rest of the
        card (quote dropdown, selects, notes, links) stays tappable/scrollable. -->
   <div class="drag-hint" use:dragHandle aria-label="Drag to move this task">⠿⠿</div>
@@ -67,7 +73,13 @@
   {#if storeNums.length}
     <div class="store-tags">
       {#each storeNums as n}
-        <span class="store-tag">#{n}</span>
+        <button
+          type="button"
+          class="store-tag"
+          class:active={n === activeStore}
+          onclick={() => onStoreFilter?.(n)}
+          title="Filter the board by store #{n}"
+        >#{n}</button>
       {/each}
     </div>
   {/if}
@@ -250,12 +262,26 @@
   .store-tag {
     background: #1e3a8a;
     color: #fff;
+    border: none;
     border-radius: 4px;
-    padding: 1px 7px;
+    padding: 2px 7px;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.04em;
+    font-family: inherit;
+    line-height: 1.4;
+    min-height: 0;          /* override the global 44px button min-height */
+    cursor: pointer;
   }
+  .store-tag:hover { background: #1e40af; }
+  /* The store currently filtering the board. */
+  .store-tag.active {
+    background: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+  }
+
+  /* Hidden by an active store filter (kept in the DOM/dnd list, just not shown). */
+  .card-hidden { display: none; }
 
   .meta-row {
     display: flex;

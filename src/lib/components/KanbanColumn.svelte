@@ -3,6 +3,7 @@
   import TaskCard from './TaskCard.svelte'
   import type { Task, TaskStatus } from '$lib/types'
   import { STATUS_META } from '$lib/constants'
+  import { extractStoreNumbers } from '$lib/storeNumbers'
 
   // `items` is $bindable — bound to the parent's `columns[status]`. The zone
   // OWNS and updates it synchronously in consider/finalize (svelte-dnd-action's
@@ -14,22 +15,32 @@
     status,
     items = $bindable(),
     assignees,
+    storeFilter = null,
     onMoved,
     onDragStateChange,
     onFieldUpdate,
     onDelete,
+    onStoreFilter,
   }: {
     status: TaskStatus
     items: Task[]
     assignees: string[]
+    storeFilter?: string | null
     onMoved: (status: TaskStatus, taskId: string) => void
     onDragStateChange: (dragging: boolean) => void
     onFieldUpdate: (id: string, field: string, value: unknown) => void
     onDelete: (id: string) => void
+    onStoreFilter?: (n: string) => void
   } = $props()
 
   const meta = $derived(STATUS_META[status])
   const flipDurationMs = 200
+
+  // Store-filter visibility. Non-matching cards are hidden via CSS (kept in the
+  // dnd `items` list so the bound array — and drag/drop — stays intact).
+  const taskStores = (t: Task) => t.store_numbers ?? extractStoreNumbers(t.title)
+  const matches = (t: Task) => !storeFilter || taskStores(t).includes(storeFilter)
+  const visibleCount = $derived(storeFilter ? items.filter(matches).length : items.length)
 
   function handleConsider(e: CustomEvent) {
     onDragStateChange(true)
@@ -76,12 +87,15 @@
           {assignees}
           {onFieldUpdate}
           {onDelete}
+          {onStoreFilter}
+          activeStore={storeFilter}
+          hidden={!matches(task)}
         />
       {/each}
     </div>
 
-    {#if items.length === 0}
-      <div class="empty-zone">No tasks</div>
+    {#if visibleCount === 0}
+      <div class="empty-zone">{storeFilter ? `No #${storeFilter} here` : 'No tasks'}</div>
     {/if}
   </div>
 </div>

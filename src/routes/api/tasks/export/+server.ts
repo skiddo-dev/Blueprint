@@ -10,13 +10,14 @@ export const GET: RequestHandler = async ({ locals }) => {
 
   const tasks = await getTasks()
   const cols = ['_id', 'title', 'status', 'assigned_to', 'quote', 'quote_type',
-                'quote_assignee', 'date', 'notes', 'sender_name', 'sender_email',
-                'exchange_id', 'created_by', 'created_at']
+                'quote_assignee', 'store_numbers', 'date', 'notes', 'sender_name',
+                'sender_email', 'exchange_id', 'created_by', 'created_at']
 
   const rows = [cols.join(',')]
   for (const t of tasks) {
     const row = cols.map(c => {
-      const v = String((t as unknown as Record<string, unknown>)[c] ?? '')
+      const raw = (t as unknown as Record<string, unknown>)[c]
+      const v = Array.isArray(raw) ? raw.join(' ') : String(raw ?? '')
       return `"${v.replace(/"/g, '""')}"`
     })
     rows.push(row.join(','))
