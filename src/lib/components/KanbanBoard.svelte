@@ -3,7 +3,7 @@
   import KanbanColumn from './KanbanColumn.svelte'
   import NewTaskModal from './NewTaskModal.svelte'
   import type { Task, TaskStatus, AppSession } from '$lib/types'
-  import { KANBAN_STATUSES, SUPERVISORS } from '$lib/constants'
+  import { KANBAN_STATUSES, STATUS_META, SUPERVISORS } from '$lib/constants'
 
   let {
     initialTasks,
@@ -39,6 +39,10 @@
   let syncMessage = $state('')
   let currentSig = $state('')
   let dragging = $state(false)
+
+  // Which column is visible on mobile (phones show one status at a time via the
+  // pill switcher below; desktop shows them all side by side).
+  let activeStatus = $state<TaskStatus>('To Do')
 
   // ── Real-time polling (2 s) ──────────────────────────────────────────
   let pollTimer: ReturnType<typeof setInterval>
@@ -161,17 +165,44 @@
   <div class="sync-toast">{syncMessage}</div>
 {/if}
 
+<!-- Mobile-only column switcher. Phones stack the board to one column at a time
+     (a 6-column horizontal scroll is unusable on a narrow screen), so these
+     pills jump between statuses. Moving a card between columns on mobile is done
+     via the card's own Status dropdown. Hidden on desktop, where all columns
+     show side by side. -->
+<nav class="col-tabs" aria-label="Switch board column">
+  {#each KANBAN_STATUSES as status}
+    {@const m = STATUS_META[status]}
+    <button
+      class="col-tab"
+      class:active={status === activeStatus}
+      style:--tab-color={m.color}
+      aria-pressed={status === activeStatus}
+      onclick={() => (activeStatus = status)}
+    >
+      <span class="tab-dot" style:background={m.color}></span>
+      {status}
+      <span class="tab-count">{columns[status].length}</span>
+    </button>
+  {/each}
+</nav>
+
 <div class="board-columns">
   {#each KANBAN_STATUSES as status}
-    <KanbanColumn
-      {status}
-      bind:items={columns[status]}
-      {assignees}
-      onMoved={handleMoved}
-      onDragStateChange={(d) => (dragging = d)}
-      onFieldUpdate={handleFieldUpdate}
-      onDelete={handleDelete}
-    />
+    <!-- `display: contents` on desktop so this wrapper disappears and the inner
+         .column stays the direct flex item (layout unchanged); on mobile the
+         wrapper becomes the show/hide unit for the active column. -->
+    <div class="col-wrap" class:active={status === activeStatus}>
+      <KanbanColumn
+        {status}
+        bind:items={columns[status]}
+        {assignees}
+        onMoved={handleMoved}
+        onDragStateChange={(d) => (dragging = d)}
+        onFieldUpdate={handleFieldUpdate}
+        onDelete={handleDelete}
+      />
+    </div>
   {/each}
 </div>
 
@@ -219,10 +250,73 @@
     align-items: flex-start;
   }
 
+  /* Desktop: the wrapper is layout-transparent so .column is the flex item and
+     the side-by-side board is unchanged. The pill switcher is hidden. */
+  .col-wrap { display: contents; }
+  .col-tabs { display: none; }
+
   @media (max-width: 768px) {
     .board-columns {
       flex-direction: column;
       overflow-x: unset;
     }
+
+    /* Show only the selected column. */
+    .col-wrap { display: none; }
+    .col-wrap.active { display: block; }
+
+    /* Sticky pill bar so switching columns stays reachable while scrolling a
+       long column. Horizontally scrollable when the 6 statuses overflow. */
+    .col-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      margin: 0 -0.5rem 8px; /* bleed to the screen edges past .main-content padding */
+      padding: 4px 0.5rem 10px;
+      background: #f8fafc;
+      scrollbar-width: none;
+    }
+    .col-tabs::-webkit-scrollbar { display: none; }
+
+    .col-tab {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1px solid var(--border);
+      color: #475569;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .col-tab.active {
+      color: var(--tab-color);
+      border-color: var(--tab-color);
+      box-shadow: inset 0 0 0 1px var(--tab-color);
+    }
+    .tab-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .tab-count {
+      background: #f1f5f9;
+      color: #64748b;
+      border-radius: 999px;
+      padding: 0 7px;
+      font-size: 11px;
+      font-weight: 700;
+      min-width: 18px;
+      text-align: center;
+    }
+    .col-tab.active .tab-count { background: var(--tab-color); color: #fff; }
   }
 </style>

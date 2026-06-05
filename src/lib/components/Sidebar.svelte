@@ -201,14 +201,17 @@
   .sidebar-toggle {
     display: none;
     position: fixed;
-    top: 10px;
-    left: 10px;
+    /* Clear the notch / rounded corner under viewport-fit=cover. */
+    top: max(10px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
     z-index: 50;
     background: #fff;
     border: 1px solid #e2e8f0;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 18px;
-    padding: 4px 8px;
+    line-height: 1;
+    min-width: 44px;
+    min-height: 44px;
     cursor: pointer;
   }
 
@@ -332,10 +335,16 @@
       position: fixed;
       left: 0;
       top: 0;
+      height: 100dvh;
       z-index: 40;
+      /* Clear the fixed toggle, the notch and the home indicator. */
+      padding-top: calc(env(safe-area-inset-top, 0px) + 3rem);
+      padding-left: max(12px, env(safe-area-inset-left));
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
       box-shadow: 4px 0 20px rgba(15,23,42,0.12);
       display: none;          /* hidden by default on mobile */
     }
     .sidebar.open { display: flex; }   /* shown when the toggle is tapped */
+    .nav-link { display: flex; align-items: center; min-height: 44px; }
   }
 </style>
