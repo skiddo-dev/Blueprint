@@ -60,39 +60,87 @@
       : 0,
   )
 
-  // ── Real-time polling (2 s) ──────────────────────────────────────────
+  // ── Connectivity + real-time polling (2 s) ───────────────────────────
+  // The 2s poll doubles as a connectivity heartbeat: a failed fetch flags the
+  // board offline, a successful one clears it. Window online/offline events add
+  // instant feedback and refetch on reconnect.
+  let online = $state(true)
+  let saveToast = $state('')
   let pollTimer: ReturnType<typeof setInterval>
+  let saveToastTimer: ReturnType<typeof setTimeout>
+
+  // Fetch the latest tasks if the server signature changed. Throws on a network
+  // error so callers can flag offline.
+  async function refresh() {
+    const r = await fetch('/api/tasks/signature')
+    if (!r.ok) throw new Error(`signature ${r.status}`)
+    const { sig } = await r.json()
+    if (sig !== currentSig) {
+      currentSig = sig
+      const r2 = await fetch('/api/tasks')
+      if (r2.ok) columns = group(await r2.json())
+    }
+  }
+
+  const goOnline = () => { online = true; refresh().catch(() => { online = false }) }
+  const goOffline = () => { online = false }
+
+  // Persist a mutation; on failure (offline or server error) flag offline and
+  // toast, so an optimistic UI change is never silently lost — the next
+  // successful poll reconciles the board with the server (source of truth).
+  async function persist(req: Promise<Response>) {
+    try {
+      const r = await req
+      if (!r.ok) throw new Error(`save ${r.status}`)
+      online = true
+    } catch {
+      online = false
+      saveToast = '⚠️ Couldn’t save — you appear to be offline. The board re-syncs when you reconnect.'
+      clearTimeout(saveToastTimer)
+      saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
+    }
+  }
 
   onMount(async () => {
-    const r = await fetch('/api/tasks/signature')
-    if (r.ok) currentSig = (await r.json()).sig
+    online = navigator.onLine
+    window.addEventListener('online', goOnline)
+    window.addEventListener('offline', goOffline)
+    try {
+      const r = await fetch('/api/tasks/signature')
+      if (r.ok) currentSig = (await r.json()).sig
+    } catch {
+      online = false
+    }
     pollTimer = setInterval(async () => {
       // Don't refetch mid-drag — replacing `columns` would yank the card out
       // from under svelte-dnd-action and snap it back.
       if (dragging) return
-      const r = await fetch('/api/tasks/signature')
-      if (!r.ok) return
-      const { sig } = await r.json()
-      if (sig !== currentSig) {
-        currentSig = sig
-        const r2 = await fetch('/api/tasks')
-        if (r2.ok) columns = group(await r2.json())
+      try {
+        await refresh()
+        online = true
+      } catch {
+        online = false
       }
     }, 2000)
   })
 
-  onDestroy(() => clearInterval(pollTimer))
+  onDestroy(() => {
+    clearInterval(pollTimer)
+    clearTimeout(saveToastTimer)
+    window.removeEventListener('online', goOnline)
+    window.removeEventListener('offline', goOffline)
+  })
 
   // ── Drag-and-drop handlers ───────────────────────────────────────────
   // Persist a card's new column after a drag drop. The board's `columns` state
   // is updated directly by the column via `bind:items`, so we only handle the
   // server write here.
   async function handleMoved(status: TaskStatus, taskId: string) {
-    await fetch(`/api/tasks/${taskId}`, {
+    await persist(fetch(`/api/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ field: 'status', value: status }),
-    })
+    }))
   }
 
   // ── Inline field update (optimistic) ────────────────────────────────
@@ -105,11 +153,11 @@
         break
       }
     }
-    await fetch(`/api/tasks/${id}`, {
+    await persist(fetch(`/api/tasks/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ field, value }),
-    })
+    }))
   }
 
   // ── Delete ────────────────────────────────────────────────────────────
@@ -117,7 +165,7 @@
     for (const s of KANBAN_STATUSES) {
       columns[s] = columns[s].filter(t => t._id !== id)
     }
-    await fetch(`/api/tasks/${id}`, { method: 'DELETE' })
+    await persist(fetch(`/api/tasks/${id}`, { method: 'DELETE' }))
   }
 
   // ── Email sync (admin only) ───────────────────────────────────────────
@@ -156,6 +204,13 @@
     onCreated={handleTaskCreated}
     onClose={() => { showNewTask = false }}
   />
+{/if}
+
+{#if !online}
+  <div class="offline-banner">📡 You’re offline — the board may be out of date, and changes won’t save until you reconnect.</div>
+{/if}
+{#if saveToast}
+  <div class="save-toast">{saveToast}</div>
 {/if}
 
 <div class="board-toolbar">
@@ -265,6 +320,26 @@
     background: #d1fae5;
     color: #047857;
     border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  .offline-banner {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .save-toast {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
     border-radius: 8px;
     padding: 8px 14px;
     font-size: 13px;

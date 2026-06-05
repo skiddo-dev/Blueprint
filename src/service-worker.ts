@@ -39,6 +39,22 @@ sw.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== sw.location.origin) return
 
+  // Page navigations: try the network; if the device is offline, show the cached
+  // offline fallback instead of the browser's error page. We deliberately do NOT
+  // cache the per-user, auth-gated HTML — only this static fallback page.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(async () => {
+        const cache = await caches.open(CACHE)
+        return (
+          (await cache.match('/offline.html')) ??
+          new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } })
+        )
+      }),
+    )
+    return
+  }
+
   // Content-hashed assets never change within a version → serve cache-first and
   // fall back to the network only if they were somehow evicted.
   if (PRECACHE.includes(url.pathname)) {
@@ -49,6 +65,5 @@ sw.addEventListener('fetch', (event) => {
       }),
     )
   }
-  // Navigations, /api/* and auth fall through to the browser's default network
-  // handling — never cached.
+  // /api/* and auth fall through to the browser's default network handling.
 })
