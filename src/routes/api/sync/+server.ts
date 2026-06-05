@@ -1,21 +1,9 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
-import { getTasks, getUsers, insertTask, updateTaskField, saveAttachment } from '$lib/server/db'
-import { fetchRecentEmails, getGraphToken } from '$lib/server/email'
-import { parseEmailWithLLM } from '$lib/server/llm'
-import { SUPERVISORS, QUOTE_PEOPLE } from '$lib/constants'
-import { extractStoreNumbers, normalizeStoreNumbers } from '$lib/storeNumbers'
+import { runEmailSync } from '$lib/server/emailSync'
 
-interface EmailAttachment {
-  filename: string
-  size: number
-  skipped?: boolean
-  download_url?: string
-  content_type?: string
-  is_inline?: boolean
-  error?: string
-}
-
+// Manual "Sync now" trigger (admin only). The actual work — and the real-time
+// Graph webhook push — both go through runEmailSync().
 export const POST: RequestHandler = async ({ locals }) => {
   const session = await locals.auth()
   const user = session?.user as Record<string, unknown> | undefined
@@ -23,74 +11,6 @@ export const POST: RequestHandler = async ({ locals }) => {
   if (user.role !== 'admin') throw error(403)
   const userName = (user.displayName as string) ?? (user.name as string) ?? 'admin'
 
-  const emails = await fetchRecentEmails(30)
-  const existing = await getTasks()
-  const token = await getGraphToken()
-  const headers = { Authorization: `Bearer ${token}` }
-  let newCount = 0
-
-  // Constrain the LLM's `assigned_to` to people who actually exist (matching the
-  // board's "Assign to" dropdown): supervisors + quote people + provisioned users.
-  const dbUsers = await getUsers()
-  const assignees = [...new Set([...SUPERVISORS, ...QUOTE_PEOPLE, ...dbUsers.map(u => u.name)])].filter(Boolean)
-
-  for (const email of emails) {
-    if (existing.some(t => t.exchange_id === email.id)) continue
-
-    const parsed = await parseEmailWithLLM(email as Parameters<typeof parseEmailWithLLM>[0], { assignees })
-    // Stores from the subject (reliable regex) ∪ stores the LLM found in the body.
-    const storeNumbers = normalizeStoreNumbers([
-      ...extractStoreNumbers(email.subject),
-      ...parsed.store_numbers,
-    ])
-    const attachmentIds: string[] = []
-    const task = {
-      title: email.subject,
-      description: parsed.summary ?? '',
-      full_body: email.body,
-      quote: parsed.quote,
-      quote_type: parsed.quote_type,
-      store_numbers: storeNumbers,
-      assigned_to: parsed.assigned_to ?? 'Unassigned',
-      notes: '',
-      date: parsed.date,
-      status: 'To Do',
-      exchange_id: email.id,
-      from: email.from,
-      sender_name: email.sender_name,
-      sender_email: email.sender_email,
-      created_by: userName,
-      attachment_ids: attachmentIds,
-      created_at: new Date().toISOString(),
-    }
-
-    const taskId = await insertTask(task)
-
-    // Download and store attachments
-    const attachments = (email.attachments ?? []) as EmailAttachment[]
-    for (const att of attachments) {
-      if (att.skipped || !att.download_url) continue
-      try {
-        const attRes = await fetch(att.download_url, { headers })
-        if (!attRes.ok) continue
-        const content = Buffer.from(await attRes.arrayBuffer())
-        const attId = await saveAttachment(
-          taskId,
-          att.filename,
-          content,
-          att.size,
-          att.content_type ?? 'application/octet-stream',
-        )
-        attachmentIds.push(attId)
-        await updateTaskField(taskId, 'attachment_ids', attachmentIds)
-      } catch { /* skip failed attachment */ }
-    }
-
-    newCount++
-  }
-
-  const msg = newCount > 0
-    ? `✅ Synced ${newCount} new flagged email(s)!`
-    : '📭 No new flagged emails.'
-  return json({ ok: true, message: msg, count: newCount })
+  const result = await runEmailSync({ triggeredBy: userName })
+  return json({ ok: true, ...result })
 }
