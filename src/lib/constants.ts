@@ -21,4 +21,6 @@ export const QUOTE_PEOPLE = [
   'Bob', 'Ben', 'Andrew', 'Mike', 'Riley', 'Kris', 'Bogdan', 'Ady',
 ]
 
-export const SUPERVISORS = ['Kris', 'Vlad', 'Bogdan', 'Frank Crew']
+// Static roster appended to the task "Assign to" list (alongside provisioned PM
+// users) and used as candidates for the email-extraction assignee.
+export const SUPERVISORS = ['Ben', 'Kris', 'Vlad', 'Bogdan', 'Frank Crew']
