@@ -4,6 +4,7 @@ import { getTasks, getUsers, insertTask, updateTaskField, saveAttachment } from 
 import { fetchRecentEmails, getGraphToken } from '$lib/server/email'
 import { parseEmailWithLLM } from '$lib/server/llm'
 import { SUPERVISORS, QUOTE_PEOPLE } from '$lib/constants'
+import { extractStoreNumbers, normalizeStoreNumbers } from '$lib/storeNumbers'
 
 interface EmailAttachment {
   filename: string
@@ -37,6 +38,11 @@ export const POST: RequestHandler = async ({ locals }) => {
     if (existing.some(t => t.exchange_id === email.id)) continue
 
     const parsed = await parseEmailWithLLM(email as Parameters<typeof parseEmailWithLLM>[0], { assignees })
+    // Stores from the subject (reliable regex) ∪ stores the LLM found in the body.
+    const storeNumbers = normalizeStoreNumbers([
+      ...extractStoreNumbers(email.subject),
+      ...parsed.store_numbers,
+    ])
     const attachmentIds: string[] = []
     const task = {
       title: email.subject,
@@ -44,6 +50,7 @@ export const POST: RequestHandler = async ({ locals }) => {
       full_body: email.body,
       quote: parsed.quote,
       quote_type: parsed.quote_type,
+      store_numbers: storeNumbers,
       assigned_to: parsed.assigned_to ?? 'Unassigned',
       notes: '',
       date: parsed.date,

@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { getTasks, getTasksForUser, insertTask, deleteTask } from '$lib/server/db'
+import { extractStoreNumbers } from '$lib/storeNumbers'
 import type { TaskStatus } from '$lib/types'
 
 export const GET: RequestHandler = async ({ locals, url }) => {
@@ -25,6 +26,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const session = await locals.auth()
   if (!session?.user) throw error(401)
   const body = await request.json()
+  // Derive store numbers server-side from the title (deterministic, can't be
+  // skipped by the client) unless the client already supplied them.
+  if (body && typeof body.title === 'string' && body.store_numbers == null) {
+    body.store_numbers = extractStoreNumbers(body.title)
+  }
   const id = await insertTask(body)
   const tasks = await getTasks()
   const created = tasks.find(t => t._id === id)
