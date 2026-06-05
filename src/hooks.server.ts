@@ -34,6 +34,21 @@ function startBackgroundJobs() {
 }
 startBackgroundJobs()
 
+// Graph's subscription-validation handshake is a cross-origin POST with
+// Content-Type: text/plain — which SvelteKit's CSRF protection rejects with 403
+// before any route handler runs. Answer it here (before resolve) so the
+// subscription can be created, without weakening CSRF for the rest of the app.
+// Real change notifications are application/json, which CSRF allows through.
+const graphValidation: Handle = async ({ event, resolve }) => {
+  if (event.url.pathname === '/api/graph/notifications') {
+    const token = event.url.searchParams.get('validationToken')
+    if (token !== null) {
+      return new Response(token, { status: 200, headers: { 'Content-Type': 'text/plain' } })
+    }
+  }
+  return resolve(event)
+}
+
 const guard: Handle = async ({ event, resolve }) => {
   const path = event.url.pathname
 
@@ -72,4 +87,4 @@ const guard: Handle = async ({ event, resolve }) => {
   return resolve(event)
 }
 
-export const handle = sequence(authHandle, guard)
+export const handle = sequence(graphValidation, authHandle, guard)
