@@ -8,6 +8,11 @@ html, body {
   background: #f8fafc;
   color: #1e293b;
   height: 100%;
+  /* Don't let iOS auto-inflate text on orientation change, and kill the grey
+     flash when tapping interactive elements on touch devices. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 :root {
@@ -33,6 +38,8 @@ button {
   border: 1px solid transparent;
   padding: 7px 14px;
   transition: all 0.15s ease;
+  /* Remove the 300ms tap delay / double-tap-to-zoom on controls. */
+  touch-action: manipulation;
 }
 button.primary {
   background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
@@ -90,6 +97,7 @@ details summary::-webkit-details-marker { display: none; }
 .app-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh; /* track the *visible* viewport as mobile browser chrome shows/hides */
   overflow: hidden;
 }
 .main-content {
@@ -101,7 +109,17 @@ details summary::-webkit-details-marker { display: none; }
 
 /* Mobile: ≤768px */
 @media (max-width: 768px) {
+  /* 16px is the threshold below which iOS Safari zooms the page on focus. */
   input, textarea, select { font-size: 16px !important; }
-  button { min-height: 44px; }
-  .main-content { padding: 0.5rem; }
+  button { min-height: 44px; } /* Apple HIG minimum tap target */
+  /* Keep content clear of the notch / rounded corners / home indicator now that
+     the viewport extends edge-to-edge (viewport-fit=cover). The top padding also
+     clears the fixed sidebar toggle on the board page (matches the dashboard /
+     quotes pages). */
+  .main-content {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 3.25rem);
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
 }

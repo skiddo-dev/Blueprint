@@ -150,7 +150,7 @@
 </div>
 
 <style>
-  .app-layout { display: flex; min-height: 100vh; }
+  .app-layout { display: flex; min-height: 100vh; min-height: 100dvh; }
   .sidebar {
     width: 180px; background: #fff; border-right: 1px solid #e2e8f0;
     padding: 14px 12px; display: flex; flex-direction: column; gap: 6px;
@@ -160,15 +160,16 @@
   .sidebar-toggle {
     display: none;
     position: fixed;
-    top: 10px;
-    left: 10px;
+    top: max(10px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
     z-index: 50;
     background: #fff;
     border: 1px solid #e2e8f0;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 18px;
     line-height: 1;
-    padding: 6px 10px;
+    min-width: 44px;
+    min-height: 44px;
     cursor: pointer;
   }
   .nav-link { display: block; padding: 8px 10px; font-size: 13px; color: #374151; text-decoration: none; border: 1px solid #e2e8f0; border-radius: 7px; background: #f8fafc; }
@@ -209,15 +210,24 @@
       position: fixed;
       left: 0;
       top: 0;
-      height: 100vh;
+      height: 100dvh;
       overflow-y: auto;
       z-index: 40;
-      padding-top: 3rem; /* clear the fixed toggle button */
+      /* clear the fixed toggle button, the notch and the home indicator */
+      padding-top: calc(env(safe-area-inset-top, 0px) + 3rem);
+      padding-left: max(12px, env(safe-area-inset-left));
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
       box-shadow: 4px 0 20px rgba(15, 23, 42, 0.12);
       display: none;
     }
     .sidebar.open { display: flex; }
-    .main-content { padding: 3.25rem 1rem 1.5rem; } /* clear the fixed toggle */
+    .main-content {
+      padding-top: calc(env(safe-area-inset-top, 0px) + 3.25rem); /* clear the fixed toggle */
+      padding-left: max(1rem, env(safe-area-inset-left));
+      padding-right: max(1rem, env(safe-area-inset-right));
+      padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    }
+    .nav-link { display: flex; align-items: center; min-height: 44px; }
   }
 
   @media (max-width: 640px) {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import type { Task, TaskStatus } from '$lib/types'
   import { KANBAN_STATUSES } from '$lib/constants'
 
@@ -53,7 +54,17 @@
       saving = false
     }
   }
+
+  // Lock background scroll while the modal is open so the page behind a mobile
+  // bottom-sheet doesn't scroll under it. Cleanup runs when the modal unmounts.
+  onMount(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  })
 </script>
+
+<svelte:window onkeydown={(e) => { if (e.key === 'Escape') onClose() }} />
 
 <!-- Modal backdrop -->
 <div class="backdrop" onclick={onClose} role="presentation"></div>
@@ -139,6 +150,8 @@
     background: #fff;
     border-radius: 12px;
     width: min(480px, calc(100vw - 32px));
+    /* Never taller than the viewport — the body scrolls inside instead. */
+    max-height: calc(100dvh - 32px);
     box-shadow: 0 20px 60px rgba(15,23,42,0.2);
     display: flex;
     flex-direction: column;
@@ -158,6 +171,8 @@
     flex-direction: column;
     gap: 12px;
     overflow-y: auto;
+    flex: 1;        /* take the slack so it, not the modal, is the scroll region */
+    min-height: 0;  /* allow it to shrink below content height inside the flex column */
   }
   label { display: flex; flex-direction: column; gap: 4px; }
   label span { font-size: 12px; font-weight: 500; color: #374151; }
@@ -170,4 +185,31 @@
     border-top: 1px solid #e2e8f0;
   }
   .error { font-size: 12px; color: #dc2626; }
+
+  /* Mobile: dock the dialog to the bottom as a thumb-reachable sheet, clear of
+     the home indicator, with bigger tap targets. */
+  @media (max-width: 768px) {
+    .modal {
+      top: auto;
+      bottom: 0;
+      left: 0;
+      transform: none;
+      width: 100%;
+      max-width: 100%;
+      max-height: 92dvh;
+      border-radius: 16px 16px 0 0;
+    }
+    .modal-footer {
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+    .close-btn {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+
+  /* On the narrowest phones, stack the paired fields so 16px inputs don't crowd. */
+  @media (max-width: 420px) {
+    .row-2 { grid-template-columns: 1fr; }
+  }
 </style>

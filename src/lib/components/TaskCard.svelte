@@ -393,5 +393,15 @@
 
   @media (max-width: 768px) {
     .card:hover { transform: none; box-shadow: 0 1px 4px rgba(15,23,42,0.06); }
+    /* Finger-sized hit areas for the two smallest controls on the card. */
+    .drag-hint { padding: 11px 13px; font-size: 17px; }
+    .delete-btn {
+      min-width: 40px;
+      min-height: 40px;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
   }
 </style>
