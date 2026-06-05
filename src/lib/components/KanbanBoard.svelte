@@ -9,10 +9,12 @@
     initialTasks,
     session,
     pmUsers,
+    onMenu,
   }: {
     initialTasks: Task[]
     session: AppSession
     pmUsers: { name: string }[]
+    onMenu?: () => void
   } = $props()
 
   const role = $derived(session.user.role)
@@ -165,27 +167,31 @@
   <div class="sync-toast">{syncMessage}</div>
 {/if}
 
-<!-- Mobile-only column switcher. Phones stack the board to one column at a time
-     (a 6-column horizontal scroll is unusable on a narrow screen), so these
-     pills jump between statuses. Moving a card between columns on mobile is done
-     via the card's own Status dropdown. Hidden on desktop, where all columns
-     show side by side. -->
-<nav class="col-tabs" aria-label="Switch board column">
-  {#each KANBAN_STATUSES as status}
-    {@const m = STATUS_META[status]}
-    <button
-      class="col-tab"
-      class:active={status === activeStatus}
-      style:--tab-color={m.color}
-      aria-pressed={status === activeStatus}
-      onclick={() => (activeStatus = status)}
-    >
-      <span class="tab-dot" style:background={m.color}></span>
-      {status}
-      <span class="tab-count">{columns[status].length}</span>
-    </button>
-  {/each}
-</nav>
+<!-- Mobile-only top bar: a menu button (opens the sidebar drawer) + a column
+     switcher. Phones stack the board to one column at a time (a 6-column
+     horizontal scroll is unusable on a narrow screen), so the pills jump
+     between statuses; moving a card between columns is done via the card's own
+     Status dropdown. The whole bar is hidden on desktop, where the sidebar is
+     always visible and all columns show side by side. -->
+<div class="board-topbar">
+  <button class="menu-btn" onclick={() => onMenu?.()} aria-label="Open menu">☰</button>
+  <nav class="col-tabs" aria-label="Switch board column">
+    {#each KANBAN_STATUSES as status}
+      {@const m = STATUS_META[status]}
+      <button
+        class="col-tab"
+        class:active={status === activeStatus}
+        style:--tab-color={m.color}
+        aria-pressed={status === activeStatus}
+        onclick={() => (activeStatus = status)}
+      >
+        <span class="tab-dot" style:background={m.color}></span>
+        {status}
+        <span class="tab-count">{columns[status].length}</span>
+      </button>
+    {/each}
+  </nav>
+</div>
 
 <div class="board-columns">
   {#each KANBAN_STATUSES as status}
@@ -251,9 +257,9 @@
   }
 
   /* Desktop: the wrapper is layout-transparent so .column is the flex item and
-     the side-by-side board is unchanged. The pill switcher is hidden. */
+     the side-by-side board is unchanged. The whole mobile top bar is hidden. */
   .col-wrap { display: contents; }
-  .col-tabs { display: none; }
+  .board-topbar { display: none; }
 
   @media (max-width: 768px) {
     .board-columns {
@@ -265,19 +271,44 @@
     .col-wrap { display: none; }
     .col-wrap.active { display: block; }
 
-    /* Sticky pill bar so switching columns stays reachable while scrolling a
-       long column. Horizontally scrollable when the 6 statuses overflow. */
+    /* One cohesive sticky bar: menu button pinned left, column pills scrolling
+       beside it. Replaces the old floating sidebar toggle that overlapped the
+       pills. Bleeds to the screen edges past .main-content's padding. */
+    .board-topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      margin: 0 -0.5rem 8px;
+      padding: 6px 0.5rem 10px;
+      padding-top: max(6px, env(safe-area-inset-top));
+      background: #f8fafc;
+    }
+    .menu-btn {
+      flex: 0 0 auto;
+      width: 44px;
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      line-height: 1;
+      color: #475569;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    /* Pills take the remaining width and scroll horizontally under the menu. */
     .col-tabs {
+      flex: 1 1 auto;
+      min-width: 0;
       display: flex;
       gap: 6px;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      margin: 0 -0.5rem 8px; /* bleed to the screen edges past .main-content padding */
-      padding: 4px 0.5rem 10px;
-      background: #f8fafc;
       scrollbar-width: none;
     }
     .col-tabs::-webkit-scrollbar { display: none; }

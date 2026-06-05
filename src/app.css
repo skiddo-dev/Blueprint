@@ -113,11 +113,11 @@ details summary::-webkit-details-marker { display: none; }
   input, textarea, select { font-size: 16px !important; }
   button { min-height: 44px; } /* Apple HIG minimum tap target */
   /* Keep content clear of the notch / rounded corners / home indicator now that
-     the viewport extends edge-to-edge (viewport-fit=cover). The top padding also
-     clears the fixed sidebar toggle on the board page (matches the dashboard /
-     quotes pages). */
+     the viewport extends edge-to-edge (viewport-fit=cover). The board page's
+     menu lives in its own sticky top bar (KanbanBoard), so no fixed-toggle
+     reservation is needed here. */
   .main-content {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 3.25rem);
+    padding-top: max(0.5rem, env(safe-area-inset-top));
     padding-left: max(0.5rem, env(safe-area-inset-left));
     padding-right: max(0.5rem, env(safe-area-inset-right));
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom));

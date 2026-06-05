@@ -3,6 +3,7 @@
   import { KANBAN_STATUSES, STATUS_META } from '$lib/constants'
 
   let {
+    open = $bindable(false),
     session,
     tasks,
     users,
@@ -12,6 +13,7 @@
     onDeleteUser,
     onClearAll,
   }: {
+    open?: boolean
     session: AppSession
     tasks: Task[]
     users: { _id: string; name: string; role: string }[]
@@ -25,9 +27,10 @@
   const role = $derived(session.user.role)
   const userName = $derived(session.user.displayName)
 
-  // Hidden by default on mobile (the toggle reveals it); on desktop CSS keeps
-  // the sidebar always visible regardless of this flag.
-  let sidebarOpen = $state(false)
+  // `open` is owned by the parent page and bound here. It controls the mobile
+  // off-canvas drawer; on desktop CSS keeps the sidebar always visible regardless.
+  // The board's top bar (KanbanBoard) opens it; the backdrop / close button below
+  // closes it.
   let newEmail = $state('')
   let newName = $state('')
   let newRole = $state('pm')
@@ -42,20 +45,19 @@
   let pct = $derived(total > 0 ? Math.round((done / total) * 100) : 0)
 </script>
 
-<!-- Mobile toggle -->
-<button
-  class="sidebar-toggle"
-  onclick={() => { sidebarOpen = !sidebarOpen }}
-  aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
->
-  {sidebarOpen ? '‹' : '›'}
-</button>
+<!-- Dim/close backdrop — only rendered on mobile when the drawer is open. -->
+{#if open}
+  <div class="sidebar-backdrop" onclick={() => (open = false)} role="presentation"></div>
+{/if}
 
-  <aside class="sidebar" class:open={sidebarOpen}>
+  <aside class="sidebar" class:open>
     <!-- User info -->
     <div class="user-info">
-      <div class="user-name">{userName}</div>
-      <span class="role-badge">{role === 'admin' ? 'Admin' : 'PM'}</span>
+      <div class="user-meta">
+        <div class="user-name">{userName}</div>
+        <span class="role-badge">{role === 'admin' ? 'Admin' : 'PM'}</span>
+      </div>
+      <button class="sidebar-close" onclick={() => (open = false)} aria-label="Close menu">✕</button>
     </div>
 
     <form action="/auth/signout" method="POST">
@@ -198,25 +200,36 @@
     height: 100vh;
   }
 
-  .sidebar-toggle {
-    display: none;
+  .sidebar-backdrop {
     position: fixed;
-    /* Clear the notch / rounded corner under viewport-fit=cover. */
-    top: max(10px, env(safe-area-inset-top));
-    left: max(10px, env(safe-area-inset-left));
-    z-index: 50;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 18px;
-    line-height: 1;
-    min-width: 44px;
-    min-height: 44px;
-    cursor: pointer;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    z-index: 39; /* just under the drawer (40) */
   }
 
-  .user-info { padding: 4px 2px 6px; }
+  .user-info {
+    padding: 4px 2px 6px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .user-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .user-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+  /* Close button only appears in the mobile drawer (see media query). */
+  .sidebar-close {
+    display: none;
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+  }
   .role-badge {
     background: #e0e7ff;
     color: #4338ca;
@@ -330,21 +343,23 @@
   .danger-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   @media (max-width: 768px) {
-    .sidebar-toggle { display: block; }
     .sidebar {
       position: fixed;
       left: 0;
       top: 0;
       height: 100dvh;
+      width: min(280px, 84vw);
       z-index: 40;
-      /* Clear the fixed toggle, the notch and the home indicator. */
-      padding-top: calc(env(safe-area-inset-top, 0px) + 3rem);
+      /* Clear the notch and the home indicator (no floating toggle anymore —
+         the board's top bar opens this drawer). */
+      padding-top: max(14px, env(safe-area-inset-top));
       padding-left: max(12px, env(safe-area-inset-left));
       padding-bottom: max(14px, env(safe-area-inset-bottom));
       box-shadow: 4px 0 20px rgba(15,23,42,0.12);
       display: none;          /* hidden by default on mobile */
     }
-    .sidebar.open { display: flex; }   /* shown when the toggle is tapped */
+    .sidebar.open { display: flex; }   /* shown when the menu button is tapped */
+    .sidebar-close { display: inline-flex; }
     .nav-link { display: flex; align-items: center; min-height: 44px; }
   }
 </style>
