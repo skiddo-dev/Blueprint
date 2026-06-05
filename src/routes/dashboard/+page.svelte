@@ -1,12 +1,17 @@
 <script lang="ts">
   import type { PageData } from './$types'
   import { KANBAN_STATUSES, STATUS_META } from '$lib/constants'
-  import type { Task } from '$lib/types'
+  import type { Task, AppSession } from '$lib/types'
   import Chart from '$lib/components/Chart.svelte'
+  import NavDrawer from '$lib/components/NavDrawer.svelte'
   import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
 
   let { data }: { data: PageData } = $props()
   const tasks: Task[] = data.tasks
+
+  // Session comes from the root layout load; this route is admin-only.
+  const session = data.session as unknown as AppSession
+  const user = { name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' }
 
   let sidebarOpen = $state(false)
 
@@ -264,36 +269,21 @@
 
 <svelte:head><title>Dashboard · Blueprint</title></svelte:head>
 
-<!-- Mobile menu toggle (hidden on desktop via CSS) -->
-<button
-  class="sidebar-toggle"
-  onclick={() => (sidebarOpen = !sidebarOpen)}
-  aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
-  aria-expanded={sidebarOpen}
->
-  {sidebarOpen ? '‹' : '›'}
-</button>
-
 <div class="app-layout">
-  <aside class="sidebar" class:open={sidebarOpen}>
-    <div class="user-info">
-      <strong>Admin</strong>
-      <span class="badge">Admin</span>
-    </div>
-    <form action="/auth/signout" method="POST">
-      <button class="secondary full-w" type="submit">Log out</button>
-    </form>
-    <hr />
-    <nav>
-      <a href="/" class="nav-link" onclick={() => (sidebarOpen = false)}>🏗️ Kanban Board</a>
-      <a href="/quotes" class="nav-link" onclick={() => (sidebarOpen = false)}>💰 Quote Generator</a>
-    </nav>
-  </aside>
+  <NavDrawer bind:open={sidebarOpen} {user} />
 
   <main class="main-content">
-    <h1 class="page-title">📊 Dashboard</h1>
-    <p class="page-sub">Quote analytics &amp; raw task data · Admin only</p>
-    <hr style="margin: 12px 0 20px" />
+    <!-- Mobile top bar: shared `☰` opens the drawer. -->
+    <div class="mobile-topbar">
+      <button class="menu-btn" onclick={() => (sidebarOpen = true)} aria-label="Open menu">☰</button>
+      <span class="topbar-title">📊 Dashboard</span>
+    </div>
+
+    <div class="page-head">
+      <h1 class="page-title">📊 Dashboard</h1>
+      <p class="page-sub">Quote analytics &amp; raw task data · Admin only</p>
+      <hr style="margin: 12px 0 20px" />
+    </div>
 
     {#if tasks.length === 0}
       <p class="empty">No tasks found. Sync flagged emails from the Kanban board.</p>
@@ -385,35 +375,10 @@
 
 <style>
   .app-layout { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
-  .sidebar {
-    width: 220px; background: #fff; border-right: 1px solid #e2e8f0;
-    padding: 14px 12px; overflow-y: auto; flex-shrink: 0; display: flex;
-    flex-direction: column; gap: 8px;
-  }
-  /* Off-canvas menu button — only shown on mobile (see media query below). */
-  .sidebar-toggle {
-    display: none;
-    position: fixed;
-    top: max(10px, env(safe-area-inset-top));
-    left: max(10px, env(safe-area-inset-left));
-    z-index: 50;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 18px;
-    line-height: 1;
-    min-width: 44px;
-    min-height: 44px;
-    cursor: pointer;
-  }
-  .user-info { font-size: 13px; color: #1e293b; display: flex; align-items: center; gap: 8px; }
-  .badge { background: #e0e7ff; color: #4338ca; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
-  .full-w { width: 100%; }
   hr { border: none; border-top: 1px solid #f1f5f9; }
-  nav { display: flex; flex-direction: column; gap: 4px; }
-  .nav-link { display: block; padding: 8px 10px; font-size: 13px; font-weight: 500; color: #374151; text-decoration: none; border: 1px solid #e2e8f0; border-radius: 7px; background: #f8fafc; }
-  .nav-link:hover { background: #eef2ff; color: #4338ca; }
   .main-content { flex: 1; overflow-y: auto; padding: 1.2rem 1.4rem; }
+  /* Heading shows on desktop; on mobile the shared .mobile-topbar carries the title. */
+  .page-head { display: block; }
   .page-title { font-size: 22px; font-weight: 800; color: #1e293b; }
   .page-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
   .section-heading { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px; }
@@ -445,30 +410,15 @@
   .title-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .status-pill { border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
 
-  /* Collapse the sidebar off-canvas on mobile; the toggle reveals it.
-     Matches the Kanban Sidebar pattern (768px breakpoint). */
   @media (max-width: 768px) {
-    .sidebar-toggle { display: block; }
-    .sidebar {
-      position: fixed;
-      left: 0;
-      top: 0;
-      height: 100dvh;
-      z-index: 40;
-      /* clear the fixed toggle button, the notch and the home indicator */
-      padding-top: calc(env(safe-area-inset-top, 0px) + 3rem);
-      padding-left: max(12px, env(safe-area-inset-left));
-      padding-bottom: max(14px, env(safe-area-inset-bottom));
-      box-shadow: 4px 0 20px rgba(15, 23, 42, 0.12);
-      display: none;
-    }
-    .sidebar.open { display: flex; }
+    /* The page title lives in the .mobile-topbar on small screens. */
+    .page-head { display: none; }
+    /* No top padding so the sticky .mobile-topbar pins flush to the top. */
     .main-content {
-      padding-top: calc(env(safe-area-inset-top, 0px) + 3.25rem); /* clear the fixed toggle */
-      padding-left: max(1rem, env(safe-area-inset-left));
-      padding-right: max(1rem, env(safe-area-inset-right));
+      padding-top: 0;
+      padding-left: max(0.5rem, env(safe-area-inset-left));
+      padding-right: max(0.5rem, env(safe-area-inset-right));
       padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
     }
-    .nav-link { display: flex; align-items: center; min-height: 44px; }
   }
 </style>
