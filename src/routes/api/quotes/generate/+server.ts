@@ -64,6 +64,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       sitefolio: !!body.sitefolio,
       po: (body.po ?? '').trim(),
       notes: body.notes ?? '',
+      status: 'open',  // a freshly generated quote is open until won/lost
       source: 'generated',
       created_by: (user.displayName as string) || (user.email as string) || '',
     })

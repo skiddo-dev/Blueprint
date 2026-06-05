@@ -47,6 +47,7 @@ export interface Quote {
   sitefolio?: boolean        // tracked in Sitefolio
   po?: string                // purchase order
   notes?: string
+  status?: 'won' | 'lost' | 'open'  // log row colour: green=won, red/orange=lost, none=open
   source: 'imported' | 'generated'
   created_by?: string        // who generated it (generated quotes only)
   created_at: string

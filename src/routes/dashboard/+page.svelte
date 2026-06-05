@@ -40,10 +40,11 @@
   type Valued = Task & { quote_value: number }
   const withValues: Valued[] = tasks.map(t => ({ ...t, quote_value: parseQuote(t.quote) }))
 
-  // Generated quotes (the `quotes` collection) are merged into every VALUE-based
-  // analytic: value summary metrics, value-by-type, value-by-person, value
-  // distribution, and the trend. Status charts, the Task-Mix doughnut, the quote
-  // pipeline, and the raw-task table stay task-only.
+  // Tracked quotes (the `quotes` collection) feed every VALUE-based analytic:
+  // value summary metrics, value-by-type, value-by-person, value distribution,
+  // the trend, and the quote pipeline / win-rate (via their won/lost/open
+  // status). The Kanban status charts, the Task-Mix doughnut, and the raw-task
+  // table stay task-only.
   const genQuotes: Quote[] = data.quotes ?? []
   type QuoteRec = { value: number; type: string; person: string; date?: string }
   const quoteRecs: QuoteRec[] = [
@@ -84,6 +85,14 @@
     const k = qStatusOf(t)
     sumInto(valueByStage, k, t.quote_value)
     sumInto(countByStage, k, 1)
+  }
+  // Fold tracked quotes into the pipeline by their won/lost/open status
+  // (open = an undecided sent quote).
+  const STATUS_TO_STAGE: Record<string, string> = { won: 'Won', lost: 'Lost', open: 'Sent' }
+  for (const q of genQuotes) {
+    const stage = STATUS_TO_STAGE[q.status ?? 'open'] ?? 'Sent'
+    sumInto(valueByStage, stage, q.amount)
+    sumInto(countByStage, stage, 1)
   }
   const wonCount = countByStage.get('Won') ?? 0
   const lostCount = countByStage.get('Lost') ?? 0
