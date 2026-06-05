@@ -1,6 +1,5 @@
 // Dev-only mock task generator. Enabled by USE_MOCK_DATA=true so the app
-// (dashboard, board) renders without a populated MongoDB. Mirrors the
-// convention already used by the legacy Streamlit app (pages/dashboard.py).
+// (dashboard, board) renders without a populated MongoDB.
 import type { Task, TaskStatus } from '$lib/types'
 import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE } from '$lib/constants'
 
