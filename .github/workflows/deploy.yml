@@ -1,16 +1,21 @@
 name: Deploy to Azure Container Apps
 
-# Builds the Docker image in ACR and rolls it out to the Container App.
-# One-time setup (secrets + Azure OIDC + app runtime env): see .github/DEPLOY.md
+# Builds the Docker image ON THE GITHUB RUNNER, pushes it to ACR, and rolls it
+# out to the Container App.
 #
-# Auto-deploy on push to main is intentionally DISABLED until that OIDC setup
-# is done — otherwise every merge fails at the Azure-login step. For now, run
-# it manually ("Actions → Deploy → Run workflow"). Once OIDC + secrets exist,
-# uncomment the `push` trigger below.
+# NOTE: this does NOT use `az acr build` (ACR Tasks). This subscription rejects
+# ACR Tasks with `TasksOperationsNotAllowed`, so the runner must build and push
+# the image itself (proven manual path: `docker buildx build --platform
+# linux/amd64 ... --push` then `az containerapp update`).
+#
+# Auth to Azure uses OIDC (no stored credential); ACR push reuses that same
+# OIDC session via `az acr login`.
+#
+# One-time setup (secrets + Azure OIDC + app runtime env): see .github/DEPLOY.md
 on:
   workflow_dispatch: {}
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
 
 concurrency:
   group: deploy-main
@@ -22,6 +27,9 @@ permissions:
 
 env:
   IMAGE_NAME: blueprint
+  # Container Apps runs amd64. The build MUST target linux/amd64 — the registry
+  # image has to be amd64 regardless of what arch the build host is.
+  IMAGE_PLATFORM: linux/amd64
 
 jobs:
   build-and-deploy:
@@ -36,13 +44,26 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build & push image (server-side build in ACR from Dockerfile)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ACR
+        # Reuses the OIDC-authenticated az session above to fetch an ACR token
+        # and write it into the Docker config — no registry username/password
+        # is stored in GitHub. (Requires the deploy identity to have push rights
+        # on the registry; Contributor on the resource group covers it.)
+        run: az acr login --name "${{ secrets.ACR_NAME }}"
+
+      - name: Build & push image to ACR (runner-side build — `az acr build` is blocked here)
         run: |
-          az acr build \
-            --registry "${{ secrets.ACR_NAME }}" \
-            --image "${IMAGE_NAME}:${{ github.sha }}" \
-            --image "${IMAGE_NAME}:latest" \
-            --file Dockerfile .
+          REGISTRY="${{ secrets.ACR_NAME }}.azurecr.io"
+          docker buildx build \
+            --platform "${IMAGE_PLATFORM}" \
+            --tag "${REGISTRY}/${IMAGE_NAME}:${{ github.sha }}" \
+            --tag "${REGISTRY}/${IMAGE_NAME}:latest" \
+            --file Dockerfile \
+            --push \
+            .
 
       - name: Roll out new image to the Container App
         run: |

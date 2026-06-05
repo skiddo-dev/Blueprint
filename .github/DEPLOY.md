@@ -1,16 +1,23 @@
 # Deploy setup (one-time)
 
-`.github/workflows/deploy.yml` builds the image in ACR and rolls it out to the
-Azure Container App on every push to `main`. It authenticates to Azure with
-**OIDC** (no stored credential). Do the three steps below once, then merges to
-`main` deploy automatically.
+`.github/workflows/deploy.yml` builds the image **on the GitHub runner**, pushes
+it to ACR, and rolls it out to the Azure Container App on every push to `main`.
+It authenticates to Azure with **OIDC** (no stored credential). Do the three
+steps below once, then merges to `main` deploy automatically.
+
+> **Why the runner builds the image (not `az acr build`):** this subscription
+> has ACR Tasks disabled — `az acr build` fails with `TasksOperationsNotAllowed`.
+> So the workflow does a `docker buildx build --platform linux/amd64 ... --push`
+> on the runner instead (the same path proven manually). The
+> `--platform linux/amd64` is **required**: Container Apps runs amd64, so the
+> pushed image must be amd64 regardless of the build host's architecture.
 
 Replace the `<…>` placeholders with your values.
 
 ## 1. Create a deploy identity with OIDC federation (Azure)
 
 ```bash
-RG=<resource-group>
+RG=Blueprint
 SUB=$(az account show --query id -o tsv)
 TENANT=$(az account show --query tenantId -o tsv)
 
@@ -26,7 +33,10 @@ az ad app federated-credential create --id "$APP_ID" --parameters '{
   "audiences": ["api://AzureADTokenExchange"]
 }'
 
-# Contributor on the resource group covers ACR build + Container App update
+# Contributor on the resource group covers `az acr login` + push to ACR (the
+# runner-side image build) AND `az containerapp update`. For least privilege you
+# could instead grant AcrPush on the registry + Container Apps Contributor on the
+# app, but Contributor on the RG is the simplest working option.
 az role assignment create --assignee "$APP_ID" --role Contributor \
   --scope "/subscriptions/$SUB/resourceGroups/$RG"
 
@@ -40,16 +50,29 @@ echo "AZURE_SUBSCRIPTION_ID=$SUB"
 
 ## 2. Add the GitHub repo secrets
 
-Settings → Secrets and variables → Actions → New repository secret (or `gh secret set NAME`):
+The workflow reads all of these from `secrets.*` — none are configured yet
+(`gh secret list` is empty), so the workflow can't run until they exist.
 
-| Secret | Value |
+| Secret | Value (for this repo) |
 |---|---|
 | `AZURE_CLIENT_ID` | from step 1 |
 | `AZURE_TENANT_ID` | from step 1 |
 | `AZURE_SUBSCRIPTION_ID` | from step 1 |
-| `ACR_NAME` | your Container Registry name (no `.azurecr.io`) |
-| `CONTAINERAPP_NAME` | your Container App name |
-| `RESOURCE_GROUP` | the resource group |
+| `ACR_NAME` | `blueprintravesacr` (registry name, no `.azurecr.io`) |
+| `CONTAINERAPP_NAME` | `raves-blueprint` |
+| `RESOURCE_GROUP` | `Blueprint` |
+
+Set them in Settings → Secrets and variables → Actions → New repository secret,
+or scripted with `gh` (fill in the three step-1 values first):
+
+```bash
+gh secret set AZURE_CLIENT_ID        --body "<APP_ID from step 1>"
+gh secret set AZURE_TENANT_ID        --body "<TENANT from step 1>"
+gh secret set AZURE_SUBSCRIPTION_ID  --body "<SUB from step 1>"
+gh secret set ACR_NAME               --body "blueprintravesacr"
+gh secret set CONTAINERAPP_NAME      --body "raves-blueprint"
+gh secret set RESOURCE_GROUP         --body "Blueprint"
+```
 
 ## 3. Set the app's runtime env on the Container App (once)
 
@@ -57,7 +80,7 @@ The app reads these at runtime; they live as Container App **secrets** (never in
 the image or the workflow). Sensitive values use `secretref:`.
 
 ```bash
-APP=<container-app>; RG=<resource-group>
+APP=raves-blueprint; RG=Blueprint
 
 az containerapp secret set -n "$APP" -g "$RG" --secrets \
   auth-secret="<AUTH_SECRET>" \
