@@ -1,8 +1,9 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
-import { getTasks, insertTask, updateTaskField, saveAttachment } from '$lib/server/db'
+import { getTasks, getUsers, insertTask, updateTaskField, saveAttachment } from '$lib/server/db'
 import { fetchRecentEmails, getGraphToken } from '$lib/server/email'
 import { parseEmailWithLLM } from '$lib/server/llm'
+import { SUPERVISORS, QUOTE_PEOPLE } from '$lib/constants'
 
 interface EmailAttachment {
   filename: string
@@ -27,16 +28,22 @@ export const POST: RequestHandler = async ({ locals }) => {
   const headers = { Authorization: `Bearer ${token}` }
   let newCount = 0
 
+  // Constrain the LLM's `assigned_to` to people who actually exist (matching the
+  // board's "Assign to" dropdown): supervisors + quote people + provisioned users.
+  const dbUsers = await getUsers()
+  const assignees = [...new Set([...SUPERVISORS, ...QUOTE_PEOPLE, ...dbUsers.map(u => u.name)])].filter(Boolean)
+
   for (const email of emails) {
     if (existing.some(t => t.exchange_id === email.id)) continue
 
-    const parsed = await parseEmailWithLLM(email as Parameters<typeof parseEmailWithLLM>[0])
+    const parsed = await parseEmailWithLLM(email as Parameters<typeof parseEmailWithLLM>[0], { assignees })
     const attachmentIds: string[] = []
     const task = {
       title: email.subject,
       description: parsed.summary ?? '',
       full_body: email.body,
       quote: parsed.quote,
+      quote_type: parsed.quote_type,
       assigned_to: parsed.assigned_to ?? 'Unassigned',
       notes: '',
       date: parsed.date,

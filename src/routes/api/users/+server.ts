@@ -4,7 +4,9 @@ import { getUsers, upsertUser, deleteUser } from '$lib/server/db'
 
 export const GET: RequestHandler = async ({ locals }) => {
   const session = await locals.auth()
-  if (!session?.user) throw error(401)
+  const user = session?.user as Record<string, unknown> | undefined
+  if (!user) throw error(401)
+  if (user.role !== 'admin') throw error(403)
   const users = await getUsers()
   return json(users)
 }

@@ -8,17 +8,17 @@ export const GET: RequestHandler = async ({ locals, url }) => {
   if (!session?.user) throw error(401)
   const user = session.user as Record<string, unknown>
 
-  const filterUser = url.searchParams.get('user')
-  let tasks
-  if (filterUser) {
-    tasks = await getTasksForUser(filterUser)
-  } else if (user.role === 'admin') {
-    tasks = await getTasks()
-  } else {
-    const name = (user.displayName as string) ?? (user.name as string) ?? ''
-    tasks = await getTasksForUser(name)
+  // Only admins may view other users' tasks via ?user=. Non-admins are always
+  // scoped to their own tasks (assigned to OR created by them), regardless of
+  // any ?user= param they try to pass.
+  if (user.role === 'admin') {
+    const filterUser = url.searchParams.get('user')
+    const tasks = filterUser ? await getTasksForUser(filterUser) : await getTasks()
+    return json(tasks)
   }
-  return json(tasks)
+
+  const name = (user.displayName as string) ?? (user.name as string) ?? ''
+  return json(await getTasksForUser(name))
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
