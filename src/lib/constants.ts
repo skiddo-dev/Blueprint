@@ -24,3 +24,14 @@ export const QUOTE_PEOPLE = [
 // Static roster appended to the task "Assign to" list (alongside provisioned PM
 // users) and used as candidates for the email-extraction assignee.
 export const SUPERVISORS = ['Ben', 'Kris', 'Vlad', 'Bogdan', 'Frank Crew']
+
+// Quote/bid sales-pipeline stages. Only meaningful for tasks that have a quote;
+// an unset status on a quoted task is treated as 'Draft'.
+export const QUOTE_STATUSES = ['Draft', 'Sent', 'Won', 'Lost']
+
+export const QUOTE_STATUS_META: Record<string, { color: string; bg: string; text: string }> = {
+  'Draft': { color: '#94a3b8', bg: '#f1f5f9', text: '#475569' },
+  'Sent':  { color: '#3b82f6', bg: '#dbeafe', text: '#1d4ed8' },
+  'Won':   { color: '#10b981', bg: '#d1fae5', text: '#047857' },
+  'Lost':  { color: '#ef4444', bg: '#fee2e2', text: '#dc2626' },
+}

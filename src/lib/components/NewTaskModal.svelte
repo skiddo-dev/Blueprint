@@ -35,6 +35,7 @@
           title: title.trim(),
           description: '',
           quote: quote.trim() || null,
+          quote_status: quote.trim() ? 'Draft' : null,
           assigned_to: assignedTo,
           notes,
           date: dueDate || null,

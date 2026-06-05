@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types'
-  import { KANBAN_STATUSES, STATUS_META } from '$lib/constants'
+  import { KANBAN_STATUSES, STATUS_META, QUOTE_STATUSES, QUOTE_STATUS_META } from '$lib/constants'
   import type { Task, AppSession } from '$lib/types'
   import { extractStoreNumbers } from '$lib/storeNumbers'
   import Chart from '$lib/components/Chart.svelte'
@@ -47,18 +47,37 @@
   const maxQuote = quoted.length ? Math.max(...quoted.map(t => t.quote_value)) : 0
   const minQuote = quoted.length ? Math.min(...quoted.map(t => t.quote_value)) : 0
 
+  const sumInto = (map: Map<string, number>, key: string, val: number) =>
+    map.set(key, (map.get(key) ?? 0) + val)
+
+  // ── Quote pipeline (Draft → Sent → Won/Lost) ────────────────────────────
+  const qStatusOf = (t: Valued) => t.quote_status ?? 'Draft'
+  const valueByStage = new Map<string, number>()
+  const countByStage = new Map<string, number>()
+  for (const t of quoted) {
+    const k = qStatusOf(t)
+    sumInto(valueByStage, k, t.quote_value)
+    sumInto(countByStage, k, 1)
+  }
+  const wonCount = countByStage.get('Won') ?? 0
+  const lostCount = countByStage.get('Lost') ?? 0
+  const decided = wonCount + lostCount
+  const winRate = decided > 0 ? wonCount / decided : null
+  const wonValue = valueByStage.get('Won') ?? 0
+  const openPipeline = (valueByStage.get('Draft') ?? 0) + (valueByStage.get('Sent') ?? 0)
+  const pct = (n: number) => `${Math.round(n * 100)}%`
+
   const metrics = [
+    { label: 'Win Rate', value: winRate === null ? '—' : pct(winRate), accent: '#10b981' },
+    { label: 'Open Pipeline', value: money(openPipeline), accent: '#6366f1' },
+    { label: 'Won Value', value: money(wonValue), accent: '#059669' },
     { label: 'Total Value', value: money(totalValue), accent: '#6366f1' },
-    { label: 'Average Quote', value: money(avgQuote), accent: '#10b981' },
-    { label: 'Highest Quote', value: money(maxQuote), accent: '#f59e0b' },
-    { label: 'Lowest Quote', value: money(minQuote), accent: '#3b82f6' },
+    { label: 'Average Quote', value: money(avgQuote), accent: '#f59e0b' },
+    { label: 'Highest Quote', value: money(maxQuote), accent: '#3b82f6' },
     { label: 'Quoted Tasks', value: String(quoted.length), accent: '#ec4899' },
   ]
 
   // ── Aggregations ────────────────────────────────────────────────────────
-  const sumInto = (map: Map<string, number>, key: string, val: number) =>
-    map.set(key, (map.get(key) ?? 0) + val)
-
   // Quote value by type / count by type
   const valueByType = new Map<string, number>()
   const countByType = new Map<string, number>()
@@ -160,6 +179,16 @@
     }],
   } satisfies ChartData<'doughnut', number[], string>
 
+  const pipelineData = {
+    labels: [...QUOTE_STATUSES],
+    datasets: [{
+      data: QUOTE_STATUSES.map(s => valueByStage.get(s) ?? 0),
+      backgroundColor: QUOTE_STATUSES.map(s => QUOTE_STATUS_META[s].color),
+      borderColor: '#fff',
+      borderWidth: 2,
+    }],
+  } satisfies ChartData<'doughnut', number[], string>
+
   const trendData = {
     labels: months.map(prettyMonth),
     datasets: trendTypes.map((ty, i) => ({
@@ -243,6 +272,15 @@
     },
   } satisfies ChartOptions<'doughnut'>
 
+  // Like doughnutOpts but money-formatted tooltips (for value-by-stage).
+  const moneyDoughnutOpts = {
+    ...doughnutOpts,
+    plugins: {
+      ...doughnutOpts.plugins,
+      tooltip: { callbacks: { label: (c: TooltipItem<'doughnut'>) => ` ${c.label}: ${money(c.parsed)}` } },
+    },
+  } satisfies ChartOptions<'doughnut'>
+
   const lineOpts = {
     responsive: true,
     maintainAspectRatio: false,
@@ -317,6 +355,11 @@
         <article class="chart-card">
           <h3>📊 Task Mix by Quote Type</h3>
           <div class="canvas-wrap"><Chart type="doughnut" data={typeMixData} options={doughnutOpts} /></div>
+        </article>
+
+        <article class="chart-card">
+          <h3>💰 Quote Pipeline by Stage</h3>
+          <div class="canvas-wrap"><Chart type="doughnut" data={pipelineData} options={moneyDoughnutOpts} /></div>
         </article>
 
         <article class="chart-card">
