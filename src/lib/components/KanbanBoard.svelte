@@ -267,13 +267,21 @@
       overflow-x: unset;
     }
 
+    /* Top spacing lives here, not on the .main-content scroll container, so the
+       sticky bar below can pin flush to the top (notch-safe). */
+    .board-toolbar {
+      padding-top: max(0.5rem, env(safe-area-inset-top));
+    }
+
     /* Show only the selected column. */
     .col-wrap { display: none; }
     .col-wrap.active { display: block; }
 
     /* One cohesive sticky bar: menu button pinned left, column pills scrolling
        beside it. Replaces the old floating sidebar toggle that overlapped the
-       pills. Bleeds to the screen edges past .main-content's padding. */
+       pills. Bleeds to the screen edges past .main-content's padding. Pins flush
+       to the top (the scroll container has no top padding) so cards scroll
+       cleanly underneath with nothing exposed above it. */
     .board-topbar {
       display: flex;
       align-items: center;
@@ -285,6 +293,8 @@
       padding: 6px 0.5rem 10px;
       padding-top: max(6px, env(safe-area-inset-top));
       background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
     }
     .menu-btn {
       flex: 0 0 auto;
