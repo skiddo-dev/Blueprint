@@ -2,14 +2,22 @@ import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { generateQuotePdf } from '$lib/server/pdf'
 import type { QuoteData } from '$lib/server/pdf'
-import { insertQuote } from '$lib/server/db'
+import { insertQuote, getNextQuoteNumber } from '$lib/server/db'
 
-const AMOUNT_RANGES: Record<string, [number, number]> = {
-  'Assign Quote': [5000, 50000],
-  'T&M': [2000, 20000],
-  'Service Call': [500, 5000],
-  'Maintenance Request': [1000, 10000],
-  'Emergency Repair': [3000, 30000],
+// Payload from the Quote Generator form: log fields (store #, point of contact,
+// work type, amount, …) plus the customer-facing proposal fields.
+interface QuotePayload {
+  customer?: string
+  store_number?: string
+  point_of_contact?: string
+  work_type?: string
+  amount?: number
+  date_sent?: string
+  bid_due_date?: string
+  po?: string
+  sitefolio?: boolean
+  description?: string
+  notes?: string
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -18,51 +26,44 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   if (!user) throw error(401)
   if (user.role !== 'admin') throw error(403)
 
-  const body = await request.json() as Partial<QuoteData> & { total?: number }
+  const body = await request.json() as QuotePayload
 
-  const labor = body.labor ?? 0
-  const materials = body.materials ?? 0
-  let total = body.total ?? 0
-  if (!total) {
-    if (labor > 0 || materials > 0) {
-      total = labor + materials
-    } else {
-      const [lo, hi] = AMOUNT_RANGES[body.quote_type ?? ''] ?? [250, 5000]
-      total = lo + Math.floor(Math.random() * (hi - lo))
-    }
-  }
+  const amount = Number(body.amount) || 0
+  const dateSent = body.date_sent || new Date().toISOString().slice(0, 10)
+  const year = new Date(dateSent).getFullYear() || new Date().getFullYear()
+  const storeNumber = (body.store_number ?? '').trim()
 
-  const data: QuoteData = {
-    customer: body.customer ?? 'TBD',
-    date_received: body.date_received ?? new Date().toISOString().slice(0, 10),
+  // Customer-facing proposal PDF. Amount is the single quoted figure, so the
+  // PDF's cost box renders just "Amount" (labor/materials are unused here).
+  const pdfData: QuoteData = {
+    customer: body.customer || 'TBD',
+    date_received: dateSent,
     bid_due_date: body.bid_due_date ?? '',
-    architect: body.architect ?? '',
-    project_location: body.project_location ?? 'TBD',
+    architect: body.point_of_contact ?? '',
+    project_location: storeNumber ? `Store #${storeNumber}` : 'TBD',
     description: body.description ?? '',
     notes: body.notes,
-    labor,
-    materials,
-    total,
-    quote_type: body.quote_type ?? '',
+    labor: 0,
+    materials: 0,
+    total: amount,
+    quote_type: body.work_type ?? '',
   }
 
-  // Track the generated quote (RAVES Quote Log shape) so it shows up in the
-  // dashboard analytics. Best-effort: a failure must never block the PDF.
-  // NOTE: mapping from the current proposal form is approximate until the
-  // generator form is reshaped to capture store #, point of contact, and the
-  // work-category description directly.
+  // Log the quote (RAVES Quote Log shape) so it feeds the dashboard analytics.
+  // Best-effort: a tracking failure must never block the PDF download.
   try {
-    const year = new Date(data.date_received).getFullYear() || new Date().getFullYear()
+    const quote_number = await getNextQuoteNumber(year)
     await insertQuote({
+      quote_number,
       year,
-      store_number: data.project_location,
-      point_of_contact: data.architect,
-      description: data.quote_type,
-      amount: data.total,
-      date_sent: data.date_received,
-      sitefolio: false,
-      po: '',
-      notes: [data.description, data.notes].filter(Boolean).join(' — '),
+      store_number: storeNumber,
+      point_of_contact: body.point_of_contact ?? '',
+      description: body.work_type ?? '',
+      amount,
+      date_sent: dateSent,
+      sitefolio: !!body.sitefolio,
+      po: (body.po ?? '').trim(),
+      notes: body.notes ?? '',
       source: 'generated',
       created_by: (user.displayName as string) || (user.email as string) || '',
     })
@@ -70,11 +71,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     console.error('[quotes] failed to persist generated quote:', e)
   }
 
-  const pdf = await generateQuotePdf(data)
+  const pdf = await generateQuotePdf(pdfData)
   return new Response(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Proposal_${data.customer.replace(/\s+/g, '_')}_${data.date_received}.pdf"`,
+      'Content-Disposition': `attachment; filename="Proposal_${pdfData.customer.replace(/\s+/g, '_')}_${dateSent}.pdf"`,
     },
   })
 }

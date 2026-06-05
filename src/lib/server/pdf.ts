@@ -104,17 +104,17 @@ export async function generateQuotePdf(data: QuoteData): Promise<Buffer> {
     // Right: cost box
     const rightX = LEFT + boxW + 8
     doc.rect(rightX, botY, boxW, 72).fillAndStroke('#e8e8e8', '#000')
-    const costLabels = ['Labor:', 'Materials:', 'Total:']
-    const costVals = [
-      `$${data.labor.toFixed(2)}`,
-      `$${data.materials.toFixed(2)}`,
-      `$${data.total.toFixed(2)}`,
-    ]
-    costLabels.forEach((lbl, i) => {
+    // Show the labor/materials breakdown only when provided; otherwise just the
+    // single quoted amount (the quote log tracks one Amount per quote).
+    const costRows: Array<[string, number]> =
+      data.labor > 0 || data.materials > 0
+        ? [['Labor:', data.labor], ['Materials:', data.materials], ['Total:', data.total]]
+        : [['Amount:', data.total]]
+    costRows.forEach(([lbl, val], i) => {
       doc.fillColor('#000').fontSize(10).font('Helvetica-Bold')
       doc.text(lbl, rightX + 6, botY + i * 22 + 6, { width: boxW / 2 })
       doc.font('Helvetica')
-      doc.text(costVals[i], rightX + boxW / 2, botY + i * 22 + 6, {
+      doc.text(`$${val.toFixed(2)}`, rightX + boxW / 2, botY + i * 22 + 6, {
         width: boxW / 2 - 8,
         align: 'right',
       })

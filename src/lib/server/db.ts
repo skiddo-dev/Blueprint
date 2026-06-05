@@ -147,6 +147,17 @@ export async function getQuotes(): Promise<Quote[]> {
   return quotes.map(q => ({ ...q, _id: String(q._id) })) as Quote[]
 }
 
+// Next sequential quote number for a given year (mirrors the per-year numbering
+// in the RAVES Quote Log).
+export async function getNextQuoteNumber(year: number): Promise<number> {
+  if (USE_MOCK) return 1
+  const d = await getDb()
+  const top = await col(d, 'quotes')
+    .find({ year }).sort({ quote_number: -1 }).limit(1).toArray()
+  const max = top.length ? Number(top[0].quote_number ?? 0) : 0
+  return (Number.isFinite(max) ? max : 0) + 1
+}
+
 export async function saveAttachment(
   taskId: string,
   filename: string,

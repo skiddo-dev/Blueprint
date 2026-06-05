@@ -21,6 +21,24 @@ export const QUOTE_PEOPLE = [
   'Bob', 'Ben', 'Andrew', 'Mike', 'Riley', 'Kris', 'Bogdan', 'Ady',
 ]
 
+// Estimators / points of contact from the RAVES Quote Log. Used as datalist
+// suggestions on the Quote Generator — free text is still allowed (new names
+// appear over time).
+export const QUOTE_CONTACTS = [
+  'Alex Edge', 'Jeff Bindus', 'Cody Vantrease', 'Zach Hanf', 'Malachi Mosley',
+  'Carl Regner', 'Jack Torrance', 'Tyler Washington', 'Kyle Semak',
+  'Micah Blackmon', 'Jack Kristensen', 'Ken Kardel', 'Ken Reisig',
+]
+
+// Work categories used in the quote log's Description column (datalist
+// suggestions; free text allowed).
+export const QUOTE_WORK_TYPES = [
+  'Extras', 'Misc. Work', 'Front End Work', 'Minor Remodel', 'Pick Up Expansion',
+  'Top Stock', 'Freezer', 'Center Store', 'SCOS', 'Remodel', 'Minor Capital',
+  'Credit', 'Cart Corral', 'RX Counsel Room', 'Nat Food Int', 'Paint and Putty',
+  'Reset', 'Starbucks',
+]
+
 // Static roster appended to the task "Assign to" list (alongside provisioned PM
 // users) and used as candidates for the email-extraction assignee.
 export const SUPERVISORS = ['Ben', 'Kris', 'Vlad', 'Bogdan', 'Frank Crew']
