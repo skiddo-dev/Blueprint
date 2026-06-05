@@ -101,10 +101,21 @@
     }
   }
 
-  onMount(async () => {
-    online = navigator.onLine
+  // Browser-only connectivity listeners. Use $effect, NOT onMount/onDestroy:
+  // onDestroy runs on the server during SSR too, so a `window.removeEventListener`
+  // there throws `window is not defined` and 500s the page. $effect never runs
+  // during SSR, and its teardown runs on the client.
+  $effect(() => {
     window.addEventListener('online', goOnline)
     window.addEventListener('offline', goOffline)
+    return () => {
+      window.removeEventListener('online', goOnline)
+      window.removeEventListener('offline', goOffline)
+    }
+  })
+
+  onMount(async () => {
+    online = navigator.onLine
     try {
       const r = await fetch('/api/tasks/signature')
       if (r.ok) currentSig = (await r.json()).sig
@@ -127,8 +138,6 @@
   onDestroy(() => {
     clearInterval(pollTimer)
     clearTimeout(saveToastTimer)
-    window.removeEventListener('online', goOnline)
-    window.removeEventListener('offline', goOffline)
   })
 
   // ── Drag-and-drop handlers ───────────────────────────────────────────
