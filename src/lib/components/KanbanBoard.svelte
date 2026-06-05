@@ -173,7 +173,7 @@
      between statuses; moving a card between columns is done via the card's own
      Status dropdown. The whole bar is hidden on desktop, where the sidebar is
      always visible and all columns show side by side. -->
-<div class="board-topbar">
+<div class="mobile-topbar">
   <button class="menu-btn" onclick={() => onMenu?.()} aria-label="Open menu">☰</button>
   <nav class="col-tabs" aria-label="Switch board column">
     {#each KANBAN_STATUSES as status}
@@ -257,9 +257,9 @@
   }
 
   /* Desktop: the wrapper is layout-transparent so .column is the flex item and
-     the side-by-side board is unchanged. The whole mobile top bar is hidden. */
+     the side-by-side board is unchanged. (The mobile top bar — .mobile-topbar in
+     app.css — is hidden on desktop.) */
   .col-wrap { display: contents; }
-  .board-topbar { display: none; }
 
   @media (max-width: 768px) {
     .board-columns {
@@ -281,40 +281,9 @@
     .col-wrap { display: none; }
     .col-wrap.active { display: block; }
 
-    /* One cohesive sticky bar: menu button pinned left, column pills scrolling
-       beside it. Replaces the old floating sidebar toggle that overlapped the
-       pills. Bleeds to the screen edges past .main-content's padding. Pins flush
-       to the top (the scroll container has no top padding) so cards scroll
-       cleanly underneath with nothing exposed above it. */
-    .board-topbar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      margin: 0 -0.5rem 8px;
-      padding: 6px 0.5rem 10px;
-      padding-top: max(6px, env(safe-area-inset-top));
-      background: #f8fafc;
-      border-bottom: 1px solid var(--border);
-      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
-    }
-    .menu-btn {
-      flex: 0 0 auto;
-      width: 44px;
-      height: 44px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      line-height: 1;
-      color: #475569;
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-    }
-
+    /* The sticky bar container (.mobile-topbar) + menu button (.menu-btn) styles
+       live in app.css so every page shares them. Here we only lay out the column
+       pills inside that bar. */
     /* Pills take the remaining width and scroll horizontally under the menu. */
     .col-tabs {
       flex: 1 1 auto;
