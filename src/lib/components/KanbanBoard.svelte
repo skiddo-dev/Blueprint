@@ -265,6 +265,10 @@
     .board-columns {
       flex-direction: column;
       overflow-x: unset;
+      /* Override the desktop `align-items: flex-start`: in this column-direction
+         layout that aligns items to the left and lets an EMPTY column shrink to
+         its header width. `stretch` makes every column fill the screen width. */
+      align-items: stretch;
     }
 
     /* Top spacing lives here, not on the .main-content scroll container, so the
