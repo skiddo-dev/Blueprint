@@ -1,9 +1,10 @@
 import { sequence } from '@sveltejs/kit/hooks'
 import { handle as authHandle } from '$lib/auth'
-import { redirect, type Handle } from '@sveltejs/kit'
+import { redirect, type Handle, type HandleServerError } from '@sveltejs/kit'
 import { env } from '$env/dynamic/private'
 import { ensureGraphSubscriptions } from '$lib/server/graphSubscription'
 import { runEmailSync } from '$lib/server/emailSync'
+import { log } from '$lib/server/log'
 
 // ── Background jobs ──────────────────────────────────────────────────────────
 // Keep the Microsoft Graph push subscriptions alive (one per PM mailbox, renewed
@@ -26,7 +27,7 @@ function startBackgroundJobs() {
       await ensureGraphSubscriptions()
       await runEmailSync({ triggeredBy: 'Email sync' })
     } catch (e) {
-      console.error('[bg]', label, e)
+      log.error('background job failed', { label, error: e instanceof Error ? e.message : String(e) })
     }
   }
   setTimeout(() => run('boot'), 15_000) // shortly after boot: create the subscription + initial sync
@@ -98,3 +99,20 @@ const guard: Handle = async ({ event, resolve }) => {
 }
 
 export const handle = sequence(csrfGuard, authHandle, guard)
+
+// Catches UNEXPECTED server errors (thrown error()/redirect() are handled by
+// SvelteKit and never reach here). Logs the full error with a correlation id and
+// returns a sanitized shape — the stack/message never leak to the client; the id
+// lets a user quote it for support.
+export const handleError: HandleServerError = ({ error, event, status }) => {
+  const id = crypto.randomUUID()
+  log.error('unhandled server error', {
+    id,
+    status,
+    method: event.request.method,
+    path: event.url.pathname,
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  })
+  return { message: 'Internal error', id }
+}
