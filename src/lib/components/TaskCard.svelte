@@ -9,18 +9,22 @@
   let {
     task,
     assignees,
+    mentionCandidates = [],
     onFieldUpdate,
     onDelete,
     onStoreFilter,
+    onComment,
     activeStore = null,
     hidden = false,
     isAdmin = false,
   }: {
     task: Task
     assignees: string[]
+    mentionCandidates?: string[]
     onFieldUpdate: (id: string, field: string, value: unknown) => void
     onDelete: (id: string) => void
     onStoreFilter?: (n: string) => void
+    onComment?: (id: string, text: string) => void
     activeStore?: string | null
     hidden?: boolean
     isAdmin?: boolean
@@ -77,6 +81,106 @@
   // Which PM inbox this was flagged in (admin-only chip); show the local part,
   // full address in the tooltip.
   let inbox = $derived(task.source_mailbox ? task.source_mailbox.split('@')[0] : '')
+
+  // ── Comments + @mentions ──────────────────────────────────────────────────
+  let comments = $derived((task.timeline ?? []).filter(e => e.kind === 'comment'))
+
+  const firstWord = (s: string) => s.trim().split(/\s+/)[0] ?? ''
+
+  let commentText = $state('')
+  let commentInput = $state<HTMLTextAreaElement>()
+
+  function postComment() {
+    const t = commentText.trim()
+    if (!t || !onComment) return
+    onComment(task._id, t)
+    commentText = ''
+    showMentions = false
+  }
+
+  // @-autocomplete: while the caret sits in an `@token`, offer matching names.
+  let showMentions = $state(false)
+  let mentionQuery = $state('')
+  let mentionStart = $state(-1) // index of the '@' in the textarea value
+  let mentionMatches = $derived(
+    showMentions
+      ? mentionCandidates
+          .filter(c => firstWord(c).toLowerCase().startsWith(mentionQuery.toLowerCase()))
+          .slice(0, 6)
+      : [],
+  )
+
+  function onCommentInput(e: Event & { currentTarget: HTMLTextAreaElement }) {
+    const el = e.currentTarget
+    const caret = el.selectionStart ?? el.value.length
+    const m = el.value.slice(0, caret).match(/(?:^|\s)@([A-Za-z][A-Za-z0-9._-]*)?$/)
+    if (m) {
+      mentionQuery = m[1] ?? ''
+      mentionStart = caret - mentionQuery.length - 1
+      showMentions = true
+    } else {
+      showMentions = false
+    }
+  }
+
+  function pickMention(name: string) {
+    const fw = firstWord(name)
+    const caret = commentInput?.selectionStart ?? commentText.length
+    const before = commentText.slice(0, mentionStart)
+    const after = commentText.slice(caret)
+    const insert = `@${fw} `
+    commentText = before + insert + after
+    showMentions = false
+    queueMicrotask(() => {
+      const pos = (before + insert).length
+      commentInput?.focus()
+      commentInput?.setSelectionRange(pos, pos)
+    })
+  }
+
+  function onComposeKeydown(e: KeyboardEvent) {
+    if (showMentions && mentionMatches.length && (e.key === 'Enter' || e.key === 'Tab')) {
+      e.preventDefault()
+      pickMention(mentionMatches[0])
+      return
+    }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault()
+      postComment()
+    } else if (e.key === 'Escape') {
+      showMentions = false
+    }
+  }
+
+  // Split a posted comment into plain text + highlighted mention chips. A token is
+  // highlighted only when it resolves to a known candidate (matches parseMentions).
+  type Seg = { text: string; mention: boolean }
+  function segments(text: string): Seg[] {
+    const known = new Set(mentionCandidates.map(c => firstWord(c).toLowerCase()))
+    const re = /(?:^|\s)(@[A-Za-z][A-Za-z0-9._-]*)/g
+    const out: Seg[] = []
+    let last = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(text))) {
+      const token = m[1]
+      const at = m.index + m[0].length - token.length
+      if (!known.has(token.slice(1).toLowerCase())) continue
+      if (at > last) out.push({ text: text.slice(last, at), mention: false })
+      out.push({ text: token, mention: true })
+      last = at + token.length
+    }
+    if (last < text.length) out.push({ text: text.slice(last), mention: false })
+    return out
+  }
+
+  function ago(iso: string): string {
+    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    return `${Math.floor(hrs / 24)}d ago`
+  }
 </script>
 
 <div class="card" class:card-hidden={hidden} style:border-top="3px solid {meta.color}">
@@ -135,7 +239,6 @@
       {/if}
     </details>
   {/if}
-
   <!-- Status + Assignee selects -->
   <div class="row-2">
     <select
@@ -242,6 +345,46 @@
             ⬇️ {attId.slice(0, 20)}…
           </a>
         {/each}
+      </div>
+    </details>
+  {/if}
+
+  <!-- Comments + @mentions -->
+  {#if onComment}
+    <details class="comments-expand">
+      <summary>💬 Comments{comments.length ? ` (${comments.length})` : ''}</summary>
+      <div class="comments">
+        {#each comments as c}
+          <div class="comment">
+            <div class="comment-head">
+              <span class="comment-author">{c.author ?? 'Someone'}</span>
+              <span class="comment-time">{ago(c.at)}</span>
+            </div>
+            <div class="comment-text">{#each segments(c.text) as seg}{#if seg.mention}<span class="mention">{seg.text}</span>{:else}{seg.text}{/if}{/each}</div>
+          </div>
+        {/each}
+        {#if !comments.length}
+          <div class="comment-empty">No comments yet — start the thread.</div>
+        {/if}
+
+        <div class="comment-compose">
+          <textarea
+            bind:this={commentInput}
+            bind:value={commentText}
+            rows="2"
+            placeholder="Add a comment… @ to mention"
+            oninput={onCommentInput}
+            onkeydown={onComposeKeydown}
+          ></textarea>
+          {#if showMentions && mentionMatches.length}
+            <div class="mention-pop">
+              {#each mentionMatches as name}
+                <button type="button" class="mention-opt" onclick={() => pickMention(name)}>@{name}</button>
+              {/each}
+            </div>
+          {/if}
+          <button class="comment-post" onclick={postComment} disabled={!commentText.trim()}>Post</button>
+        </div>
       </div>
     </details>
   {/if}
@@ -374,7 +517,8 @@
 
   .email-expand summary,
   .notes-expand summary,
-  .att-expand summary {
+  .att-expand summary,
+  .comments-expand summary {
     font-size: 11px;
     color: var(--primary);
     padding: 4px 0;
@@ -478,6 +622,90 @@
   }
   .att-link:hover { text-decoration: underline; }
 
+  /* ── Comments + @mentions ────────────────────────────────────────────── */
+  /* Extra bottom room so the absolutely-positioned ✕ delete button clears the
+     left-aligned Post button when the thread is expanded. */
+  .comments-expand { margin-bottom: 20px; }
+  .comments {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .comment {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+  }
+  .comment-head {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 2px;
+  }
+  .comment-author { font-size: 11px; font-weight: 700; color: var(--text); }
+  .comment-time { font-size: 10px; color: var(--text-faint); }
+  .comment-text {
+    font-size: 12px;
+    color: var(--text-soft);
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .mention {
+    color: var(--primary-text);
+    background: #e0e7ff;
+    border-radius: 4px;
+    padding: 0 3px;
+    font-weight: 600;
+  }
+  .comment-empty { font-size: 11px; color: var(--text-faint); }
+
+  .comment-compose { position: relative; display: flex; flex-direction: column; gap: 6px; }
+  .comment-post {
+    align-self: flex-start;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 0;
+    cursor: pointer;
+  }
+  .comment-post:hover:not(:disabled) { background: var(--primary-dark, #4f46e5); }
+  .comment-post:disabled { opacity: 0.5; cursor: default; }
+
+  /* Mention autocomplete popup — anchored above the compose box. */
+  .mention-pop {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% - 34px);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+    max-width: 100%;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+  }
+  .mention-opt {
+    background: transparent;
+    border: none;
+    text-align: left;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--text-body);
+    min-height: 0;
+    cursor: pointer;
+  }
+  .mention-opt:hover { background: var(--primary-bg); }
+
   .delete-btn {
     position: absolute;
     bottom: 8px;
@@ -523,6 +751,7 @@
     .email-expand summary,
     .notes-expand summary,
     .att-expand summary,
+    .comments-expand summary,
     .quote-pop summary {
       padding-top: 8px;
       padding-bottom: 8px;

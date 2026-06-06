@@ -2,12 +2,15 @@ export type TaskStatus = 'To Do' | 'In Progress' | 'Review' | 'Done' | 'On Hold'
 
 // One entry in a task's activity log. Email syncs append entries as a thread
 // progresses (a reply lands, an attachment is parsed) so a card carries its own
-// history instead of the board silently mutating under the PM.
+// history instead of the board silently mutating under the PM. `comment` entries
+// are human notes posted from the card (the rest are system-generated).
 export interface TimelineEntry {
   at: string                                       // ISO timestamp
-  kind: 'created' | 'email' | 'attachment' | 'system'
+  kind: 'created' | 'email' | 'attachment' | 'system' | 'comment'
   text: string                                     // e.g. "Customer approved; PO 4471; due 6/12"
   from?: string                                    // sender name, for email entries
+  author?: string                                  // display name of the commenter (comment entries)
+  mentions?: string[]                              // names @mentioned in a comment (for highlight + future notify)
 }
 
 export interface Task {

@@ -2,6 +2,7 @@ import { sequence } from '@sveltejs/kit/hooks'
 import { handle as authHandle } from '$lib/auth'
 import { redirect, type Handle, type HandleServerError } from '@sveltejs/kit'
 import { env } from '$env/dynamic/private'
+import { dev } from '$app/environment'
 import { ensureGraphSubscriptions } from '$lib/server/graphSubscription'
 import { runEmailSync } from '$lib/server/emailSync'
 import { log } from '$lib/server/log'
@@ -55,6 +56,24 @@ const csrfGuard: Handle = async ({ event, resolve }) => {
   return resolve(event)
 }
 
+// ── DEV-ONLY auth bypass ─────────────────────────────────────────────────────
+// Injects a fake admin session so the app can be previewed/screenshotted locally
+// without an interactive Microsoft Entra sign-in. HARD-GATED two ways: `dev` (this
+// branch is stripped from the production `vite build`) AND an explicit opt-in env
+// flag (DEV_FAKE_AUTH=true). It is inert by default even in dev, and can never run
+// in production. Remove this handle (and its entry in the sequence below) to drop
+// the capability entirely.
+const devAuthBypass: Handle = async ({ event, resolve }) => {
+  if (dev && env.DEV_FAKE_AUTH === 'true') {
+    const email = (env.ADMIN_EMAILS ?? '').split(',')[0].trim().toLowerCase() || 'dev@local'
+    event.locals.auth = (async () => ({
+      user: { email, name: 'Dev Admin', role: 'admin', displayName: 'Dev Admin' },
+      expires: new Date(Date.now() + 86_400_000).toISOString(),
+    })) as typeof event.locals.auth
+  }
+  return resolve(event)
+}
+
 const guard: Handle = async ({ event, resolve }) => {
   const path = event.url.pathname
 
@@ -98,7 +117,7 @@ const guard: Handle = async ({ event, resolve }) => {
   return resolve(event)
 }
 
-export const handle = sequence(csrfGuard, authHandle, guard)
+export const handle = sequence(csrfGuard, authHandle, devAuthBypass, guard)
 
 // Catches UNEXPECTED server errors (thrown error()/redirect() are handled by
 // SvelteKit and never reach here). Logs the full error with a correlation id and

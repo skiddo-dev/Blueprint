@@ -5,6 +5,7 @@
   import type { Task, TaskStatus, AppSession } from '$lib/types'
   import { KANBAN_STATUSES, STATUS_META, SUPERVISORS } from '$lib/constants'
   import { extractStoreNumbers } from '$lib/storeNumbers'
+  import { parseMentions } from '$lib/mentions'
 
   let {
     initialTasks,
@@ -27,6 +28,10 @@
       ? ['Unassigned', ...pmNames, ...SUPERVISORS]
       : ['Unassigned', ...SUPERVISORS]
   )
+  // Who can be @mentioned in a comment — the same roster, minus the pseudo-name.
+  // De-duped: a PM provisioned in the DB can also appear in the static SUPERVISORS
+  // list, which would otherwise show the same name twice in the autocomplete.
+  const mentionCandidates = $derived([...new Set(assignees.filter(a => a !== 'Unassigned'))])
 
   // ── Main state: tasks grouped by status ─────────────────────────────
   function group(tasks: Task[]): Record<TaskStatus, Task[]> {
@@ -198,6 +203,40 @@
     }))
   }
 
+  // Patch a single task in-place in the local columns (optimistic UI). Returns
+  // false if the task isn't on the board (already removed).
+  function patchLocal(id: string, patch: (t: Task) => Task): boolean {
+    for (const s of KANBAN_STATUSES) {
+      const idx = columns[s].findIndex(t => t._id === id)
+      if (idx !== -1) {
+        columns[s] = [...columns[s].slice(0, idx), patch(columns[s][idx]), ...columns[s].slice(idx + 1)]
+        return true
+      }
+    }
+    return false
+  }
+
+  // ── Comment (optimistic) ────────────────────────────────────────────────
+  // Append the comment to the card's timeline locally, then POST. The server
+  // recomputes mentions authoritatively; the 2s poll reconciles to it.
+  async function handleComment(id: string, text: string) {
+    const body = text.trim()
+    if (!body) return
+    const entry = {
+      at: new Date().toISOString(),
+      kind: 'comment' as const,
+      text: body,
+      author: userName,
+      mentions: parseMentions(body, mentionCandidates),
+    }
+    patchLocal(id, t => ({ ...t, timeline: [...(t.timeline ?? []), entry] }))
+    await persist(fetch(`/api/tasks/${id}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: body }),
+    }))
+  }
+
   // ── Delete ────────────────────────────────────────────────────────────
   async function handleDelete(id: string) {
     for (const s of KANBAN_STATUSES) {
@@ -335,6 +374,7 @@
         {status}
         bind:items={columns[status]}
         {assignees}
+        {mentionCandidates}
         {storeFilter}
         {view}
         myName={userName}
@@ -344,6 +384,7 @@
         onFieldUpdate={handleFieldUpdate}
         onDelete={handleDelete}
         onStoreFilter={setStoreFilter}
+        onComment={handleComment}
       />
     </div>
   {/each}
