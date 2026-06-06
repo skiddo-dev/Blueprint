@@ -1,7 +1,8 @@
 // Dev-only mock task generator. Enabled by USE_MOCK_DATA=true so the app
 // (dashboard, board) renders without a populated MongoDB.
-import type { Task, TaskStatus, TimelineEntry } from '$lib/types'
-import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES } from '$lib/constants'
+import type { Task, TaskStatus, Prospect, TimelineEntry, ProspectStatus } from '$lib/types'
+import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, PROSPECT_CENTER } from '$lib/constants'
+import { milesBetween, destinationPoint } from '$lib/geo'
 
 const ASSIGNEES = [
   'Unassigned', 'Andrew', 'Mike', 'Riley', 'Kris', 'Bogdan', 'Ady',
@@ -99,4 +100,91 @@ export function generateMockTasks(count = 35): Task[] {
     })
   }
   return tasks
+}
+
+// ── Mock warehouse prospects ─────────────────────────────────────────────────
+// Used by the Prospects page when USE_MOCK_DATA=true or no ATTOM_API_KEY is set,
+// so the feature is fully demoable without a paid data subscription. Scatters
+// realistic warehouse listings inside the requested radius/size window around
+// the search center, with metro-Detroit city/owner flavor.
+
+// Suburbs ringing Bloomfield Hills, roughly ordered by distance — paired with a
+// rough bearing so a generated point lands near a plausible city name.
+const MOCK_CITIES: Array<[string, string, number]> = [
+  // [city, zip, approx bearing from center in degrees]
+  ['Pontiac', '48340', 340], ['Auburn Hills', '48326', 25], ['Troy', '48083', 110],
+  ['Rochester Hills', '48309', 50], ['Madison Heights', '48071', 160], ['Southfield', '48034', 215],
+  ['Farmington Hills', '48335', 250], ['Novi', '48377', 270], ['Sterling Heights', '48312', 95],
+  ['Warren', '48089', 135], ['Royal Oak', '48067', 175], ['Waterford', '48328', 300],
+  ['Wixom', '48393', 280], ['Clawson', '48017', 130], ['Walled Lake', '48390', 290],
+]
+const STREETS = [
+  'Industrial Row', 'Commerce Dr', 'Enterprise Ct', 'Technology Pkwy', 'Distribution Blvd',
+  'Logistics Way', 'Manufacturing Dr', 'Corporate Dr', 'Research Dr', 'Centerpoint Pkwy',
+]
+const OWNER_SUFFIX = ['Holdings LLC', 'Properties LLC', 'Realty Trust', 'Industrial LP', 'Logistics Inc', 'Capital Partners']
+const OWNER_NAME = ['Great Lakes', 'Oakland', 'Midwest', 'Summit', 'Cardinal', 'Liberty', 'Pinnacle', 'Heartland', 'Ironwood', 'Northpointe']
+// Weighted pipeline spread so the demo charts/markers show variety.
+const STATUS_SPREAD: ProspectStatus[] = ['new', 'new', 'new', 'contacted', 'contacted', 'qualified', 'dead']
+
+const randIn = (lo: number, hi: number) => lo + Math.random() * (hi - lo)
+const round = (n: number, step: number) => Math.round(n / step) * step
+
+/** Generate mock warehouse prospects inside the radius/size window. */
+export function generateMockProspects(opts: {
+  lat?: number
+  lng?: number
+  radiusMiles: number
+  minSqft: number
+  maxSqft: number
+  count?: number
+}): Prospect[] {
+  const lat = opts.lat ?? PROSPECT_CENTER.lat
+  const lng = opts.lng ?? PROSPECT_CENTER.lng
+  const count = opts.count ?? 14
+  const now = new Date().toISOString()
+  const out: Prospect[] = []
+  for (let i = 0; i < count; i++) {
+    const [city, zip] = MOCK_CITIES[i % MOCK_CITIES.length]
+    // Keep points comfortably inside the radius (90%) so none round out of range.
+    const dist = randIn(2, opts.radiusMiles * 0.9)
+    const bearing = randIn(0, 360)
+    const { lat: plat, lng: plng } = destinationPoint(lat, lng, bearing, dist)
+    const sqft = round(randIn(opts.minSqft, opts.maxSqft), 500)
+    const yearBuilt = Math.round(randIn(1968, 2016))
+    const streetNum = Math.round(randIn(100, 9900))
+    const street = STREETS[i % STREETS.length]
+    const address = `${streetNum} ${street}, ${city}, MI ${zip}`
+    const owner = `${OWNER_NAME[i % OWNER_NAME.length]} ${OWNER_SUFFIX[i % OWNER_SUFFIX.length]}`
+    const assessed = round(sqft * randIn(38, 70), 1000)
+    const id = `mock_prospect_${String(i + 1).padStart(2, '0')}`
+    out.push({
+      _id: id,
+      attom_id: id,
+      address,
+      street: `${streetNum} ${street}`,
+      city,
+      state: 'MI',
+      zip,
+      latitude: Number(plat.toFixed(6)),
+      longitude: Number(plng.toFixed(6)),
+      building_sqft: sqft,
+      lot_acres: Number((sqft / 43_560 * randIn(1.6, 3.2)).toFixed(2)),
+      year_built: yearBuilt,
+      property_type: 'WAREHOUSE',
+      property_use: 'Industrial / Warehouse',
+      owner,
+      assessed_value: assessed,
+      market_value: round(assessed * randIn(1.05, 1.4), 1000),
+      last_sale_date: new Date(Date.now() - randInt(2400) * DAY_MS).toISOString().slice(0, 10),
+      last_sale_amount: round(assessed * randIn(0.9, 1.6), 1000),
+      distance_miles: Number(milesBetween(lat, lng, plat, plng).toFixed(1)),
+      pipeline_status: STATUS_SPREAD[i % STATUS_SPREAD.length],
+      assignee: i % 4 === 0 ? undefined : QUOTE_PEOPLE[i % QUOTE_PEOPLE.length],
+      source: 'mock',
+      created_at: now,
+      updated_at: now,
+    })
+  }
+  return out.sort((a, b) => (a.distance_miles ?? 0) - (b.distance_miles ?? 0))
 }

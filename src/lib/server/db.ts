@@ -1,7 +1,8 @@
 import { MongoClient, type Db } from 'mongodb'
 import { env } from '$env/dynamic/private'
-import type { Task, User, Quote, TimelineEntry } from '$lib/types'
-import { generateMockTasks } from './mock'
+import type { Task, User, Quote, Prospect, TimelineEntry } from '$lib/types'
+import { generateMockTasks, generateMockProspects } from './mock'
+import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 
 let client: MongoClient | null = null
 let db: Db | null = null
@@ -183,6 +184,75 @@ export async function updateQuoteStatus(
   const res = await col(d, 'quotes').updateOne(
     { _id: id },
     { $set: { status, updated_at: new Date().toISOString() } },
+  )
+  return res.matchedCount > 0
+}
+
+// ── Warehouse prospects ──────────────────────────────────────────────────────
+// Commercial-property leads pulled from ATTOM, stored in the `prospects`
+// collection keyed by attom_id so a re-pull upserts in place. USE_MOCK_DATA
+// serves generated prospects so the page works without Atlas/a paid key.
+
+export async function getProspects(): Promise<Prospect[]> {
+  if (USE_MOCK) {
+    return generateMockProspects({
+      lat: PROSPECT_CENTER.lat,
+      lng: PROSPECT_CENTER.lng,
+      radiusMiles: PROSPECT_DEFAULTS.radiusMiles,
+      minSqft: PROSPECT_DEFAULTS.minSqft,
+      maxSqft: PROSPECT_DEFAULTS.maxSqft,
+    })
+  }
+  const d = await getDb()
+  const rows = await col(d, 'prospects').find().sort({ distance_miles: 1 }).toArray()
+  return rows.map(r => ({ pipeline_status: 'new', ...r, _id: String(r._id) })) as Prospect[]
+}
+
+/** Upsert a batch of prospects by attom_id. Returns how many were new vs.
+ *  refreshed so the UI can report "X added, Y updated". User-managed pipeline
+ *  fields (status / assignee / notes) are written ONLY on first insert, so a
+ *  later ATTOM re-pull refreshes the property data without wiping a rep's work. */
+export async function upsertProspects(
+  prospects: Prospect[],
+): Promise<{ added: number; updated: number }> {
+  if (!prospects.length) return { added: 0, updated: 0 }
+  const d = await getDb()
+  const now = new Date().toISOString()
+  const ops = prospects.map(p => {
+    // Strip identity + user-managed fields from $set so re-pulls never clobber them.
+    const { _id, created_at, pipeline_status, assignee, notes, ...attomFields } = p
+    return {
+      updateOne: {
+        filter: { _id: p.attom_id },
+        update: {
+          $set: { ...attomFields, updated_at: now },
+          $setOnInsert: {
+            _id: p.attom_id,
+            created_at: created_at ?? now,
+            pipeline_status: pipeline_status ?? 'new',
+            ...(assignee !== undefined ? { assignee } : {}),
+            ...(notes !== undefined ? { notes } : {}),
+          },
+        },
+        upsert: true,
+      },
+    }
+  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res = await col(d, 'prospects').bulkWrite(ops as any, { ordered: false })
+  return { added: res.upsertedCount ?? 0, updated: res.modifiedCount ?? 0 }
+}
+
+/** Patch a prospect's user-managed pipeline fields (status / assignee / notes). */
+export async function updateProspectFields(
+  id: string,
+  patch: Partial<Pick<Prospect, 'pipeline_status' | 'assignee' | 'notes'>>,
+): Promise<boolean> {
+  if (USE_MOCK) return true // dev/demo: edits are optimistic, no Atlas needed
+  const d = await getDb()
+  const res = await col(d, 'prospects').updateOne(
+    { _id: id },
+    { $set: { ...patch, updated_at: new Date().toISOString() } },
   )
   return res.matchedCount > 0
 }
