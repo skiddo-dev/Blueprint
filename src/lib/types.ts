@@ -53,6 +53,36 @@ export interface Quote {
   created_at: string
 }
 
+// A commercial-property prospect (target: warehouses in a size/radius window).
+// Pulled from the ATTOM Data API (or generated in dev/mock mode) and stored in
+// the `prospects` collection, keyed by ATTOM's stable attomId so re-pulls
+// upsert in place instead of duplicating. Surfaced on the admin Prospects page.
+export interface Prospect {
+  _id: string                  // === attom_id (natural dedupe key)
+  attom_id: string
+  address: string              // one-line display address
+  street?: string
+  city?: string
+  state?: string
+  zip?: string
+  latitude?: number
+  longitude?: number
+  building_sqft?: number       // gross building size — the 45k–75k filter target
+  lot_acres?: number
+  year_built?: number
+  property_type?: string       // ATTOM proptype (e.g. "WAREHOUSE")
+  property_use?: string        // ATTOM propsubtype / use label
+  owner?: string
+  assessed_value?: number
+  market_value?: number
+  last_sale_date?: string      // ISO YYYY-MM-DD
+  last_sale_amount?: number
+  distance_miles?: number      // from the search center (Bloomfield Hills)
+  source: 'attom' | 'mock'
+  created_at: string
+  updated_at?: string
+}
+
 export interface StatusMeta {
   color: string
   bg: string

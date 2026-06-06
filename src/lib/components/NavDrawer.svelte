@@ -21,6 +21,7 @@
     { href: '/', label: '🏗️ Kanban Board' },
     { href: '/dashboard', label: '📊 Dashboard' },
     { href: '/quotes', label: '💰 Quote Generator' },
+    { href: '/prospects', label: '🏭 Prospects' },
   ]
   const isActive = (href: string) =>
     href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href)

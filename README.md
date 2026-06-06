@@ -18,6 +18,7 @@ Turns flagged vendor emails, permits, and site alerts into actionable Kanban tas
 - **Sync Emails** — pulls flagged messages from a shared mailbox, parses date / assignee / quote / summary with OpenAI, and creates tasks (with attachments stored in MongoDB)
 - Per-card editing (status, assignee, date, quote, notes) with ~2s live refresh
 - PDF quote generation and a Dashboard (admin)
+- **Prospects** (admin) — pulls warehouse properties (45,000–75,000 sq ft within 30 mi of Bloomfield Hills, MI) from the **ATTOM Data API** onto a sortable table + map. Falls back to realistic mock data when no `ATTOM_API_KEY` is set, so the page works in dev/demo.
 - Entra SSO with roles (admin / pm)
 
 ## Local development
@@ -41,7 +42,9 @@ AZURE_USER_EMAIL=         # shared mailbox to sync flagged emails from
 ADMIN_EMAILS=             # comma-separated; these addresses are always admin
 MONGODB_URI=              # mongodb+srv://...
 OPENAI_API_KEY=           # sk-...
-# optional: MONGODB_DB_NAME (default "blueprint"), MAX_ATTACHMENT_SIZE_MB, MAX_ATTACHMENTS_PER_EMAIL
+ATTOM_API_KEY=            # ATTOM Data API key for the Prospects page (optional — mock data without it)
+# optional: MONGODB_DB_NAME (default "blueprint"), MAX_ATTACHMENT_SIZE_MB, MAX_ATTACHMENTS_PER_EMAIL,
+#           ATTOM_API_BASE, ATTOM_PROPERTY_TYPE (default "WAREHOUSE")
 ```
 
 All secrets are read at **runtime** via `$env/*/private` (never baked into the build).
