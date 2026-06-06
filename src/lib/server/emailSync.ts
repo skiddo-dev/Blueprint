@@ -1,12 +1,23 @@
+import { env } from '$env/dynamic/private'
 import { getTasks, getUsers, insertTask, saveAttachment, patchTask, tryAcquireLease, releaseLease } from './db'
 import { fetchRecentEmails, getGraphToken } from './email'
 import { parseEmailWithLLM } from './llm'
 import { extractText, parseAttachmentWithLLM } from './attachmentParse'
-import { classifyEmail, buildNewTask, buildThreadPatch, buildAttachmentPatch } from './syncLogic'
-import type { SyncEmail } from './syncLogic'
-import type { Task } from '$lib/types'
+import { classifyEmail, buildNewTask, buildThreadPatch, buildAttachmentPatch, resolveMailboxes } from './syncLogic'
+import type { SyncEmail, SyncMailbox } from './syncLogic'
+import type { Task, User } from '$lib/types'
 import { SUPERVISORS, QUOTE_PEOPLE } from '$lib/constants'
 import { extractStoreNumbers, normalizeStoreNumbers } from '$lib/storeNumbers'
+
+// Which inboxes to scan for flagged email: every provisioned PM (or an explicit
+// PM_MAILBOXES override), plus the legacy central AZURE_USER_EMAIL mailbox.
+export function getSyncMailboxes(dbUsers: User[]): SyncMailbox[] {
+  return resolveMailboxes({
+    users: dbUsers.map(u => ({ _id: String(u._id), name: u.name, role: u.role })),
+    explicit: env.PM_MAILBOXES,
+    central: env.AZURE_USER_EMAIL,
+  })
+}
 
 interface EmailAttachment {
   filename: string
@@ -74,10 +85,10 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
   }
 
   try {
-    const emails = await fetchRecentEmails(30)
     // Running list of tasks we match against — seeded from the DB and appended
     // to in-run so a thread's earlier message and its replies collapse onto one
-    // card within a single sweep.
+    // card within a single sweep (works across mailboxes too: the same thread
+    // flagged by two PMs lands on one card).
     const existing = await getTasks()
     const token = await getGraphToken()
     const headers = { Authorization: `Bearer ${token}` }
@@ -86,63 +97,81 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
     // board's "Assign to" dropdown): supervisors + quote people + provisioned users.
     const dbUsers = await getUsers()
     const assignees = [...new Set([...SUPERVISORS, ...QUOTE_PEOPLE, ...dbUsers.map(u => u.name)])].filter(Boolean)
+    const mailboxes = getSyncMailboxes(dbUsers)
 
     let newCount = 0
     let updatedCount = 0
+    const failed: string[] = []
 
-    // Graph returns newest-first; process oldest-first so the opening message of
-    // a thread creates the card before its replies try to patch it.
-    for (const email of [...emails].reverse()) {
-      const e = email as SyncEmail & { attachments?: unknown[] }
-      const { action, task } = classifyEmail(e, existing)
-      if (action === 'duplicate') continue
-
-      if (action === 'update' && task) {
-        const parsed = await parseEmailWithLLM(email as Parameters<typeof parseEmailWithLLM>[0], {
-          assignees,
-          priorTask: {
-            quote: task.quote,
-            quote_type: task.quote_type,
-            quote_status: task.quote_status,
-            po: task.po,
-            store_numbers: task.store_numbers,
-            assigned_to: task.assigned_to,
-            date: task.date,
-          },
-        })
-        const { set, timelineEntry } = buildThreadPatch(task, parsed, e)
-        await patchTask(task._id, set, timelineEntry)
-        Object.assign(task, set) // reflect the patch on the running copy
-        await processAttachments(task._id, e, headers, task)
-        updatedCount++
+    for (const mb of mailboxes) {
+      let emails
+      try {
+        emails = await fetchRecentEmails(mb.email, 30)
+      } catch (e) {
+        // One unreadable mailbox (no license, access policy, etc.) must not abort
+        // the whole sweep — log, record, and move on.
+        console.error('[email-sync] fetch failed for', mb.email, e)
+        failed.push(mb.email)
         continue
       }
 
-      // New task
-      const parsed = await parseEmailWithLLM(email as Parameters<typeof parseEmailWithLLM>[0], { assignees })
-      // Stores from the subject (reliable regex) ∪ stores the LLM found in the body.
-      const storeNumbers = normalizeStoreNumbers([
-        ...extractStoreNumbers(e.subject),
-        ...parsed.store_numbers,
-      ])
-      const taskDoc = buildNewTask(e, parsed, storeNumbers, triggeredBy)
-      const taskId = await insertTask(taskDoc)
-      const created = { ...taskDoc, _id: taskId, id: taskId } as unknown as Task
-      existing.push(created)
-      await processAttachments(taskId, e, headers, created)
-      newCount++
+      // Graph returns newest-first; process oldest-first so the opening message
+      // of a thread creates the card before its replies try to patch it.
+      for (const email of [...emails].reverse()) {
+        const e = email as SyncEmail & { attachments?: unknown[] }
+        const { action, task } = classifyEmail(e, existing)
+        if (action === 'duplicate') continue
+
+        if (action === 'update' && task) {
+          const parsed = await parseEmailWithLLM(email as Parameters<typeof parseEmailWithLLM>[0], {
+            assignees,
+            priorTask: {
+              quote: task.quote,
+              quote_type: task.quote_type,
+              quote_status: task.quote_status,
+              po: task.po,
+              store_numbers: task.store_numbers,
+              assigned_to: task.assigned_to,
+              date: task.date,
+            },
+          })
+          const { set, timelineEntry } = buildThreadPatch(task, parsed, e)
+          await patchTask(task._id, set, timelineEntry)
+          Object.assign(task, set) // reflect the patch on the running copy
+          await processAttachments(task._id, e, headers, task)
+          updatedCount++
+          continue
+        }
+
+        // New task. When the LLM can't infer an assignee, default to the owner of
+        // the inbox it was flagged in so it lands in that PM's "My Work".
+        const parsed = await parseEmailWithLLM(email as Parameters<typeof parseEmailWithLLM>[0], { assignees })
+        // Stores from the subject (reliable regex) ∪ stores the LLM found in the body.
+        const storeNumbers = normalizeStoreNumbers([
+          ...extractStoreNumbers(e.subject),
+          ...parsed.store_numbers,
+        ])
+        const taskDoc = buildNewTask(e, parsed, storeNumbers, triggeredBy, {
+          mailbox: mb.email,
+          defaultAssignee: mb.owner,
+        })
+        const taskId = await insertTask(taskDoc)
+        const created = { ...taskDoc, _id: taskId, id: taskId } as unknown as Task
+        existing.push(created)
+        await processAttachments(taskId, e, headers, created)
+        newCount++
+      }
     }
 
     const bits: string[] = []
     if (newCount) bits.push(`${newCount} new`)
     if (updatedCount) bits.push(`${updatedCount} updated`)
-    return {
-      count: newCount,
-      updated: updatedCount,
-      message: bits.length
-        ? `✅ Synced ${bits.join(' + ')} from flagged email(s)!`
-        : '📭 No new flagged emails.',
-    }
+    let message = bits.length
+      ? `✅ Synced ${bits.join(' + ')} across ${mailboxes.length} inbox(es)!`
+      : `📭 No new flagged emails (scanned ${mailboxes.length} inbox(es)).`
+    if (failed.length) message += ` ⚠️ ${failed.length} inbox(es) couldn’t be read.`
+
+    return { count: newCount, updated: updatedCount, message }
   } finally {
     await releaseLease('email_sync')
   }

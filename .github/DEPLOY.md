@@ -99,7 +99,16 @@ az containerapp update -n "$APP" -g "$RG" --set-env-vars \
   ADMIN_EMAILS="<admin@domain>"
 ```
 
+**Multi-mailbox sync (per-PM inboxes):** flagged email is pulled from every
+provisioned PM's own inbox, with a Graph subscription created per mailbox. The
+scanned set is every user with the `pm` role by default — provisioning a PM is
+all that's needed. To pin an explicit set instead, add
+`PM_MAILBOXES="ben@domain,andrew@domain"` to the `--set-env-vars` above.
+
 Also make sure:
+- The app's **`Mail.Read` application permission** covers the PM mailboxes
+  (admin-consented). If you scope app mailbox access with an **Exchange
+  Application Access Policy**, every PM mailbox must be in that policy.
 - The Container App can **pull from ACR** — enable its managed identity with
   `AcrPull`, or use ACR admin creds (`az containerapp registry set`).
 - **Azure AD → App registration → Redirect URIs** includes
