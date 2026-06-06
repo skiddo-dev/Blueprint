@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state'
+  import ThemeToggle from './ThemeToggle.svelte'
   import type { Snippet } from 'svelte'
 
   // Shared navigation drawer used by every page (board, dashboard, quotes).
@@ -55,6 +56,8 @@
     <button class="secondary full-w" type="submit">Log out</button>
   </form>
 
+  <ThemeToggle />
+
   {#if user.role === 'admin'}
     <hr />
     <nav class="nav-links">
@@ -81,7 +84,7 @@
 <style>
   .sidebar {
     width: var(--sidebar-width, 240px);
-    background: #ffffff;
+    background: var(--card-bg);
     border-right: 1px solid var(--border);
     padding: 14px 12px;
     overflow-y: auto;
@@ -96,7 +99,7 @@
   .sidebar-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.4);
+    background: var(--backdrop);
     z-index: 39; /* just under the drawer (40) */
   }
 
@@ -110,7 +113,7 @@
   .user-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .user-name { font-size: 13px; font-weight: 600; color: var(--text); }
   .role-badge {
-    background: #e0e7ff;
+    background: var(--chip-bg);
     color: var(--primary-text);
     border-radius: 10px;
     padding: 1px 7px;

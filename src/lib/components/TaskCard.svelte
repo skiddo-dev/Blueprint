@@ -391,25 +391,29 @@
 
 
   <!-- Delete -->
-  <button class="delete-btn" onclick={() => onDelete(task._id)} title="Delete task">
+  <button class="delete-btn" onclick={() => onDelete(task._id)} title="Delete task" aria-label="Delete task">
     ✕
   </button>
 </div>
 
 <style>
   .card {
-    background: #fff;
+    background: var(--card-bg);
     border: 1px solid var(--border-card);
     border-radius: 10px;
     padding: 12px;
     margin-bottom: 8px;
     position: relative;
-    box-shadow: 0 1px 4px rgba(15,23,42,0.06);
+    box-shadow: var(--shadow);
     transition: box-shadow 0.18s, transform 0.18s;
   }
   .card:hover {
-    box-shadow: 0 6px 20px rgba(15,23,42,0.11);
+    box-shadow: var(--shadow-hover);
     transform: translateY(-2px);
+  }
+  /* Respect reduced-motion: drop the hover lift, keep the resting shadow. */
+  @media (prefers-reduced-motion: reduce) {
+    .card:hover { transform: none; box-shadow: var(--shadow); }
   }
 
   .drag-hint {
@@ -490,7 +494,7 @@
   }
   .source { font-size: 11px; color: var(--text-faint); }
   .chip {
-    background: #e0e7ff;
+    background: var(--chip-bg);
     color: var(--primary-text);
     border-radius: 20px;
     padding: 2px 9px;
@@ -500,7 +504,7 @@
   .unassigned { font-size: 11px; color: var(--text-faint); }
   /* Admin-only: which PM inbox this email was flagged in. */
   .inbox-chip {
-    background: #f1f5f9;
+    background: var(--border-soft);
     color: var(--text-muted, #64748b);
     border-radius: 20px;
     padding: 2px 9px;
@@ -550,7 +554,7 @@
     padding: 5px 8px;
     border: 1px solid var(--border);
     border-radius: 6px;
-    background: #fff;
+    background: var(--card-bg);
     color: var(--text-body);
     width: 100%;
     box-sizing: border-box;
@@ -610,7 +614,7 @@
     padding: 8px;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: #fff;
+    background: var(--card-bg);
   }
 
   .att-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
@@ -655,7 +659,7 @@
   }
   .mention {
     color: var(--primary-text);
-    background: #e0e7ff;
+    background: var(--chip-bg);
     border-radius: 4px;
     padding: 0 3px;
     font-weight: 600;
@@ -688,7 +692,7 @@
     flex-direction: column;
     min-width: 140px;
     max-width: 100%;
-    background: #fff;
+    background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 8px;
     box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
@@ -712,7 +716,7 @@
     right: 8px;
     background: transparent;
     border: none;
-    color: #cbd5e1;
+    color: var(--text-faint);
     font-size: 11px;
     padding: 2px 5px;
     border-radius: 4px;
@@ -723,7 +727,7 @@
   .delete-btn:hover { color: #ef4444; background: #fee2e2; }
 
   @media (max-width: 768px) {
-    .card:hover { transform: none; box-shadow: 0 1px 4px rgba(15,23,42,0.06); }
+    .card:hover { transform: none; box-shadow: var(--shadow); }
     /* Finger-sized hit areas for the two smallest controls on the card. */
     .drag-hint { padding: 11px 13px; font-size: 17px; }
     .delete-btn {

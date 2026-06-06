@@ -185,7 +185,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: #cbd5e1;
+    color: var(--text-faint);
     border: 2px dashed var(--border);
     border-radius: 8px;
     font-size: 12px;

@@ -28,25 +28,25 @@
 <style>
   .page {
     min-height: 100vh;
-    background: #f8fafc;
+    background: var(--bg);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1rem;
   }
   .card {
-    background: #fff;
-    border: 1px solid #e2e8f0;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 40px 36px;
     text-align: center;
     max-width: 360px;
     width: 100%;
-    box-shadow: 0 4px 24px rgba(15,23,42,0.08);
+    box-shadow: var(--shadow-hover);
   }
   .logo { font-size: 48px; margin-bottom: 8px; }
-  h1 { font-size: 24px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
-  .sub { font-size: 13px; color: #94a3b8; margin-bottom: 28px; }
+  h1 { font-size: 24px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+  .sub { font-size: 13px; color: var(--text-faint); margin-bottom: 28px; }
   .error {
     background: #fef2f2;
     border: 1px solid #fecaca;
@@ -60,5 +60,5 @@
   }
   .signin-form { margin-bottom: 16px; }
   .full-w { width: 100%; justify-content: center; padding: 12px; font-size: 14px; }
-  .footer-note { font-size: 12px; color: #94a3b8; }
+  .footer-note { font-size: 12px; color: var(--text-faint); }
 </style>

@@ -173,7 +173,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 6px 10px;
-    background: #fff;
+    background: var(--card-bg);
     border: 1px solid var(--border-soft);
     border-radius: 7px;
   }

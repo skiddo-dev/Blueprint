@@ -13,6 +13,8 @@
     type ChartOptions,
     type ChartConfiguration,
   } from 'chart.js'
+  import { theme } from '$lib/theme.svelte'
+  import { chartInk } from '$lib/theme'
 
   // Register controllers, scales, elements and default plugins once.
   ChartJS.register(...registerables)
@@ -31,8 +33,14 @@
     return () => instance?.destroy()
   })
 
-  // Keep the chart in sync if the inputs change (e.g. client-side navigation).
+  // Keep the chart in sync if the inputs OR the theme change. Charts draw to a
+  // canvas and can't read CSS vars, so axis text + gridlines come from Chart.js
+  // global defaults, set here from the resolved theme; reading theme.resolved
+  // makes this effect re-run (and re-resolve colors) on a light/dark toggle.
   $effect(() => {
+    const ink = chartInk(theme.resolved)
+    ChartJS.defaults.color = ink.tick
+    ChartJS.defaults.borderColor = ink.grid
     if (!instance) return
     instance.data = data
     instance.options = options

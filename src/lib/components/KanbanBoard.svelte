@@ -439,9 +439,9 @@
     padding: 6px 12px;
   }
   .vt-btn.active {
-    background: #fff;
+    background: var(--card-bg);
     color: var(--primary-dark);
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+    box-shadow: var(--shadow);
   }
   .vt-overdue {
     background: #fee2e2;
@@ -507,8 +507,8 @@
     gap: 10px;
     flex-wrap: wrap;
     background: var(--primary-bg);
-    border: 1px solid #c7d2fe;
-    color: #3730a3;
+    border: 1px solid var(--primary);
+    color: var(--primary-text);
     border-radius: 8px;
     padding: 8px 12px;
     font-size: 13px;
@@ -516,8 +516,8 @@
   }
   .sf-label strong { font-weight: 800; }
   .sf-clear {
-    background: #fff;
-    border: 1px solid #c7d2fe;
+    background: var(--card-bg);
+    border: 1px solid var(--primary);
     color: var(--primary-text);
     border-radius: 6px;
     padding: 4px 10px;
@@ -579,7 +579,7 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      background: #fff;
+      background: var(--card-bg);
       border: 1px solid var(--border);
       color: var(--text-soft);
       border-radius: 999px;

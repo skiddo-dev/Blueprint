@@ -83,8 +83,6 @@
     '#8b5cf6', '#14b8a6', '#ef4444', '#f97316', '#06b6d4',
   ]
   const palette = (n: number) => Array.from({ length: n }, (_, i) => PALETTE[i % PALETTE.length])
-  const TICK = '#94a3b8'
-  const GRID = '#eef2f6'
   const WON = '#10b981'
   const LOST = '#ef4444'
 
@@ -428,11 +426,11 @@
       tooltip: { callbacks: { label: (c: TooltipItem<'bar'>) => ` ${money(c.parsed.y ?? 0)}` } },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
       y: {
         beginAtZero: true,
-        grid: { color: GRID },
-        ticks: { color: TICK, font: { size: 11 }, callback: v => moneyShort(Number(v)) },
+        grid: {},
+        ticks: { font: { size: 11 }, callback: v => moneyShort(Number(v)) },
       },
     },
   } satisfies ChartOptions<'bar'>
@@ -449,10 +447,10 @@
     scales: {
       x: {
         beginAtZero: true,
-        grid: { color: GRID },
-        ticks: { color: TICK, font: { size: 11 }, callback: v => moneyShort(Number(v)) },
+        grid: {},
+        ticks: { font: { size: 11 }, callback: v => moneyShort(Number(v)) },
       },
-      y: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } },
     },
   } satisfies ChartOptions<'bar'>
 
@@ -468,10 +466,10 @@
     scales: {
       x: {
         beginAtZero: true, max: 100,
-        grid: { color: GRID },
-        ticks: { color: TICK, font: { size: 11 }, callback: v => `${v}%` },
+        grid: {},
+        ticks: { font: { size: 11 }, callback: v => `${v}%` },
       },
-      y: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } },
     },
   } satisfies ChartOptions<'bar'>
 
@@ -484,8 +482,8 @@
       tooltip: { callbacks: { label: (c: TooltipItem<'bar'>) => ` ${c.parsed.y} quote${c.parsed.y === 1 ? '' : 's'}` } },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
-      y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, precision: 0 } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { beginAtZero: true, grid: {}, ticks: { font: { size: 11 }, precision: 0 } },
     },
   } satisfies ChartOptions<'bar'>
 
@@ -497,8 +495,8 @@
       tooltip: { callbacks: { label: (c: TooltipItem<'bar'>) => ` ${c.dataset.label}: ${c.parsed.y}` } },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
-      y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, precision: 0 } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { beginAtZero: true, grid: {}, ticks: { font: { size: 11 }, precision: 0 } },
     },
   } satisfies ChartOptions<'bar'>
 
@@ -518,8 +516,8 @@
       },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
-      y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, callback: v => moneyShort(Number(v)) } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { beginAtZero: true, grid: {}, ticks: { font: { size: 11 }, callback: v => moneyShort(Number(v)) } },
       y1: { position: 'right', beginAtZero: true, max: 100, grid: { display: false }, ticks: { color: '#f59e0b', font: { size: 11 }, callback: v => `${v}%` } },
     },
   }
@@ -538,8 +536,8 @@
       },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 10 } } },
-      y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, callback: v => moneyShort(Number(v)) } },
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { beginAtZero: true, grid: {}, ticks: { font: { size: 11 }, callback: v => moneyShort(Number(v)) } },
       y1: { position: 'right', beginAtZero: true, max: 100, grid: { display: false }, ticks: { color: '#f59e0b', font: { size: 11 }, callback: v => `${v}%` } },
     },
   }
@@ -853,53 +851,53 @@
 </PageShell>
 
 <style>
-  hr { border: none; border-top: 1px solid #f1f5f9; }
-  .page-title { font-size: 22px; font-weight: 800; color: #1e293b; }
-  .page-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-  .section-heading { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px; }
-  .empty { color: #94a3b8; font-size: 14px; }
+  hr { border: none; border-top: 1px solid var(--border-soft); }
+  .page-title { font-size: 22px; font-weight: 800; color: var(--text); }
+  .page-sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+  .section-heading { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+  .empty { color: var(--text-faint); font-size: 14px; }
 
   .filter-bar {
     display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-end;
-    background: #fff; border: 1px solid #e8ecf1; border-radius: 10px;
+    background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 10px;
     padding: 12px 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(15,23,42,0.05);
   }
   .filter-group { display: flex; flex-direction: column; gap: 3px; min-width: 220px; flex: 1; }
-  .filter-label { font-size: 12px; color: #64748b; }
-  .filter-label strong { color: #1e293b; font-weight: 700; }
+  .filter-label { font-size: 12px; color: var(--text-muted); }
+  .filter-label strong { color: var(--text); font-weight: 700; }
   .filter-group input[type="range"] { width: 100%; accent-color: #4f46e5; margin: 0; height: 18px; }
-  .filter-group select { width: 100%; font-size: 12px; padding: 5px 7px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: #1e293b; }
-  .filter-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; flex-wrap: wrap; }
+  .filter-group select { width: 100%; font-size: 12px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 7px; background: var(--card-bg); color: var(--text); }
+  .filter-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-faint); flex-wrap: wrap; }
   .risk-badge { color: #b91c1c; font-weight: 700; }
   .risk-text { color: #b91c1c; font-weight: 600; }
 
   .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
   .metric {
-    background: #fff; border: 1px solid #e8ecf1; border-top: 3px solid #6366f1;
+    background: var(--card-bg); border: 1px solid var(--border-card); border-top: 3px solid #6366f1;
     border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(15,23,42,0.05);
   }
-  .metric-val { font-size: 20px; font-weight: 700; color: #1e293b; }
-  .metric-lbl { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+  .metric-val { font-size: 20px; font-weight: 700; color: var(--text); }
+  .metric-lbl { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
 
   .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
   .chart-card {
-    background: #fff; border: 1px solid #e8ecf1; border-radius: 12px; padding: 16px 16px 8px;
+    background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 12px; padding: 16px 16px 8px;
     box-shadow: 0 1px 4px rgba(15,23,42,0.05);
   }
   .chart-card.span-all { grid-column: 1 / -1; }
-  .chart-card h3 { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 12px; }
-  .chart-card h3 .muted { color: #94a3b8; font-weight: 400; }
+  .chart-card h3 { font-size: 13px; font-weight: 600; color: var(--text-body); margin-bottom: 12px; }
+  .chart-card h3 .muted { color: var(--text-faint); font-weight: 400; }
   .canvas-wrap { position: relative; height: 260px; }
   .canvas-wrap.tall { height: 300px; }
-  .chart-note { font-size: 11px; color: #64748b; margin: 6px 2px 2px; }
+  .chart-note { font-size: 11px; color: var(--text-muted); margin: 6px 2px 2px; }
 
   .tracker-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
   .filter-row { display: flex; gap: 6px; }
-  .chip { font-size: 12px; padding: 4px 12px; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; border-radius: 999px; cursor: pointer; }
+  .chip { font-size: 12px; padding: 4px 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text-soft); border-radius: 999px; cursor: pointer; }
   .chip.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
-  .muted-note { font-size: 11px; color: #94a3b8; margin: 4px 2px 10px; }
+  .muted-note { font-size: 11px; color: var(--text-faint); margin: 4px 2px 10px; }
   .error { color: #dc2626; font-size: 13px; margin: 6px 2px; }
-  .status-select { font-size: 12px; padding: 3px 6px; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
+  .status-select { font-size: 12px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
   .status-select.status-won { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
   .status-select.status-lost { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
   .status-select:disabled { opacity: 0.5; cursor: wait; }
@@ -909,9 +907,9 @@
 
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { background: #f8fafc; color: #64748b; font-weight: 600; padding: 8px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-  td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; color: #374151; }
-  tr:hover td { background: #fafafa; }
+  th { background: var(--bg); color: var(--text-muted); font-weight: 600; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border-soft); color: var(--text-body); }
+  tr:hover td { background: var(--bg); }
   .title-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .status-pill { border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
   .store-cell { white-space: nowrap; }
