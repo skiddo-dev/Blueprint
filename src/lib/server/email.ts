@@ -5,10 +5,26 @@ import { env } from '$env/dynamic/private'
 // Microsoft rejects the client_credentials grant (AADSTS7000216). Dynamic env
 // also keeps MAX_* optional with code defaults. Same root cause as src/lib/auth.ts.
 
+const FETCH_TIMEOUT_MS = parseInt(env.GRAPH_FETCH_TIMEOUT_MS ?? '20000')
+const MAX_SYNC_MESSAGES = parseInt(env.MAX_SYNC_MESSAGES ?? '200')
+
+/** fetch() that aborts after FETCH_TIMEOUT_MS so a hung Graph call can't stall
+ *  the whole sync — the run holds a 5-min lease, so without a timeout one wedged
+ *  request would block every mailbox queued behind it. */
+async function graphFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS)
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function getGraphToken(): Promise<string> {
   const tenantId = env.AZURE_TENANT_ID
   const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`
-  const res = await fetch(url, {
+  const res = await graphFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -28,7 +44,7 @@ export async function getGraphToken(): Promise<string> {
 // Fetch flagged messages from a SPECIFIC mailbox (app-only Graph perms let us
 // read any mailbox in the tenant). The caller — runEmailSync — loops every PM
 // inbox; this reads exactly one.
-export async function fetchRecentEmails(mailbox: string, maxResults = 30) {
+export async function fetchRecentEmails(mailbox: string, pageSize = 30) {
   if (!mailbox) throw new Error('fetchRecentEmails: mailbox is required')
   const maxAttachmentSize = parseInt(env.MAX_ATTACHMENT_SIZE_MB ?? '10') * 1024 * 1024
   const maxAttachmentsPerEmail = parseInt(env.MAX_ATTACHMENTS_PER_EMAIL ?? '5')
@@ -39,16 +55,25 @@ export async function fetchRecentEmails(mailbox: string, maxResults = 30) {
   const base = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox)}`
 
   const params = new URLSearchParams({
-    $top: String(maxResults),
+    $top: String(pageSize),
     $select: 'id,conversationId,subject,from,receivedDateTime,bodyPreview,body',
     $filter: "flag/flagStatus eq 'flagged'",
   })
 
-  const res = await fetch(`${base}/messages?${params}`, { headers })
-  if (!res.ok) throw new Error(`Graph messages error: ${res.status}`)
-  const data = await res.json()
+  // Page through flagged mail via @odata.nextLink (a mailbox can hold more than
+  // one $top page of flags), bounded by MAX_SYNC_MESSAGES so a large backlog
+  // can't make a single run unbounded.
+  const collected: Record<string, unknown>[] = []
+  let next: string | null = `${base}/messages?${params}`
+  while (next && collected.length < MAX_SYNC_MESSAGES) {
+    const res = await graphFetch(next, { headers })
+    if (!res.ok) throw new Error(`Graph messages error: ${res.status}`)
+    const data = await res.json()
+    collected.push(...((data.value ?? []) as Record<string, unknown>[]))
+    next = (data['@odata.nextLink'] as string | undefined) ?? null
+  }
 
-  const messages = ((data.value ?? []) as Record<string, unknown>[]).sort((a, b) =>
+  const messages = collected.slice(0, MAX_SYNC_MESSAGES).sort((a, b) =>
     String(b.receivedDateTime ?? '').localeCompare(String(a.receivedDateTime ?? '')),
   )
 
@@ -72,7 +97,7 @@ export async function fetchRecentEmails(mailbox: string, maxResults = 30) {
     const attachments: unknown[] = []
     const msgId = msg.id as string
     if (msgId) {
-      const attRes = await fetch(`${base}/messages/${msgId}/attachments`, { headers })
+      const attRes = await graphFetch(`${base}/messages/${msgId}/attachments`, { headers })
       if (attRes.ok) {
         const attData = await attRes.json()
         for (const att of (((attData.value as Record<string, unknown>[]) ?? []).slice(0, maxAttachmentsPerEmail))) {
