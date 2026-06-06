@@ -6,6 +6,8 @@ import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 
 let client: MongoClient | null = null
 let db: Db | null = null
+let connecting: Promise<Db> | null = null
+let indexesEnsured = false
 
 // Dev escape hatch: serve generated tasks instead of hitting Mongo. Lets the
 // dashboard/board render with realistic data when no Atlas/seed is available.
@@ -13,21 +15,64 @@ const USE_MOCK = env.USE_MOCK_DATA === 'true'
 
 export async function getDb(): Promise<Db> {
   if (db) return db
-  // Read via $env/dynamic/private, NOT process.env: under Vite 8 SSR process.env
-  // is unpopulated from .env, so MONGODB_URI fell back to localhost and the app
-  // silently used a local mongo instead of Atlas. Same root cause as src/lib/auth.ts.
-  const uri = env.MONGODB_URI ?? env.MONGO_URI ?? 'mongodb://localhost:27017/'
-  const dbName = env.MONGODB_DB_NAME ?? env.MONGO_DB_NAME ?? 'blueprint'
-  client = new MongoClient(uri)
-  await client.connect()
-  db = client.db(dbName)
-  return db
+  // Memoize the in-flight connection so concurrent cold-start callers share a
+  // single connect() instead of each constructing its own MongoClient — every
+  // extra client opens its own pool and is then leaked, unreferenced. On
+  // failure, clear the memo so the next call retries rather than awaiting a
+  // permanently-rejected promise.
+  if (!connecting) {
+    connecting = (async () => {
+      // Read via $env/dynamic/private, NOT process.env: under Vite 8 SSR process.env
+      // is unpopulated from .env, so MONGODB_URI fell back to localhost and the app
+      // silently used a local mongo instead of Atlas. Same root cause as src/lib/auth.ts.
+      const uri = env.MONGODB_URI ?? env.MONGO_URI ?? 'mongodb://localhost:27017/'
+      const dbName = env.MONGODB_DB_NAME ?? env.MONGO_DB_NAME ?? 'blueprint'
+      const c = new MongoClient(uri)
+      await c.connect()
+      client = c
+      db = c.db(dbName)
+      await ensureIndexes(db)
+      return db
+    })().catch((e) => {
+      connecting = null
+      throw e
+    })
+  }
+  return connecting
 }
 
 // Our tasks use string UUIDs as _id (not MongoDB ObjectIds).
 // We use `any` on the collection to avoid the strict ObjectId constraint in the driver's types.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function col(d: Db, name: string) { return d.collection<any>(name) }
+
+// Create the indexes the app's hot queries depend on. Idempotent — createIndex is
+// a no-op when an equivalent index already exists — so it's safe to run on every
+// cold connect, and it keeps the index set version-controlled (SSOT) instead of
+// hand-applied per environment. Best-effort: a failure is logged, never fatal, so
+// a transient index issue can't take the whole DB layer down.
+//
+// Not indexed on purpose: tasks.assigned_to / created_by. getTasksForUser matches
+// them with a case-insensitive ($options:'i') anchored regex, which a plain btree
+// index can't serve; serving it would need a stored normalized-lowercase field
+// (a separate change). The collection is small, so the sort indexes above carry it.
+async function ensureIndexes(d: Db): Promise<void> {
+  if (indexesEnsured) return
+  try {
+    await Promise.all([
+      col(d, 'tasks').createIndex({ updated_at: -1 }),             // getTasksSignature — polled ~every 2s by every open client
+      col(d, 'tasks').createIndex({ created_at: -1 }),             // getTasks / getTasksForUser sort
+      col(d, 'attachments').createIndex({ task_id: 1 }),           // deleteTask cascade + per-task attachment lookups
+      col(d, 'quotes').createIndex({ created_at: -1 }),            // getQuotes sort
+      col(d, 'quotes').createIndex({ year: 1, quote_number: -1 }), // getNextQuoteNumber
+      col(d, 'prospects').createIndex({ distance_miles: 1 }),      // getProspects sort
+      col(d, 'users').createIndex({ role: 1, name: 1 }),           // getUsersByRole
+    ])
+    indexesEnsured = true
+  } catch (e) {
+    console.error('[db] ensureIndexes failed (non-fatal):', e)
+  }
+}
 
 // Canonical form for comparing a person's name across sources (Entra display
 // name vs. the "Assign to" dropdown vs. LLM-extracted text). Case- and

@@ -2,6 +2,17 @@ import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { getTask, updateTaskField, deleteTask, normName } from '$lib/server/db'
 
+// Allowlist of task fields a client may set via PATCH. Mirrors the edit controls
+// in TaskCard.svelte. Without it, `updateTaskField` does `$set:{[field]:value}`
+// with a caller-supplied key — letting an owner rewrite `created_by` / `created_at`
+// (reassign authorship, dodge the ownership check) or inject arbitrary fields the
+// dashboard later trusts. Adding a new editable field? Add it here too.
+const EDITABLE_FIELDS = new Set([
+  'status', 'assigned_to', 'date',
+  'quote', 'quote_type', 'quote_status', 'quote_assignee',
+  'notes',
+])
+
 // A user may modify/delete a task only if they are an admin, or the task is
 // theirs (assigned to OR created by them). Throws 401/403/404 otherwise.
 async function assertCanModify(locals: App.Locals, taskId: string) {
@@ -18,7 +29,9 @@ async function assertCanModify(locals: App.Locals, taskId: string) {
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
   await assertCanModify(locals, params.id)
   const { field, value } = await request.json()
-  if (!field) throw error(400, 'Missing field')
+  if (typeof field !== 'string' || !EDITABLE_FIELDS.has(field)) {
+    throw error(400, 'Field is not editable')
+  }
   const ok = await updateTaskField(params.id, field, value)
   return json({ ok })
 }

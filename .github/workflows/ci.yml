@@ -34,6 +34,12 @@ jobs:
       - name: Typecheck (svelte-check)
         run: npm run check
 
+      # Fails if ios/.../BlueprintConfig.generated.swift is stale vs. constants.ts
+      # (the SSOT). Without this gate the Swift config drifts silently from the web
+      # app whenever a constant changes. Regenerate locally with `npm run gen:ios`.
+      - name: iOS config in sync (gen:ios:check)
+        run: npm run gen:ios:check
+
       - name: Unit tests (vitest)
         run: npm test
 
