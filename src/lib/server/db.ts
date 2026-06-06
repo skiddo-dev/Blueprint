@@ -97,7 +97,26 @@ interface Migration { id: string; up: (d: Db) => Promise<void> }
 
 const MIGRATIONS: Migration[] = [
   { id: '0001-backfill-task-owner-emails', up: backfillTaskOwnerEmails },
+  { id: '0002-seed-quote-counters', up: seedQuoteCounters },
 ]
+
+// 0002: seed the per-year quote-number counters from the highest existing
+// quote_number, so getNextQuoteNumber's atomic increment continues the sequence
+// instead of restarting at 1. Idempotent — $max never lowers a counter.
+async function seedQuoteCounters(d: Db): Promise<void> {
+  const years = (await col(d, 'quotes').distinct('year')) as unknown[]
+  for (const y of years) {
+    const year = Number(y)
+    if (!Number.isFinite(year)) continue
+    const top = await col(d, 'quotes').find({ year }).sort({ quote_number: -1 }).limit(1).toArray()
+    const max = top.length ? Number(top[0].quote_number ?? 0) : 0
+    await col(d, 'counters').updateOne(
+      { _id: `quote:${year}` },
+      { $max: { seq: Number.isFinite(max) ? max : 0 } },
+      { upsert: true },
+    )
+  }
+}
 
 async function runMigrations(d: Db): Promise<void> {
   if (migrationsRun) return
@@ -293,13 +312,21 @@ export async function getQuotes(): Promise<Quote[]> {
 
 // Next sequential quote number for a given year (mirrors the per-year numbering
 // in the RAVES Quote Log).
+// Atomically allocate the next per-year quote number. A single findOneAndUpdate
+// with $inc is race-free — concurrent generations get distinct numbers — unlike
+// the old read-max-then-+1, which could hand the same number to two callers. The
+// counters are seeded from existing data by migration 0002; a brand-new year
+// starts at 1.
 export async function getNextQuoteNumber(year: number): Promise<number> {
   if (USE_MOCK) return 1
   const d = await getDb()
-  const top = await col(d, 'quotes')
-    .find({ year }).sort({ quote_number: -1 }).limit(1).toArray()
-  const max = top.length ? Number(top[0].quote_number ?? 0) : 0
-  return (Number.isFinite(max) ? max : 0) + 1
+  const res = await col(d, 'counters').findOneAndUpdate(
+    { _id: `quote:${year}` },
+    { $inc: { seq: 1 } },
+    { upsert: true, returnDocument: 'after' },
+  )
+  // Driver v6 returns the document directly; guard the legacy { value } shape too.
+  return Number(res?.seq ?? res?.value?.seq ?? 1)
 }
 
 // Mark a quote won / lost / open (the dashboard win/loss toggle).
