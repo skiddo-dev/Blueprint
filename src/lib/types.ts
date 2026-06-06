@@ -33,6 +33,8 @@ export interface Task {
   sender_name?: string
   sender_email?: string
   created_by: string
+  created_by_email?: string     // stable owner identity (login email); ownership is keyed on this
+  assignee_email?: string       // assignee's login email when they're a provisioned app user
   attachment_ids: string[]
   timeline?: TimelineEntry[]   // activity log (created / replies / parsed attachments)
   created_at: string

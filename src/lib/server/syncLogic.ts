@@ -91,7 +91,7 @@ export function buildNewTask(
   parsed: ParsedEmail,
   storeNumbers: string[],
   triggeredBy: string,
-  opts: { mailbox?: string; defaultAssignee?: string } = {},
+  opts: { mailbox?: string; defaultAssignee?: string; ownerEmail?: string; assigneeEmail?: string | null } = {},
 ): Record<string, unknown> {
   const now = new Date().toISOString()
   const opening = (parsed.event || parsed.summary || email.subject).slice(0, 160)
@@ -119,6 +119,8 @@ export function buildNewTask(
     sender_name: email.sender_name,
     sender_email: email.sender_email,
     created_by: triggeredBy,
+    created_by_email: opts.ownerEmail ?? null,
+    assignee_email: opts.assigneeEmail ?? null,
     attachment_ids: [],
     timeline,
     created_at: now,
