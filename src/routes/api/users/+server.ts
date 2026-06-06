@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { getUsers, upsertUser, deleteUser } from '$lib/server/db'
+import { readValidated, userUpsertSchema } from '$lib/server/validation'
 
 export const GET: RequestHandler = async ({ locals }) => {
   const session = await locals.auth()
@@ -16,8 +17,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const user = session?.user as Record<string, unknown> | undefined
   if (!user) throw error(401)
   if (user.role !== 'admin') throw error(403)
-  const { email, role, name } = await request.json()
-  if (!email) throw error(400, 'email required')
+  const { email, role, name } = await readValidated(request, userUpsertSchema)
   await upsertUser(email, role ?? 'pm', name ?? '')
   return json({ ok: true })
 }

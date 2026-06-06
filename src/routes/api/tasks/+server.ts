@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { getTasks, getTasksForUser, getUserEmailByName, insertTask, deleteTask } from '$lib/server/db'
 import { extractStoreNumbers } from '$lib/storeNumbers'
+import { newTaskSchema, readValidated } from '$lib/server/validation'
 import type { TaskStatus } from '$lib/types'
 
 export const GET: RequestHandler = async ({ locals, url }) => {
@@ -27,21 +28,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const session = await locals.auth()
   if (!session?.user) throw error(401)
   const user = session.user as Record<string, unknown>
-  const body = await request.json()
-  // Derive store numbers server-side from the title (deterministic, can't be
-  // skipped by the client) unless the client already supplied them.
-  if (body && typeof body.title === 'string' && body.store_numbers == null) {
-    body.store_numbers = extractStoreNumbers(body.title)
-  }
-  // Stamp the creator's stable identity server-side (never trust the client) so
-  // ownership is keyed on login email, not a display-name label; resolve the
-  // assignee to an app-user email when the name maps to one.
-  const creatorEmail = (user.email as string | undefined)?.toLowerCase()
-  if (creatorEmail) body.created_by_email = creatorEmail
-  if (typeof body.assigned_to === 'string') {
-    body.assignee_email = await getUserEmailByName(body.assigned_to)
-  }
-  const id = await insertTask(body)
+  const input = await readValidated(request, newTaskSchema)
+  // Store numbers are derived server-side from the title (deterministic) unless
+  // the client supplied them.
+  const store_numbers = input.store_numbers ?? extractStoreNumbers(input.title)
+  // Stamp the creator's stable identity server-side (never trusted from the
+  // client); resolve the assignee to an app-user email when the name maps to one.
+  const created_by_email = (user.email as string | undefined)?.toLowerCase() ?? null
+  const assignee_email = input.assigned_to ? await getUserEmailByName(input.assigned_to) : null
+  const id = await insertTask({ ...input, store_numbers, created_by_email, assignee_email })
   const tasks = await getTasks()
   const created = tasks.find(t => t._id === id)
   return json(created, { status: 201 })
