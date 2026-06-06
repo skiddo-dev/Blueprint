@@ -53,6 +53,9 @@ export interface Quote {
   created_at: string
 }
 
+// Lead-pipeline stage for a prospect (user-managed; not from ATTOM).
+export type ProspectStatus = 'new' | 'contacted' | 'qualified' | 'dead'
+
 // A commercial-property prospect (target: warehouses in a size/radius window).
 // Pulled from the ATTOM Data API (or generated in dev/mock mode) and stored in
 // the `prospects` collection, keyed by ATTOM's stable attomId so re-pulls
@@ -78,6 +81,10 @@ export interface Prospect {
   last_sale_date?: string      // ISO YYYY-MM-DD
   last_sale_amount?: number
   distance_miles?: number      // from the search center (Bloomfield Hills)
+  // ── User-managed pipeline fields (preserved across ATTOM re-pulls) ──────────
+  pipeline_status?: ProspectStatus  // defaults to 'new'
+  assignee?: string                 // BD rep working the lead
+  notes?: string
   source: 'attom' | 'mock'
   created_at: string
   updated_at?: string

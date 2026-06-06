@@ -18,7 +18,7 @@ Turns flagged vendor emails, permits, and site alerts into actionable Kanban tas
 - **Sync Emails** — pulls flagged messages from a shared mailbox, parses date / assignee / quote / summary with OpenAI, and creates tasks (with attachments stored in MongoDB)
 - Per-card editing (status, assignee, date, quote, notes) with ~2s live refresh
 - PDF quote generation and a Dashboard (admin)
-- **Prospects** (admin) — pulls warehouse properties (45,000–75,000 sq ft within 30 mi of Bloomfield Hills, MI) from the **ATTOM Data API** onto a sortable table + map. Falls back to realistic mock data when no `ATTOM_API_KEY` is set, so the page works in dev/demo.
+- **Prospects** (admin) — pulls warehouse properties (45,000–75,000 sq ft within 30 mi of Bloomfield Hills, MI) from the **ATTOM Data API** into a lead pipeline: sortable table, status-colored Leaflet map, analytics charts (size / city / decade / distance / pipeline), live filters + search, CSV export, per-prospect status/assignee/notes, a detail modal (Google Maps + county-record links), and one-click **Add to Kanban board**. Falls back to realistic mock data when no `ATTOM_API_KEY` is set, so the page works in dev/demo.
 - Entra SSO with roles (admin / pm)
 
 ## Local development

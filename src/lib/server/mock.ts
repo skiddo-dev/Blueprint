@@ -2,6 +2,7 @@
 // (dashboard, board) renders without a populated MongoDB.
 import type { Task, TaskStatus, Prospect } from '$lib/types'
 import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, PROSPECT_CENTER } from '$lib/constants'
+import type { ProspectStatus } from '$lib/types'
 import { milesBetween, destinationPoint } from '$lib/geo'
 
 const ASSIGNEES = [
@@ -93,6 +94,8 @@ const STREETS = [
 ]
 const OWNER_SUFFIX = ['Holdings LLC', 'Properties LLC', 'Realty Trust', 'Industrial LP', 'Logistics Inc', 'Capital Partners']
 const OWNER_NAME = ['Great Lakes', 'Oakland', 'Midwest', 'Summit', 'Cardinal', 'Liberty', 'Pinnacle', 'Heartland', 'Ironwood', 'Northpointe']
+// Weighted pipeline spread so the demo charts/markers show variety.
+const STATUS_SPREAD: ProspectStatus[] = ['new', 'new', 'new', 'contacted', 'contacted', 'qualified', 'dead']
 
 const randIn = (lo: number, hi: number) => lo + Math.random() * (hi - lo)
 const round = (n: number, step: number) => Math.round(n / step) * step
@@ -146,6 +149,8 @@ export function generateMockProspects(opts: {
       last_sale_date: new Date(Date.now() - randInt(2400) * DAY_MS).toISOString().slice(0, 10),
       last_sale_amount: round(assessed * randIn(0.9, 1.6), 1000),
       distance_miles: Number(milesBetween(lat, lng, plat, plng).toFixed(1)),
+      pipeline_status: STATUS_SPREAD[i % STATUS_SPREAD.length],
+      assignee: i % 4 === 0 ? undefined : QUOTE_PEOPLE[i % QUOTE_PEOPLE.length],
       source: 'mock',
       created_at: now,
       updated_at: now,
