@@ -44,12 +44,48 @@ html, body {
   /* Back-compat alias (older rules reference --muted) */
   --muted: var(--text-muted);
 
+  /* Effects (themed) — referenced so dark mode can soften/strengthen them. */
+  --shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+  --shadow-hover: 0 6px 20px rgba(15, 23, 42, 0.11);
+  --backdrop: rgba(15, 23, 42, 0.4);   /* drawer / modal overlay */
+  --chip-bg: #e0e7ff;                  /* indigo chips, mentions, role badge */
+  --scrollbar-thumb: #cbd5e1;
+
   --sidebar-width: 240px;
+}
+
+/* Dark theme — the boot script in app.html sets data-theme to the *resolved*
+   value pre-paint, so only this explicit branch is needed (no @media palette).
+   Overrides the tokens above; vivid status/brand colours (constants.ts) are
+   left alone — they read fine on dark. */
+:root[data-theme="dark"] {
+  --primary: #818cf8;
+  --primary-dark: #6366f1;
+  --primary-bg: #1e1b4b;
+  --primary-text: #c7d2fe;
+
+  --text: #f1f5f9;
+  --text-body: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-soft: #cbd5e1;
+  --text-faint: #64748b;
+
+  --bg: #0f172a;
+  --card-bg: #1e293b;
+  --border: #334155;
+  --border-soft: #233044;
+  --border-card: #334155;
+
+  --shadow: 0 1px 4px rgba(0, 0, 0, 0.40);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --chip-bg: #3730a3;
+  --scrollbar-thumb: #475569;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--border-soft); }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 
 button {
   cursor: pointer;
@@ -73,7 +109,7 @@ button.primary:hover {
   transform: translateY(-1px);
 }
 button.secondary {
-  background: #ffffff;
+  background: var(--card-bg);
   border-color: var(--border);
   color: var(--text-body);
 }
@@ -114,6 +150,27 @@ details summary {
   list-style: none;
 }
 details summary::-webkit-details-marker { display: none; }
+
+/* ── Accessibility ──────────────────────────────────────────────────────────
+   Honour the OS "reduce motion" setting, and always show a visible focus ring
+   for keyboard users (mouse/touch focus stays clean via :not(:focus-visible)). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Neutralize the global hover "lift" transforms (scoped component lifts are
+     handled in-component). */
+  button.primary:hover, button.secondary:hover { transform: none !important; }
+}
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) { outline: none; }
 
 /* Layout shell */
 .app-layout {

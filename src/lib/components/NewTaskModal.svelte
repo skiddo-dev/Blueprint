@@ -139,7 +139,7 @@
   .backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15,23,42,0.4);
+    background: var(--backdrop);
     z-index: 99;
   }
   .modal {
@@ -148,7 +148,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 100;
-    background: #fff;
+    background: var(--card-bg);
     border-radius: 12px;
     width: min(480px, calc(100vw - 32px));
     /* Never taller than the viewport — the body scrolls inside instead. */

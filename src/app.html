@@ -8,9 +8,25 @@
   <!-- viewport-fit=cover lets content extend under the notch; CSS reclaims the
        space with env(safe-area-inset-*). -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="color-scheme" content="light" />
+  <meta name="color-scheme" content="light dark" />
   <meta name="description" content="Email-to-Task Kanban for grocery construction — board, dashboard and quote generator." />
   <meta name="theme-color" content="#6366f1" />
+
+  <!-- Resolve the theme BEFORE first paint so there's no light flash, then set
+       <html data-theme> + the theme-color tint. Mirrors src/lib/theme.ts; the
+       reactive store re-syncs on mount (initTheme in +layout.svelte). -->
+  <script>
+    (function () {
+      try {
+        var p = localStorage.getItem('blueprint:theme') || 'system';
+        var dark = p === 'dark' || (p === 'system' &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', dark ? '#0b1220' : '#6366f1');
+      } catch (e) {}
+    })();
+  </script>
 
   <!-- Add-to-Home-Screen / installable PWA -->
   <link rel="manifest" href="/manifest.webmanifest" />
