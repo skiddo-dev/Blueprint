@@ -46,6 +46,37 @@
     }
   }
 
+  // Copy the current filtered-view URL (the filters live in the query string).
+  let copied = $state(false)
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText(location.href)
+      copied = true
+      setTimeout(() => (copied = false), 1500)
+    } catch { /* clipboard unavailable — ignore */ }
+  }
+
+  // Export the currently-filtered quotes as CSV (matches the active sliders/selects).
+  function csvCell(v: unknown): string {
+    const s = String(v ?? '')
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  function exportCsv() {
+    const header = ['Quote #', 'Year', 'Store', 'Point of Contact', 'Work Type', 'Amount', 'Date Sent', 'Status', 'PO']
+    const rows = fq.map(q => [
+      q.quote_number ?? '', q.year ?? '', q.store_number ?? '',
+      canonicalizeContact(q.point_of_contact), canonicalizeWorkType(q.description),
+      q.amount, q.date_sent ?? '', q.status ?? 'open', q.po ?? '',
+    ])
+    const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `quotes_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   // ── Palette & formatters ────────────────────────────────────────────────
   const PALETTE = [
     '#6366f1', '#f59e0b', '#10b981', '#3b82f6', '#ec4899',
@@ -291,9 +322,10 @@
   )
   const accounts = $derived(
     storeGroups
-      .map(([store, rs]) => { const { rate, decided } = winRateOf(rs); return { store, n: rs.length, value: rs.reduce((s, q) => s + q.amount, 0), rate, decided, last: rs.map(q => q.date_sent ?? '').sort().at(-1) ?? '' } })
+      .map(([store, rs]) => { const { rate, decided } = winRateOf(rs); return { store, n: rs.length, value: rs.reduce((s, q) => s + q.amount, 0), rate, decided, atRisk: decided >= 3 && rate < 0.4, last: rs.map(q => q.date_sent ?? '').sort().at(-1) ?? '' } })
       .sort((a, b) => b.value - a.value),
   )
+  const atRiskCount = $derived(accounts.filter(a => a.atRisk).length)
   const firstTimeWin = $derived(winRateOf(storeGroups.filter(([, rs]) => rs.length === 1).flatMap(([, rs]) => rs)))
   const repeatWin = $derived(winRateOf(storeGroups.filter(([, rs]) => rs.length >= 3).flatMap(([, rs]) => rs)))
 
@@ -587,6 +619,8 @@
         <div class="filter-meta">
           <span>{fq.length} of {totalQuotes} quotes</span>
           {#if filtersActive}<button class="chip" onclick={resetFilters}>Reset</button>{/if}
+          <button class="chip" onclick={copyShareLink}>{copied ? '✓ Copied' : '🔗 Copy link'}</button>
+          <button class="chip" onclick={exportCsv}>⬇ Export CSV</button>
         </div>
       </div>
 
@@ -682,8 +716,9 @@
       <div class="tracker-head">
         <h2 class="section-heading" style="margin: 0">🏬 Account Intelligence</h2>
         <span class="muted-note" style="margin: 0">
-          Repeat accounts (3+ quotes) win {repeatWin.rate === null ? '—' : Math.round(repeatWin.rate)}% ·
-          first-time {firstTimeWin.rate === null ? '—' : Math.round(firstTimeWin.rate)}%
+          Repeat (3+) win {repeatWin.decided ? Math.round(repeatWin.rate * 100) + '%' : '—'} ·
+          first-time {firstTimeWin.decided ? Math.round(firstTimeWin.rate * 100) + '%' : '—'}
+          {#if atRiskCount} · <span class="risk-text">⚠ {atRiskCount} at-risk</span>{/if}
         </span>
       </div>
       <div class="table-wrap">
@@ -692,10 +727,10 @@
           <tbody>
             {#each accounts.slice(0, 15) as a}
               <tr>
-                <td>#{a.store}</td>
+                <td>#{a.store}{#if a.atRisk} <span class="risk-badge" title="≥3 decided, win rate under 40%">⚠</span>{/if}</td>
                 <td>{a.n}</td>
                 <td>{money(a.value)}</td>
-                <td>{a.decided ? `${Math.round(a.rate)}%` : '—'}</td>
+                <td class:risk-text={a.atRisk}>{a.decided ? `${Math.round(a.rate * 100)}%` : '—'}</td>
                 <td>{a.last || '—'}</td>
               </tr>
             {/each}
@@ -834,7 +869,9 @@
   .filter-label strong { color: #1e293b; font-weight: 700; }
   .filter-group input[type="range"] { width: 100%; accent-color: #4f46e5; margin: 0; height: 18px; }
   .filter-group select { width: 100%; font-size: 12px; padding: 5px 7px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: #1e293b; }
-  .filter-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #94a3b8; white-space: nowrap; }
+  .filter-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; flex-wrap: wrap; }
+  .risk-badge { color: #b91c1c; font-weight: 700; }
+  .risk-text { color: #b91c1c; font-weight: 600; }
 
   .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
   .metric {
