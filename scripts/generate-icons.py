@@ -10,6 +10,9 @@ transparent pixels.
 
 Outputs into static/: favicon.png, icon-192.png, icon-512.png,
 apple-touch-icon.png (180), plus a maskable icon-512-maskable.png.
+
+Note: the browser-tab favicon is static/favicon.svg (hand-authored, crisp at
+any size) — this script only emits the PNG raster fallback (favicon.png).
 """
 import os
 import struct
