@@ -57,10 +57,12 @@ const csrfGuard: Handle = async ({ event, resolve }) => {
 const guard: Handle = async ({ event, resolve }) => {
   const path = event.url.pathname
 
-  // Always-public: Auth.js routes, sign-in/unauthorized, and the Graph webhook
-  // (Microsoft posts to it without a user session).
+  // Always-public: Auth.js routes, sign-in/unauthorized, the Graph webhook
+  // (Microsoft posts to it without a user session), and the health probes.
   if (
     path === '/login' ||
+    path === '/healthz' ||
+    path === '/readyz' ||
     path.startsWith('/auth/') ||
     path.startsWith('/api/auth/') ||
     path.startsWith('/api/graph/')
