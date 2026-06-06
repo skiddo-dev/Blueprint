@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types'
-  import { KANBAN_STATUSES, STATUS_META, QUOTE_STATUSES, QUOTE_STATUS_META } from '$lib/constants'
+  import { STATUS_META, QUOTE_STATUSES, QUOTE_STATUS_META } from '$lib/constants'
   import type { Task, AppSession, Quote } from '$lib/types'
   import { extractStoreNumbers } from '$lib/storeNumbers'
   import Chart from '$lib/components/Chart.svelte'
@@ -22,9 +22,10 @@
     '#8b5cf6', '#14b8a6', '#ef4444', '#f97316', '#06b6d4',
   ]
   const palette = (n: number) => Array.from({ length: n }, (_, i) => PALETTE[i % PALETTE.length])
-  const fade = (hex: string, a = 0.15) => hex + Math.round(a * 255).toString(16).padStart(2, '0')
   const TICK = '#94a3b8'
   const GRID = '#eef2f6'
+  const WON = '#10b981'
+  const LOST = '#ef4444'
 
   const money = (n: number) =>
     n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -40,11 +41,9 @@
   type Valued = Task & { quote_value: number }
   const withValues: Valued[] = tasks.map(t => ({ ...t, quote_value: parseQuote(t.quote) }))
 
-  // Tracked quotes (the `quotes` collection) feed every VALUE-based analytic:
-  // value summary metrics, value-by-type, value-by-person, value distribution,
-  // the trend, and the quote pipeline / win-rate (via their won/lost/open
-  // status). The Kanban status charts, the Task-Mix doughnut, and the raw-task
-  // table stay task-only.
+  // Tracked quotes (the `quotes` collection) drive the value + win-rate analytics
+  // below. Value-by-type also folds in task quotes. The raw-task table stays
+  // task-only.
   const genQuotes: Quote[] = data.quotes ?? []
   type QuoteRec = { value: number; type: string; person: string; date?: string }
   const quoteRecs: QuoteRec[] = [
@@ -64,30 +63,35 @@
     })),
   ]
 
-  // ── Summary metrics ─────────────────────────────────────────────────────
-  // `quoted` = task quotes only; drives the task-based pipeline below.
-  const quoted = withValues.filter(t => t.quote_value > 0)
-  // Value metrics span task quotes + generated quotes.
-  const totalValue = quoteRecs.reduce((s, r) => s + r.value, 0)
-  const quoteCount = quoteRecs.length
-  const avgQuote = quoteCount ? totalValue / quoteCount : 0
-  const maxQuote = quoteCount ? Math.max(...quoteRecs.map(r => r.value)) : 0
-  const minQuote = quoteCount ? Math.min(...quoteRecs.map(r => r.value)) : 0
-
   const sumInto = (map: Map<string, number>, key: string, val: number) =>
     map.set(key, (map.get(key) ?? 0) + val)
 
-  // ── Quote pipeline (Draft → Sent → Won/Lost) ────────────────────────────
-  const qStatusOf = (t: Valued) => t.quote_status ?? 'Draft'
+  // ── Win/loss helpers (over the tracked quote log) ─────────────────────────
+  const winRateOf = (rs: Quote[]) => {
+    const w = rs.filter(q => q.status === 'won').length
+    const l = rs.filter(q => q.status === 'lost').length
+    return { w, l, decided: w + l, rate: w + l ? w / (w + l) : 0 }
+  }
+  const groupQuotes = (key: (q: Quote) => string) => {
+    const m = new Map<string, Quote[]>()
+    for (const q of genQuotes) {
+      const k = key(q) || 'Unknown'
+      const arr = m.get(k)
+      if (arr) arr.push(q); else m.set(k, [q])
+    }
+    return m
+  }
+
+  // ── Pipeline + headline metrics (task quotes by quote_status + tracked quotes
+  //    by won/lost/open status; open → an undecided "Sent" quote). ───────────
+  const quoted = withValues.filter(t => t.quote_value > 0)
   const valueByStage = new Map<string, number>()
   const countByStage = new Map<string, number>()
   for (const t of quoted) {
-    const k = qStatusOf(t)
+    const k = t.quote_status ?? 'Draft'
     sumInto(valueByStage, k, t.quote_value)
     sumInto(countByStage, k, 1)
   }
-  // Fold tracked quotes into the pipeline by their won/lost/open status
-  // (open = an undecided sent quote).
   const STATUS_TO_STAGE: Record<string, string> = { won: 'Won', lost: 'Lost', open: 'Sent' }
   for (const q of genQuotes) {
     const stage = STATUS_TO_STAGE[q.status ?? 'open'] ?? 'Sent'
@@ -96,125 +100,133 @@
   }
   const wonCount = countByStage.get('Won') ?? 0
   const lostCount = countByStage.get('Lost') ?? 0
-  const decided = wonCount + lostCount
-  const winRate = decided > 0 ? wonCount / decided : null
+  const winRate = wonCount + lostCount > 0 ? wonCount / (wonCount + lostCount) : null
   const wonValue = valueByStage.get('Won') ?? 0
   const openPipeline = (valueByStage.get('Draft') ?? 0) + (valueByStage.get('Sent') ?? 0)
+  const expectedValue = openPipeline * (winRate ?? 0)
+  const totalValue = quoteRecs.reduce((s, r) => s + r.value, 0)
+  const quoteCount = quoteRecs.length
   const pct = (n: number) => `${Math.round(n * 100)}%`
 
   const metrics = [
-    { label: 'Win Rate', value: winRate === null ? '—' : pct(winRate), accent: '#10b981' },
-    { label: 'Open Pipeline', value: money(openPipeline), accent: '#6366f1' },
+    { label: 'Win Rate', value: winRate === null ? '—' : pct(winRate), accent: WON },
     { label: 'Won Value', value: money(wonValue), accent: '#059669' },
-    { label: 'Total Value', value: money(totalValue), accent: '#6366f1' },
-    { label: 'Average Quote', value: money(avgQuote), accent: '#f59e0b' },
-    { label: 'Highest Quote', value: money(maxQuote), accent: '#3b82f6' },
+    { label: 'Open Pipeline', value: money(openPipeline), accent: '#6366f1' },
+    { label: 'Expected (open × win)', value: money(expectedValue), accent: '#8b5cf6' },
+    { label: 'Total Quoted', value: money(totalValue), accent: '#3b82f6' },
     { label: 'Quotes', value: String(quoteCount), accent: '#ec4899' },
   ]
 
-  // ── Aggregations ────────────────────────────────────────────────────────
-  // Quote value by type — merged (task quotes + generated quotes)
-  const valueByType = new Map<string, number>()
-  for (const r of quoteRecs) sumInto(valueByType, r.type, r.value)
-  // Task count by quote type — task-only (drives the Task-Mix doughnut)
-  const countByType = new Map<string, number>()
-  for (const t of withValues) sumInto(countByType, t.quote_type ?? 'Not Set', 1)
-  const typeByValue = [...valueByType.entries()].sort((a, b) => b[1] - a[1])
-  const typeByCount = [...countByType.entries()].sort((a, b) => b[1] - a[1])
+  // ── Insight aggregations ──────────────────────────────────────────────────
+  // Win rate by estimator (≥5 decided) and by work type (≥4 decided)
+  const estWin = [...groupQuotes(q => q.point_of_contact).entries()]
+    .map(([name, rs]) => ({ name, ...winRateOf(rs) }))
+    .filter(e => e.decided >= 5)
+    .sort((a, b) => b.rate - a.rate)
+  const typeWin = [...groupQuotes(q => q.description).entries()]
+    .map(([name, rs]) => ({ name, ...winRateOf(rs) }))
+    .filter(e => e.decided >= 4)
+    .sort((a, b) => b.rate - a.rate)
 
-  // Status distribution + average quote per status
-  const statusCounts = KANBAN_STATUSES.map(s => tasks.filter(t => t.status === s).length)
-  const avgByStatus = KANBAN_STATUSES.map(s => {
-    const v = withValues.filter(t => t.status === s).map(t => t.quote_value)
-    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0
+  // Won / lost counts per deal-size band
+  const sizeBands: Array<[string, number, number]> = [
+    ['<$10k', 0, 10_000],
+    ['$10–50k', 10_000, 50_000],
+    ['$50–150k', 50_000, 150_000],
+    ['$150–300k', 150_000, 300_000],
+    ['$300k+', 300_000, Infinity],
+  ]
+  const inBand = (q: Quote, lo: number, hi: number) => Math.abs(q.amount) >= lo && Math.abs(q.amount) < hi
+  const sizeWon = sizeBands.map(([, lo, hi]) => genQuotes.filter(q => q.status === 'won' && inBand(q, lo, hi)).length)
+  const sizeLost = sizeBands.map(([, lo, hi]) => genQuotes.filter(q => q.status === 'lost' && inBand(q, lo, hi)).length)
+
+  // Year over year: quoted vs won value + win rate
+  const years = [...new Set(genQuotes.map(q => q.year).filter(Boolean))].sort()
+  const yoyQuoted = years.map(y => genQuotes.filter(q => q.year === y).reduce((s, q) => s + q.amount, 0))
+  const yoyWon = years.map(y => genQuotes.filter(q => q.year === y && q.status === 'won').reduce((s, q) => s + q.amount, 0))
+  const yoyWinRate = years.map(y => {
+    const r = winRateOf(genQuotes.filter(q => q.year === y))
+    return r.decided ? Math.round(r.rate * 100) : null
   })
 
-  // Top people by quote value — merged (task assignees + quote architects)
-  const valueByAssignee = new Map<string, number>()
-  for (const r of quoteRecs) sumInto(valueByAssignee, r.person, r.value)
-  const topAssignees = [...valueByAssignee.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7)
+  // Top repeat stores by value
+  const topStores = [...groupQuotes(q => (q.store_number || '').trim()).entries()]
+    .filter(([s]) => s && s.toUpperCase() !== 'N/A' && s !== 'Unknown')
+    .map(([store, rs]) => ({ store, value: rs.reduce((a, q) => a + q.amount, 0), n: rs.length }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8)
 
-  // Quote value distribution (histogram bins)
-  const binDefs: Array<[string, number, number]> = [
-    ['$0–1K', 0, 1000],
-    ['$1–5K', 1000, 5000],
-    ['$5–10K', 5000, 10_000],
-    ['$10–25K', 10_000, 25_000],
-    ['$25–50K', 25_000, 50_000],
-    ['$50K+', 50_000, Infinity],
-  ]
-  const binCounts = binDefs.map(
-    ([, lo, hi]) => quoteRecs.filter(r => r.value > lo && r.value <= hi).length,
-  )
-
-  // Monthly quote-value trend, one line per top-4 quote type
-  const monthKey = (s?: string): string | null => {
-    if (!s) return null
-    // Read the YYYY-MM directly so date-only strings aren't shifted a month by
-    // Date's UTC parsing (e.g. '2026-06-01' → May 31 in a negative-offset tz).
-    const m = /^(\d{4})-(\d{2})/.exec(s)
-    if (m) return `${m[1]}-${m[2]}`
-    const d = new Date(s)
-    return isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-  }
-  const monthsSet = new Set<string>()
-  const trendAgg = new Map<string, number>() // `${month}|${type}` -> value
-  for (const r of quoteRecs) {
-    const m = monthKey(r.date)
-    if (!m) continue
-    monthsSet.add(m)
-    sumInto(trendAgg, `${m}|${r.type}`, r.value)
-  }
-  const months = [...monthsSet].sort()
-  const trendTypes = typeByValue.slice(0, 4).map(([k]) => k)
-  const prettyMonth = (m: string) => {
-    const [y, mo] = m.split('-').map(Number)
-    return new Date(y, mo - 1, 1).toLocaleString('en-US', { month: 'short', year: '2-digit' })
+  // Seasonality: quote count by month of year
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const monthCounts = Array(12).fill(0) as number[]
+  for (const q of genQuotes) {
+    const mo = q.date_sent ? Number(q.date_sent.slice(5, 7)) : NaN
+    if (mo >= 1 && mo <= 12) monthCounts[mo - 1]++
   }
 
-  // ── Chart datasets ──────────────────────────────────────────────────────
+  // Median won vs lost (bigger deals are harder to win)
+  const median = (xs: number[]) => {
+    if (!xs.length) return 0
+    const s = [...xs].sort((a, b) => a - b)
+    const m = Math.floor(s.length / 2)
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
+  }
+  const medianWon = median(genQuotes.filter(q => q.status === 'won').map(q => Math.abs(q.amount)))
+  const medianLost = median(genQuotes.filter(q => q.status === 'lost').map(q => Math.abs(q.amount)))
+
+  // Quote value by work type — merged (task quotes + tracked quotes)
+  const valueByType = new Map<string, number>()
+  for (const r of quoteRecs) sumInto(valueByType, r.type, r.value)
+  const typeByValue = [...valueByType.entries()].sort((a, b) => b[1] - a[1])
+
+  // ── Chart datasets ────────────────────────────────────────────────────────
   const bar = (data: number[], colors: string[]) =>
     [{ data, backgroundColor: colors, borderRadius: 6, borderSkipped: false as const, maxBarThickness: 56 }]
+  // Colour win-rate bars green/amber/red by how strong the rate is.
+  const rateColors = (rates: number[]) =>
+    rates.map(r => (r >= 0.66 ? WON : r >= 0.4 ? '#f59e0b' : LOST))
+
+  const winByEstimatorData = {
+    labels: estWin.map(e => `${e.name} (${e.w}-${e.l})`),
+    datasets: [{ data: estWin.map(e => Math.round(e.rate * 100)), backgroundColor: rateColors(estWin.map(e => e.rate)), borderRadius: 5, maxBarThickness: 22 }],
+  } satisfies ChartData<'bar', number[], string>
+
+  const winByTypeData = {
+    labels: typeWin.map(e => `${e.name} (${e.w}-${e.l})`),
+    datasets: [{ data: typeWin.map(e => Math.round(e.rate * 100)), backgroundColor: rateColors(typeWin.map(e => e.rate)), borderRadius: 5, maxBarThickness: 22 }],
+  } satisfies ChartData<'bar', number[], string>
+
+  const dealSizeData = {
+    labels: sizeBands.map(([l]) => l),
+    datasets: [
+      { label: 'Won', data: sizeWon, backgroundColor: WON, borderRadius: 4, maxBarThickness: 46 },
+      { label: 'Lost', data: sizeLost, backgroundColor: LOST, borderRadius: 4, maxBarThickness: 46 },
+    ],
+  } satisfies ChartData<'bar', number[], string>
+
+  const yoyData: ChartData<'bar' | 'line', (number | null)[], string> = {
+    labels: years.map(String),
+    datasets: [
+      { type: 'bar', label: 'Quoted', data: yoyQuoted, backgroundColor: '#c7d2fe', borderRadius: 4, order: 3 },
+      { type: 'bar', label: 'Won', data: yoyWon, backgroundColor: WON, borderRadius: 4, order: 2 },
+      { type: 'line', label: 'Win %', data: yoyWinRate, borderColor: '#f59e0b', backgroundColor: '#f59e0b', yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 3, spanGaps: true, order: 1 },
+    ],
+  }
+
+  const topStoresData = {
+    labels: topStores.map(s => `#${s.store} (×${s.n})`),
+    datasets: bar(topStores.map(s => s.value), palette(topStores.length)),
+  } satisfies ChartData<'bar', number[], string>
+
+  const seasonalityData = {
+    labels: MONTHS,
+    datasets: bar(monthCounts, MONTHS.map(() => '#6366f1')),
+  } satisfies ChartData<'bar', number[], string>
 
   const valueByTypeData = {
     labels: typeByValue.map(([k]) => k),
     datasets: bar(typeByValue.map(([, v]) => v), palette(typeByValue.length)),
   } satisfies ChartData<'bar', number[], string>
-
-  const binsData = {
-    labels: binDefs.map(([l]) => l),
-    datasets: bar(binCounts, palette(binDefs.length)),
-  } satisfies ChartData<'bar', number[], string>
-
-  const assigneeData = {
-    labels: topAssignees.map(([k]) => k),
-    datasets: bar(topAssignees.map(([, v]) => v), palette(topAssignees.length)),
-  } satisfies ChartData<'bar', number[], string>
-
-  const avgStatusData = {
-    labels: [...KANBAN_STATUSES],
-    datasets: bar(avgByStatus, KANBAN_STATUSES.map(s => STATUS_META[s].color)),
-  } satisfies ChartData<'bar', number[], string>
-
-  const statusData = {
-    labels: [...KANBAN_STATUSES],
-    datasets: [{
-      data: statusCounts,
-      backgroundColor: KANBAN_STATUSES.map(s => STATUS_META[s].color),
-      borderColor: '#fff',
-      borderWidth: 2,
-    }],
-  } satisfies ChartData<'doughnut', number[], string>
-
-  const typeMixData = {
-    labels: typeByCount.map(([k]) => k),
-    datasets: [{
-      data: typeByCount.map(([, v]) => v),
-      backgroundColor: palette(typeByCount.length),
-      borderColor: '#fff',
-      borderWidth: 2,
-    }],
-  } satisfies ChartData<'doughnut', number[], string>
 
   const pipelineData = {
     labels: [...QUOTE_STATUSES],
@@ -225,21 +237,6 @@
       borderWidth: 2,
     }],
   } satisfies ChartData<'doughnut', number[], string>
-
-  const trendData = {
-    labels: months.map(prettyMonth),
-    datasets: trendTypes.map((ty, i) => ({
-      label: ty,
-      data: months.map(m => trendAgg.get(`${m}|${ty}`) ?? 0),
-      borderColor: PALETTE[i],
-      backgroundColor: fade(PALETTE[i], 0.12),
-      fill: true,
-      tension: 0.35,
-      borderWidth: 2,
-      pointRadius: 2,
-      pointHoverRadius: 5,
-    })),
-  } satisfies ChartData<'line', number[], string>
 
   // ── Shared chart options ────────────────────────────────────────────────
   const moneyBarOpts = {
@@ -259,25 +256,7 @@
     },
   } satisfies ChartOptions<'bar'>
 
-  const countBarOpts = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: { label: (c: TooltipItem<'bar'>) => ` ${c.parsed.y} task${c.parsed.y === 1 ? '' : 's'}` },
-      },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
-      y: {
-        beginAtZero: true,
-        grid: { color: GRID },
-        ticks: { color: TICK, font: { size: 11 }, precision: 0 },
-      },
-    },
-  } satisfies ChartOptions<'bar'>
-
+  // Horizontal money bars (top stores).
   const hMoneyBarOpts = {
     indexAxis: 'y',
     responsive: true,
@@ -295,6 +274,74 @@
       y: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
     },
   } satisfies ChartOptions<'bar'>
+
+  // Horizontal win-rate (%) bars (estimator / work type).
+  const winPctOpts = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (c: TooltipItem<'bar'>) => ` ${c.parsed.x}% win rate` } },
+    },
+    scales: {
+      x: {
+        beginAtZero: true, max: 100,
+        grid: { color: GRID },
+        ticks: { color: TICK, font: { size: 11 }, callback: v => `${v}%` },
+      },
+      y: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
+    },
+  } satisfies ChartOptions<'bar'>
+
+  // Grouped count bars with a legend (won vs lost by deal size; seasonality).
+  const countBarOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: (c: TooltipItem<'bar'>) => ` ${c.parsed.y} quote${c.parsed.y === 1 ? '' : 's'}` } },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
+      y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, precision: 0 } },
+    },
+  } satisfies ChartOptions<'bar'>
+
+  const dealSizeOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', align: 'end', labels: { color: '#475569', font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true } },
+      tooltip: { callbacks: { label: (c: TooltipItem<'bar'>) => ` ${c.dataset.label}: ${c.parsed.y}` } },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
+      y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, precision: 0 } },
+    },
+  } satisfies ChartOptions<'bar'>
+
+  // Dual-axis combo: quoted/won value bars (left) + win-rate line (right).
+  const yoyOpts: ChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', align: 'end', labels: { color: '#475569', font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true } },
+      tooltip: {
+        callbacks: {
+          label: (c: TooltipItem<'bar' | 'line'>) =>
+            c.dataset.label === 'Win %'
+              ? ` Win rate: ${c.parsed.y}%`
+              : ` ${c.dataset.label}: ${money(Number(c.parsed.y) || 0)}`,
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
+      y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, callback: v => moneyShort(Number(v)) } },
+      y1: { position: 'right', beginAtZero: true, max: 100, grid: { display: false }, ticks: { color: '#f59e0b', font: { size: 11 }, callback: v => `${v}%` } },
+    },
+  }
 
   const doughnutOpts = {
     responsive: true,
@@ -317,30 +364,6 @@
       tooltip: { callbacks: { label: (c: TooltipItem<'doughnut'>) => ` ${c.label}: ${money(c.parsed)}` } },
     },
   } satisfies ChartOptions<'doughnut'>
-
-  const lineOpts = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: {
-        position: 'top',
-        align: 'end',
-        labels: { color: '#475569', font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true, padding: 14 },
-      },
-      tooltip: {
-        callbacks: { label: (c: TooltipItem<'line'>) => ` ${c.dataset.label}: ${money(c.parsed.y ?? 0)}` },
-      },
-    },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 11 } } },
-      y: {
-        beginAtZero: true,
-        grid: { color: GRID },
-        ticks: { color: TICK, font: { size: 11 }, callback: v => moneyShort(Number(v)) },
-      },
-    },
-  } satisfies ChartOptions<'line'>
 </script>
 
 <svelte:head><title>Dashboard · Blueprint</title></svelte:head>
@@ -357,7 +380,7 @@
 
     <div class="page-head">
       <h1 class="page-title">📊 Dashboard</h1>
-      <p class="page-sub">Quote analytics (incl. generated quotes) &amp; raw task data · Admin only</p>
+      <p class="page-sub">Quote insights from the RAVES quote log · Admin only</p>
       <hr style="margin: 12px 0 20px" />
     </div>
 
@@ -376,22 +399,23 @@
       </div>
 
       <hr style="margin: 22px 0 18px" />
-      <h2 class="section-heading">📈 Analytics</h2>
+      <h2 class="section-heading">📈 Insights</h2>
 
       <section class="charts-grid">
         <article class="chart-card">
-          <h3>💰 Total Quote Value by Type</h3>
-          <div class="canvas-wrap"><Chart type="bar" data={valueByTypeData} options={moneyBarOpts} /></div>
+          <h3>🏆 Win Rate by Estimator <span class="muted">(≥5 decided)</span></h3>
+          <div class="canvas-wrap"><Chart type="bar" data={winByEstimatorData} options={winPctOpts} /></div>
         </article>
 
         <article class="chart-card">
-          <h3>🔵 Task Status Distribution</h3>
-          <div class="canvas-wrap"><Chart type="doughnut" data={statusData} options={doughnutOpts} /></div>
+          <h3>🎯 Win Rate by Work Type <span class="muted">(≥4 decided)</span></h3>
+          <div class="canvas-wrap"><Chart type="bar" data={winByTypeData} options={winPctOpts} /></div>
         </article>
 
         <article class="chart-card">
-          <h3>📊 Task Mix by Quote Type</h3>
-          <div class="canvas-wrap"><Chart type="doughnut" data={typeMixData} options={doughnutOpts} /></div>
+          <h3>📐 Won vs Lost by Deal Size</h3>
+          <div class="canvas-wrap"><Chart type="bar" data={dealSizeData} options={dealSizeOpts} /></div>
+          <p class="chart-note">Median won {money(medianWon)} · lost {money(medianLost)} — larger bids convert worse</p>
         </article>
 
         <article class="chart-card">
@@ -399,24 +423,24 @@
           <div class="canvas-wrap"><Chart type="doughnut" data={pipelineData} options={moneyDoughnutOpts} /></div>
         </article>
 
-        <article class="chart-card">
-          <h3>📦 Quote Value Distribution</h3>
-          <div class="canvas-wrap"><Chart type="bar" data={binsData} options={countBarOpts} /></div>
-        </article>
-
         <article class="chart-card span-all">
-          <h3>📈 Quote Value Trend Over Time (top types)</h3>
-          <div class="canvas-wrap tall"><Chart type="line" data={trendData} options={lineOpts} /></div>
+          <h3>📈 Growth: Quoted vs Won by Year <span class="muted">(win-rate line)</span></h3>
+          <div class="canvas-wrap tall"><Chart type="bar" data={yoyData} options={yoyOpts} /></div>
         </article>
 
         <article class="chart-card">
-          <h3>👥 Top 7 by Quote Value</h3>
-          <div class="canvas-wrap"><Chart type="bar" data={assigneeData} options={hMoneyBarOpts} /></div>
+          <h3>🏬 Top Stores by Value <span class="muted">(repeat accounts)</span></h3>
+          <div class="canvas-wrap"><Chart type="bar" data={topStoresData} options={hMoneyBarOpts} /></div>
         </article>
 
         <article class="chart-card">
-          <h3>📐 Average Quote by Status</h3>
-          <div class="canvas-wrap"><Chart type="bar" data={avgStatusData} options={moneyBarOpts} /></div>
+          <h3>🗓️ Quotes by Month <span class="muted">(seasonality)</span></h3>
+          <div class="canvas-wrap"><Chart type="bar" data={seasonalityData} options={countBarOpts} /></div>
+        </article>
+
+        <article class="chart-card">
+          <h3>💵 Total Quote Value by Type</h3>
+          <div class="canvas-wrap"><Chart type="bar" data={valueByTypeData} options={moneyBarOpts} /></div>
         </article>
       </section>
 
@@ -486,8 +510,10 @@
   }
   .chart-card.span-all { grid-column: 1 / -1; }
   .chart-card h3 { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+  .chart-card h3 .muted { color: #94a3b8; font-weight: 400; }
   .canvas-wrap { position: relative; height: 260px; }
   .canvas-wrap.tall { height: 300px; }
+  .chart-note { font-size: 11px; color: #64748b; margin: 6px 2px 2px; }
 
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
