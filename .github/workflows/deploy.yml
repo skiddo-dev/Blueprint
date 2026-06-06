@@ -67,10 +67,17 @@ jobs:
 
       - name: Roll out new image to the Container App
         run: |
+          set -uo pipefail
           az config set extension.use_dynamic_install=yes_without_prompt
+          APP="${{ secrets.CONTAINERAPP_NAME }}"
+          RG="${{ secrets.RESOURCE_GROUP }}"
+          # Capture the currently-serving image so the health gate can roll back to it.
+          PREV=$(az containerapp show -n "$APP" -g "$RG" --query "properties.template.containers[0].image" -o tsv 2>/dev/null || true)
+          echo "PREV_IMAGE=$PREV" >> "$GITHUB_ENV"
+          echo "Previous image: ${PREV:-<none>}"
           az containerapp update \
-            --name "${{ secrets.CONTAINERAPP_NAME }}" \
-            --resource-group "${{ secrets.RESOURCE_GROUP }}" \
+            --name "$APP" \
+            --resource-group "$RG" \
             --image "${{ secrets.ACR_NAME }}.azurecr.io/${IMAGE_NAME}:${{ github.sha }}"
 
       # Gate the deploy on the NEW revision actually coming up healthy. `az
@@ -79,13 +86,23 @@ jobs:
       # DEV_FAKE_AUTH guard, a missing env var) would leave CI green while prod
       # kept serving the previous revision. Identify the revision running THIS
       # image (by sha), wait for it to run, and confirm /readyz on the ingress.
-      - name: Health-gate the rollout
+      - name: Health-gate the rollout (rollback on failure)
         run: |
-          set -euo pipefail
+          set -uo pipefail
           APP="${{ secrets.CONTAINERAPP_NAME }}"
           RG="${{ secrets.RESOURCE_GROUP }}"
           IMG="${{ secrets.ACR_NAME }}.azurecr.io/${IMAGE_NAME}:${{ github.sha }}"
           FQDN=$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+          # Restore the previously-serving image (captured in the rollout step) so a
+          # bad deploy never lingers in front of users, then fail the job so it's loud.
+          rollback() {
+            if [ -n "${PREV_IMAGE:-}" ] && [ "${PREV_IMAGE:-}" != "$IMG" ]; then
+              echo "::warning::deploy gate failed — rolling back to $PREV_IMAGE"
+              az containerapp update -n "$APP" -g "$RG" --image "$PREV_IMAGE" >/dev/null 2>&1 || echo "::error::rollback command failed"
+            else
+              echo "::warning::no distinct previous image to roll back to"
+            fi
+          }
           echo "Gating on the revision running $IMG via https://$FQDN/readyz"
           for i in $(seq 1 30); do
             REV=$(az containerapp revision list -n "$APP" -g "$RG" \
@@ -100,8 +117,9 @@ jobs:
             if { [ "$STATE" = "Running" ] || [ "$STATE" = "RunningAtMaxScale" ]; } && [ "$CODE" = "200" ]; then
               echo "✅ new revision is healthy and serving"; exit 0
             fi
-            if [ "$STATE" = "Failed" ]; then echo "::error::revision $REV failed to start"; exit 1; fi
+            if [ "$STATE" = "Failed" ]; then echo "::error::revision $REV failed to start"; rollback; exit 1; fi
             sleep 10
           done
           echo "::error::new revision did not become healthy within ~5 min — deploy gate failed"
+          rollback
           exit 1
