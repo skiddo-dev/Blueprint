@@ -64,266 +64,275 @@
   type Valued = Task & { quote_value: number }
   const withValues: Valued[] = tasks.map(t => ({ ...t, quote_value: parseQuote(t.quote) }))
 
-  // Tracked quotes (the `quotes` collection) drive the value + win-rate analytics
-  // below. Value-by-type also folds in task quotes. The raw-task table stays
-  // task-only.
+  // Tracked quotes (the `quotes` collection) drive the analytics below.
   const genQuotes: Quote[] = data.quotes ?? []
-  type QuoteRec = { value: number; type: string; person: string; date?: string }
-  const quoteRecs: QuoteRec[] = [
-    ...withValues
-      .filter(t => t.quote_value > 0)
-      .map(t => ({
-        value: t.quote_value,
-        type: t.quote_type ?? 'Not Set',
-        person: t.assigned_to || 'Unassigned',
-        date: t.date,
-      })),
-    ...genQuotes.map(q => ({
-      value: q.amount,
-      type: canonicalizeWorkType(q.description) || 'Not Set',
-      person: canonicalizeContact(q.point_of_contact) || 'Unassigned',
-      date: q.date_sent,
-    })),
-  ]
+  const totalQuotes = genQuotes.length
 
-  // Quote tracker rows (newest first), filtered by the chip selection.
-  const quotesByDate = [...genQuotes].sort((a, b) => (b.date_sent ?? '').localeCompare(a.date_sent ?? ''))
-  const shownQuotes = $derived(
-    (quoteFilter === 'all' ? quotesByDate : quotesByDate.filter(q => (q.status ?? 'open') === quoteFilter)).slice(0, 200),
-  )
+  // ── Interactive filters (sliders) ─────────────────────────────────────────
+  // Every chart/metric below reacts to `fq`, the slider-filtered quote set.
+  const allYears = [...new Set(genQuotes.map(q => q.year).filter(Boolean))].sort((a, b) => a - b)
+  const yearMin = allYears[0] ?? new Date().getFullYear()
+  const yearMax = allYears.at(-1) ?? yearMin
+  const amtCeil = Math.max(10_000, Math.ceil(Math.max(0, ...genQuotes.map(q => Math.abs(q.amount))) / 10_000) * 10_000)
+  let yearFrom = $state(yearMin)
+  let yearTo = $state(yearMax)
+  let amtLo = $state(0)
+  let amtHi = $state(amtCeil)
+  const filtersActive = $derived(yearFrom !== yearMin || yearTo !== yearMax || amtLo !== 0 || amtHi !== amtCeil)
+  function resetFilters() { yearFrom = yearMin; yearTo = yearMax; amtLo = 0; amtHi = amtCeil }
 
+  const fq = $derived.by(() => {
+    const ylo = Math.min(yearFrom, yearTo), yhi = Math.max(yearFrom, yearTo)
+    const alo = Math.min(amtLo, amtHi), ahi = Math.max(amtLo, amtHi)
+    return genQuotes.filter(q => {
+      const yr = q.year ?? 0, a = Math.abs(q.amount)
+      return yr >= ylo && yr <= yhi && a >= alo && a <= ahi
+    })
+  })
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
   const sumInto = (map: Map<string, number>, key: string, val: number) =>
     map.set(key, (map.get(key) ?? 0) + val)
-
-  // ── Win/loss helpers (over the tracked quote log) ─────────────────────────
   const winRateOf = (rs: Quote[]) => {
     const w = rs.filter(q => q.status === 'won').length
     const l = rs.filter(q => q.status === 'lost').length
     return { w, l, decided: w + l, rate: w + l ? w / (w + l) : 0 }
   }
-  const groupQuotes = (key: (q: Quote) => string) => {
+  const groupQuotes = (rows: Quote[], key: (q: Quote) => string) => {
     const m = new Map<string, Quote[]>()
-    for (const q of genQuotes) {
+    for (const q of rows) {
       const k = key(q) || 'Unknown'
       const arr = m.get(k)
       if (arr) arr.push(q); else m.set(k, [q])
     }
     return m
   }
-
-  // ── Pipeline + headline metrics (task quotes by quote_status + tracked quotes
-  //    by won/lost/open status; open → an undecided "Sent" quote). ───────────
-  const quoted = withValues.filter(t => t.quote_value > 0)
-  const valueByStage = new Map<string, number>()
-  const countByStage = new Map<string, number>()
-  for (const t of quoted) {
-    const k = t.quote_status ?? 'Draft'
-    sumInto(valueByStage, k, t.quote_value)
-    sumInto(countByStage, k, 1)
-  }
-  const STATUS_TO_STAGE: Record<string, string> = { won: 'Won', lost: 'Lost', open: 'Sent' }
-  for (const q of genQuotes) {
-    const stage = STATUS_TO_STAGE[q.status ?? 'open'] ?? 'Sent'
-    sumInto(valueByStage, stage, q.amount)
-    sumInto(countByStage, stage, 1)
-  }
-  const wonCount = countByStage.get('Won') ?? 0
-  const lostCount = countByStage.get('Lost') ?? 0
-  const winRate = wonCount + lostCount > 0 ? wonCount / (wonCount + lostCount) : null
-  const wonValue = valueByStage.get('Won') ?? 0
-  const openPipeline = (valueByStage.get('Draft') ?? 0) + (valueByStage.get('Sent') ?? 0)
-  const expectedValue = openPipeline * (winRate ?? 0)
-  const totalValue = quoteRecs.reduce((s, r) => s + r.value, 0)
-  const quoteCount = quoteRecs.length
-  const pct = (n: number) => `${Math.round(n * 100)}%`
-
-  const metrics = [
-    { label: 'Win Rate', value: winRate === null ? '—' : pct(winRate), accent: WON },
-    { label: 'Won Value', value: money(wonValue), accent: '#059669' },
-    { label: 'Open Pipeline', value: money(openPipeline), accent: '#6366f1' },
-    { label: 'Expected (open × win)', value: money(expectedValue), accent: '#8b5cf6' },
-    { label: 'Total Quoted', value: money(totalValue), accent: '#3b82f6' },
-    { label: 'Quotes', value: String(quoteCount), accent: '#ec4899' },
-  ]
-
-  // ── Insight aggregations ──────────────────────────────────────────────────
-  // Win rate by estimator (≥5 decided) and by work type (≥4 decided)
-  const estWin = [...groupQuotes(q => canonicalizeContact(q.point_of_contact)).entries()]
-    .map(([name, rs]) => ({ name, ...winRateOf(rs) }))
-    .filter(e => e.decided >= 5)
-    .sort((a, b) => b.rate - a.rate)
-  const typeWin = [...groupQuotes(q => canonicalizeWorkType(q.description)).entries()]
-    .map(([name, rs]) => ({ name, ...winRateOf(rs) }))
-    .filter(e => e.decided >= 4)
-    .sort((a, b) => b.rate - a.rate)
-
-  // Won / lost counts per deal-size band
-  const sizeBands: Array<[string, number, number]> = [
-    ['<$10k', 0, 10_000],
-    ['$10–50k', 10_000, 50_000],
-    ['$50–150k', 50_000, 150_000],
-    ['$150–300k', 150_000, 300_000],
-    ['$300k+', 300_000, Infinity],
-  ]
-  const inBand = (q: Quote, lo: number, hi: number) => Math.abs(q.amount) >= lo && Math.abs(q.amount) < hi
-  const sizeWon = sizeBands.map(([, lo, hi]) => genQuotes.filter(q => q.status === 'won' && inBand(q, lo, hi)).length)
-  const sizeLost = sizeBands.map(([, lo, hi]) => genQuotes.filter(q => q.status === 'lost' && inBand(q, lo, hi)).length)
-
-  // Year over year: quoted vs won value + win rate
-  const years = [...new Set(genQuotes.map(q => q.year).filter(Boolean))].sort()
-  const yoyQuoted = years.map(y => genQuotes.filter(q => q.year === y).reduce((s, q) => s + q.amount, 0))
-  const yoyWon = years.map(y => genQuotes.filter(q => q.year === y && q.status === 'won').reduce((s, q) => s + q.amount, 0))
-  const yoyWinRate = years.map(y => {
-    const r = winRateOf(genQuotes.filter(q => q.year === y))
-    return r.decided ? Math.round(r.rate * 100) : null
-  })
-
-  // Top repeat stores by value
-  const topStores = [...groupQuotes(q => (q.store_number || '').trim()).entries()]
-    .filter(([s]) => s && s.toUpperCase() !== 'N/A' && s !== 'Unknown')
-    .map(([store, rs]) => ({ store, value: rs.reduce((a, q) => a + q.amount, 0), n: rs.length }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8)
-
-  // Seasonality: quote count by month of year
-  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-  const monthCounts = Array(12).fill(0) as number[]
-  for (const q of genQuotes) {
-    const mo = q.date_sent ? Number(q.date_sent.slice(5, 7)) : NaN
-    if (mo >= 1 && mo <= 12) monthCounts[mo - 1]++
-  }
-
-  // Median won vs lost (bigger deals are harder to win)
   const median = (xs: number[]) => {
     if (!xs.length) return 0
     const s = [...xs].sort((a, b) => a - b)
     const m = Math.floor(s.length / 2)
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
   }
-  const medianWon = median(genQuotes.filter(q => q.status === 'won').map(q => Math.abs(q.amount)))
-  const medianLost = median(genQuotes.filter(q => q.status === 'lost').map(q => Math.abs(q.amount)))
 
-  // Quote value by work type — merged (task quotes + tracked quotes)
-  const valueByType = new Map<string, number>()
-  for (const r of quoteRecs) sumInto(valueByType, r.type, r.value)
-  const typeByValue = [...valueByType.entries()].sort((a, b) => b[1] - a[1])
+  // Task quotes (Kanban board) — always included in the value/pipeline totals.
+  const taskQuoted = withValues.filter(t => t.quote_value > 0)
+  const taskRecs = taskQuoted.map(t => ({
+    value: t.quote_value, type: t.quote_type ?? 'Not Set',
+    person: t.assigned_to || 'Unassigned', date: t.date,
+  }))
 
-  // Estimator scorecards: volume, win rate, avg deal size, specialization, value
-  const estimatorScores = [...groupQuotes(q => canonicalizeContact(q.point_of_contact)).entries()]
-    .map(([name, rs]) => {
-      const { w, l, rate, decided } = winRateOf(rs)
-      const dec = rs.filter(q => q.status === 'won' || q.status === 'lost')
-      const avg = dec.length ? dec.reduce((s, q) => s + Math.abs(q.amount), 0) / dec.length : 0
-      const types = new Map<string, number>()
-      for (const q of rs) sumInto(types, canonicalizeWorkType(q.description), 1)
-      const topType = [...types.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
-      return { name, n: rs.length, w, l, decided, rate, avg, topType, value: rs.reduce((s, q) => s + q.amount, 0) }
-    })
-    .sort((a, b) => b.value - a.value)
+  type QuoteRec = { value: number; type: string; person: string; date?: string }
+  const quoteRecs = $derived<QuoteRec[]>([
+    ...taskRecs,
+    ...fq.map(q => ({
+      value: q.amount,
+      type: canonicalizeWorkType(q.description) || 'Not Set',
+      person: canonicalizeContact(q.point_of_contact) || 'Unassigned',
+      date: q.date_sent,
+    })),
+  ])
 
-  // Account intelligence: per store, plus the repeat-vs-first-time win effect
-  const storeGroups = [...groupQuotes(q => (q.store_number || '').trim()).entries()]
-    .filter(([s]) => s && s.toUpperCase() !== 'N/A' && s !== 'Unknown')
-  const accounts = storeGroups
-    .map(([store, rs]) => {
-      const { rate, decided } = winRateOf(rs)
-      return { store, n: rs.length, value: rs.reduce((s, q) => s + q.amount, 0), rate, decided, last: rs.map(q => q.date_sent ?? '').sort().at(-1) ?? '' }
-    })
-    .sort((a, b) => b.value - a.value)
-  const firstTimeWin = winRateOf(storeGroups.filter(([, rs]) => rs.length === 1).flatMap(([, rs]) => rs))
-  const repeatWin = winRateOf(storeGroups.filter(([, rs]) => rs.length >= 3).flatMap(([, rs]) => rs))
+  // Quote tracker rows (newest first), filtered by the sliders + status chip.
+  const shownQuotes = $derived(
+    [...fq]
+      .filter(q => quoteFilter === 'all' || (q.status ?? 'open') === quoteFilter)
+      .sort((a, b) => (b.date_sent ?? '').localeCompare(a.date_sent ?? ''))
+      .slice(0, 200),
+  )
 
-  // Value concentration (Pareto) by estimator — key-person risk
-  const totalEstValue = estimatorScores.reduce((s, e) => s + e.value, 0)
-  const paretoEst = estimatorScores.slice(0, 8)
-  let _cum = 0
-  const paretoCum = paretoEst.map(e => { _cum += e.value; return totalEstValue ? Math.round((_cum / totalEstValue) * 100) : 0 })
+  // ── Pipeline + headline metrics ───────────────────────────────────────────
+  const STATUS_TO_STAGE: Record<string, string> = { won: 'Won', lost: 'Lost', open: 'Sent' }
+  const stages = $derived.by(() => {
+    const value = new Map<string, number>(), count = new Map<string, number>()
+    for (const t of taskQuoted) { const k = t.quote_status ?? 'Draft'; sumInto(value, k, t.quote_value); sumInto(count, k, 1) }
+    for (const q of fq) { const k = STATUS_TO_STAGE[q.status ?? 'open'] ?? 'Sent'; sumInto(value, k, q.amount); sumInto(count, k, 1) }
+    return { value, count }
+  })
+  const wonCount = $derived(stages.count.get('Won') ?? 0)
+  const lostCount = $derived(stages.count.get('Lost') ?? 0)
+  const winRate = $derived(wonCount + lostCount > 0 ? wonCount / (wonCount + lostCount) : null)
+  const wonValue = $derived(stages.value.get('Won') ?? 0)
+  const openPipeline = $derived((stages.value.get('Draft') ?? 0) + (stages.value.get('Sent') ?? 0))
+  const expectedValue = $derived(openPipeline * (winRate ?? 0))
+  const totalValue = $derived(quoteRecs.reduce((s, r) => s + r.value, 0))
+  const quoteCount = $derived(quoteRecs.length)
+  const pct = (n: number) => `${Math.round(n * 100)}%`
 
-  // Current-year full-year projection (seasonality run-rate from prior years)
+  const metrics = $derived([
+    { label: 'Win Rate', value: winRate === null ? '—' : pct(winRate), accent: WON },
+    { label: 'Won Value', value: money(wonValue), accent: '#059669' },
+    { label: 'Open Pipeline', value: money(openPipeline), accent: '#6366f1' },
+    { label: 'Expected (open × win)', value: money(expectedValue), accent: '#8b5cf6' },
+    { label: 'Total Quoted', value: money(totalValue), accent: '#3b82f6' },
+    { label: 'Quotes', value: String(quoteCount), accent: '#ec4899' },
+  ])
+
+  // ── Insight aggregations (all reactive to the sliders) ────────────────────
+  const estWin = $derived(
+    [...groupQuotes(fq, q => canonicalizeContact(q.point_of_contact)).entries()]
+      .map(([name, rs]) => ({ name, ...winRateOf(rs) }))
+      .filter(e => e.decided >= 5)
+      .sort((a, b) => b.rate - a.rate),
+  )
+  const typeWin = $derived(
+    [...groupQuotes(fq, q => canonicalizeWorkType(q.description)).entries()]
+      .map(([name, rs]) => ({ name, ...winRateOf(rs) }))
+      .filter(e => e.decided >= 4)
+      .sort((a, b) => b.rate - a.rate),
+  )
+
+  const sizeBands: Array<[string, number, number]> = [
+    ['<$10k', 0, 10_000], ['$10–50k', 10_000, 50_000], ['$50–150k', 50_000, 150_000],
+    ['$150–300k', 150_000, 300_000], ['$300k+', 300_000, Infinity],
+  ]
+  const inBand = (q: Quote, lo: number, hi: number) => Math.abs(q.amount) >= lo && Math.abs(q.amount) < hi
+  const sizeWon = $derived(sizeBands.map(([, lo, hi]) => fq.filter(q => q.status === 'won' && inBand(q, lo, hi)).length))
+  const sizeLost = $derived(sizeBands.map(([, lo, hi]) => fq.filter(q => q.status === 'lost' && inBand(q, lo, hi)).length))
+
+  const fYears = $derived([...new Set(fq.map(q => q.year).filter(Boolean))].sort((a, b) => a - b))
+  const yoyQuoted = $derived(fYears.map(y => fq.filter(q => q.year === y).reduce((s, q) => s + q.amount, 0)))
+  const yoyWon = $derived(fYears.map(y => fq.filter(q => q.year === y && q.status === 'won').reduce((s, q) => s + q.amount, 0)))
+  const yoyWinRate = $derived(fYears.map(y => { const r = winRateOf(fq.filter(q => q.year === y)); return r.decided ? Math.round(r.rate * 100) : null }))
+
+  const topStores = $derived(
+    [...groupQuotes(fq, q => (q.store_number || '').trim()).entries()]
+      .filter(([s]) => s && s.toUpperCase() !== 'N/A' && s !== 'Unknown')
+      .map(([store, rs]) => ({ store, value: rs.reduce((a, q) => a + q.amount, 0), n: rs.length }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8),
+  )
+
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const monthCounts = $derived.by(() => {
+    const c = Array(12).fill(0) as number[]
+    for (const q of fq) { const mo = q.date_sent ? Number(q.date_sent.slice(5, 7)) : NaN; if (mo >= 1 && mo <= 12) c[mo - 1]++ }
+    return c
+  })
+
+  const medianWon = $derived(median(fq.filter(q => q.status === 'won').map(q => Math.abs(q.amount))))
+  const medianLost = $derived(median(fq.filter(q => q.status === 'lost').map(q => Math.abs(q.amount))))
+
+  const typeByValue = $derived.by(() => {
+    const m = new Map<string, number>()
+    for (const r of quoteRecs) sumInto(m, r.type, r.value)
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  })
+
+  const estimatorScores = $derived(
+    [...groupQuotes(fq, q => canonicalizeContact(q.point_of_contact)).entries()]
+      .map(([name, rs]) => {
+        const { w, l, rate, decided } = winRateOf(rs)
+        const dec = rs.filter(q => q.status === 'won' || q.status === 'lost')
+        const avg = dec.length ? dec.reduce((s, q) => s + Math.abs(q.amount), 0) / dec.length : 0
+        const types = new Map<string, number>()
+        for (const q of rs) sumInto(types, canonicalizeWorkType(q.description), 1)
+        const topType = [...types.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
+        return { name, n: rs.length, w, l, decided, rate, avg, topType, value: rs.reduce((s, q) => s + q.amount, 0) }
+      })
+      .sort((a, b) => b.value - a.value),
+  )
+
+  const storeGroups = $derived(
+    [...groupQuotes(fq, q => (q.store_number || '').trim()).entries()]
+      .filter(([s]) => s && s.toUpperCase() !== 'N/A' && s !== 'Unknown'),
+  )
+  const accounts = $derived(
+    storeGroups
+      .map(([store, rs]) => { const { rate, decided } = winRateOf(rs); return { store, n: rs.length, value: rs.reduce((s, q) => s + q.amount, 0), rate, decided, last: rs.map(q => q.date_sent ?? '').sort().at(-1) ?? '' } })
+      .sort((a, b) => b.value - a.value),
+  )
+  const firstTimeWin = $derived(winRateOf(storeGroups.filter(([, rs]) => rs.length === 1).flatMap(([, rs]) => rs)))
+  const repeatWin = $derived(winRateOf(storeGroups.filter(([, rs]) => rs.length >= 3).flatMap(([, rs]) => rs)))
+
+  const paretoEst = $derived(estimatorScores.slice(0, 8))
+  const paretoCum = $derived.by(() => {
+    const total = estimatorScores.reduce((s, e) => s + e.value, 0)
+    let cum = 0
+    return paretoEst.map(e => { cum += e.value; return total ? Math.round((cum / total) * 100) : 0 })
+  })
+
+  // Forecast + PO hygiene use the FULL log (independent of the view sliders).
   const annualValue = (y: number) => genQuotes.filter(q => q.year === y).reduce((s, q) => s + q.amount, 0)
-  const curYear = years.at(-1) ?? new Date().getFullYear()
+  const curYear = allYears.at(-1) ?? new Date().getFullYear()
   const curMonth = Math.max(0, ...genQuotes.filter(q => q.year === curYear && q.date_sent).map(q => Number(q.date_sent!.slice(5, 7))))
-  const priorShares = years.filter(y => y < curYear).map(y => {
+  const priorShares = allYears.filter(y => y < curYear).map(y => {
     const a = annualValue(y)
     const upto = genQuotes.filter(q => q.year === y && q.date_sent && Number(q.date_sent.slice(5, 7)) <= curMonth).reduce((s, q) => s + q.amount, 0)
     return a ? upto / a : 0
   }).filter(x => x > 0)
   const projectedFY = priorShares.length ? annualValue(curYear) / (priorShares.reduce((a, b) => a + b, 0) / priorShares.length) : null
 
-  // PO present but not marked Won → likely awarded, surfaced for one-click review
   const poNeedsReview = genQuotes
     .filter(q => (q.po || '').trim() && q.status !== 'won')
     .sort((a, b) => (b.date_sent ?? '').localeCompare(a.date_sent ?? ''))
     .slice(0, 50)
 
-  // ── Chart datasets ────────────────────────────────────────────────────────
+  // ── Chart datasets (reactive) ─────────────────────────────────────────────
   const bar = (data: number[], colors: string[]) =>
     [{ data, backgroundColor: colors, borderRadius: 6, borderSkipped: false as const, maxBarThickness: 56 }]
   // Colour win-rate bars green/amber/red by how strong the rate is.
-  const rateColors = (rates: number[]) =>
-    rates.map(r => (r >= 0.66 ? WON : r >= 0.4 ? '#f59e0b' : LOST))
+  const rateColors = (rates: number[]) => rates.map(r => (r >= 0.66 ? WON : r >= 0.4 ? '#f59e0b' : LOST))
 
-  const winByEstimatorData = {
+  const winByEstimatorData = $derived<ChartData<'bar', number[], string>>({
     labels: estWin.map(e => `${e.name} (${e.w}-${e.l})`),
     datasets: [{ data: estWin.map(e => Math.round(e.rate * 100)), backgroundColor: rateColors(estWin.map(e => e.rate)), borderRadius: 5, maxBarThickness: 22 }],
-  } satisfies ChartData<'bar', number[], string>
+  })
 
-  const winByTypeData = {
+  const winByTypeData = $derived<ChartData<'bar', number[], string>>({
     labels: typeWin.map(e => `${e.name} (${e.w}-${e.l})`),
     datasets: [{ data: typeWin.map(e => Math.round(e.rate * 100)), backgroundColor: rateColors(typeWin.map(e => e.rate)), borderRadius: 5, maxBarThickness: 22 }],
-  } satisfies ChartData<'bar', number[], string>
+  })
 
-  const dealSizeData = {
+  const dealSizeData = $derived<ChartData<'bar', number[], string>>({
     labels: sizeBands.map(([l]) => l),
     datasets: [
       { label: 'Won', data: sizeWon, backgroundColor: WON, borderRadius: 4, maxBarThickness: 46 },
       { label: 'Lost', data: sizeLost, backgroundColor: LOST, borderRadius: 4, maxBarThickness: 46 },
     ],
-  } satisfies ChartData<'bar', number[], string>
+  })
 
-  const yoyData: ChartData<'bar' | 'line', (number | null)[], string> = {
-    labels: years.map(String),
+  const yoyData = $derived<ChartData<'bar' | 'line', (number | null)[], string>>({
+    labels: fYears.map(String),
     datasets: [
       { type: 'bar', label: 'Quoted', data: yoyQuoted, backgroundColor: '#c7d2fe', borderRadius: 4, order: 3 },
       { type: 'bar', label: 'Won', data: yoyWon, backgroundColor: WON, borderRadius: 4, order: 2 },
       { type: 'line', label: 'Win %', data: yoyWinRate, borderColor: '#f59e0b', backgroundColor: '#f59e0b', yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 3, spanGaps: true, order: 1 },
     ],
-  }
+  })
 
-  const topStoresData = {
+  const topStoresData = $derived<ChartData<'bar', number[], string>>({
     labels: topStores.map(s => `#${s.store} (×${s.n})`),
     datasets: bar(topStores.map(s => s.value), palette(topStores.length)),
-  } satisfies ChartData<'bar', number[], string>
+  })
 
-  const seasonalityData = {
+  const seasonalityData = $derived<ChartData<'bar', number[], string>>({
     labels: MONTHS,
     datasets: bar(monthCounts, MONTHS.map(() => '#6366f1')),
-  } satisfies ChartData<'bar', number[], string>
+  })
 
-  const valueByTypeData = {
+  const valueByTypeData = $derived<ChartData<'bar', number[], string>>({
     labels: typeByValue.map(([k]) => k),
     datasets: bar(typeByValue.map(([, v]) => v), palette(typeByValue.length)),
-  } satisfies ChartData<'bar', number[], string>
+  })
 
-  const pipelineData = {
+  const pipelineData = $derived<ChartData<'doughnut', number[], string>>({
     labels: [...QUOTE_STATUSES],
     datasets: [{
-      data: QUOTE_STATUSES.map(s => valueByStage.get(s) ?? 0),
+      data: QUOTE_STATUSES.map(s => stages.value.get(s) ?? 0),
       backgroundColor: QUOTE_STATUSES.map(s => QUOTE_STATUS_META[s].color),
-      borderColor: '#fff',
-      borderWidth: 2,
+      borderColor: '#fff', borderWidth: 2,
     }],
-  } satisfies ChartData<'doughnut', number[], string>
+  })
 
-  const paretoData: ChartData<'bar' | 'line', (number | null)[], string> = {
+  const paretoData = $derived<ChartData<'bar' | 'line', (number | null)[], string>>({
     labels: paretoEst.map(e => e.name),
     datasets: [
       { type: 'bar', label: 'Value', data: paretoEst.map(e => e.value), backgroundColor: '#6366f1', borderRadius: 4, order: 2 },
       { type: 'line', label: 'Cumulative %', data: paretoCum, borderColor: '#f59e0b', backgroundColor: '#f59e0b', yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 3, order: 1 },
     ],
-  }
+  })
 
-  // ── Shared chart options ────────────────────────────────────────────────
+  // ── Shared chart options (static) ─────────────────────────────────────────
   const moneyBarOpts = {
     responsive: true,
     maintainAspectRatio: false,
@@ -492,6 +501,26 @@
     {#if tasks.length === 0 && genQuotes.length === 0}
       <p class="empty">No tasks or generated quotes found yet.</p>
     {:else}
+      <!-- Interactive filters (sliders) — every chart/metric below reacts live -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <span class="filter-label">Years <strong>{Math.min(yearFrom, yearTo)}–{Math.max(yearFrom, yearTo)}</strong></span>
+          <input type="range" min={yearMin} max={yearMax} step="1" bind:value={yearFrom} aria-label="Year from" />
+          <input type="range" min={yearMin} max={yearMax} step="1" bind:value={yearTo} aria-label="Year to" />
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">
+            Deal size <strong>{money(Math.min(amtLo, amtHi))} – {Math.max(amtLo, amtHi) >= amtCeil ? money(amtCeil) + '+' : money(Math.max(amtLo, amtHi))}</strong>
+          </span>
+          <input type="range" min="0" max={amtCeil} step="5000" bind:value={amtLo} aria-label="Minimum deal size" />
+          <input type="range" min="0" max={amtCeil} step="5000" bind:value={amtHi} aria-label="Maximum deal size" />
+        </div>
+        <div class="filter-meta">
+          <span>{fq.length} of {totalQuotes} quotes</span>
+          {#if filtersActive}<button class="chip" onclick={resetFilters}>Reset</button>{/if}
+        </div>
+      </div>
+
       <!-- Metrics -->
       <h2 class="section-heading">💰 Quote Summary</h2>
       <div class="metrics-grid">
@@ -674,7 +703,7 @@
               </tr>
             {/each}
             {#if shownQuotes.length === 0}
-              <tr><td colspan="6" class="muted-note">No {quoteFilter} quotes.</td></tr>
+              <tr><td colspan="6" class="muted-note">No {quoteFilter} quotes match the filters.</td></tr>
             {/if}
           </tbody>
         </table>
@@ -730,6 +759,17 @@
   .page-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
   .section-heading { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px; }
   .empty { color: #94a3b8; font-size: 14px; }
+
+  .filter-bar {
+    display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-end;
+    background: #fff; border: 1px solid #e8ecf1; border-radius: 10px;
+    padding: 12px 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 3px; min-width: 220px; flex: 1; }
+  .filter-label { font-size: 12px; color: #64748b; }
+  .filter-label strong { color: #1e293b; font-weight: 700; }
+  .filter-group input[type="range"] { width: 100%; accent-color: #4f46e5; margin: 0; height: 18px; }
+  .filter-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #94a3b8; white-space: nowrap; }
 
   .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
   .metric {
