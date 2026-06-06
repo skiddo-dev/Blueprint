@@ -525,7 +525,7 @@
       flex: 1 1 auto;
       min-width: 0;
       display: flex;
-      gap: 6px;
+      gap: 4px;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
@@ -536,13 +536,13 @@
       flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       background: #fff;
       border: 1px solid var(--border);
       color: var(--text-soft);
       border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 13px;
+      padding: 6px 10px;
+      font-size: 12px;
       font-weight: 600;
       white-space: nowrap;
     }
@@ -552,8 +552,8 @@
       box-shadow: inset 0 0 0 1px var(--tab-color);
     }
     .tab-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       flex-shrink: 0;
     }
@@ -561,10 +561,10 @@
       background: var(--border-soft);
       color: var(--text-muted);
       border-radius: 999px;
-      padding: 0 7px;
-      font-size: 11px;
+      padding: 0 6px;
+      font-size: 10px;
       font-weight: 700;
-      min-width: 18px;
+      min-width: 16px;
       text-align: center;
     }
     .col-tab.active .tab-count { background: var(--tab-color); color: #fff; }

@@ -188,5 +188,11 @@
 
   @media (max-width: 768px) {
     .column { min-width: 100%; width: 100%; }
+    /* The 60vh drop target exists so EMPTY desktop columns can catch a dragged
+       card's centre. On phones only one column shows at a time and moves happen
+       via the card's Status dropdown, so that tall minimum just leaves a big
+       dead gap under a short column — shrink it to hug the cards. */
+    .dropzone { min-height: 96px; }
+    .col-header { margin-bottom: 8px; padding: 8px 12px; }
   }
 </style>
