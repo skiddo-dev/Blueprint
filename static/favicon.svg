@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Blueprint">
+  <!-- Indigo tile (matches the primary theme color) -->
+  <rect width="48" height="48" fill="#6366f1"/>
+  <!-- Blueprint grid -->
+  <path d="M12 0V48M24 0V48M36 0V48M0 12H48M0 24H48M0 36H48"
+        stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+  <!-- Outer frame -->
+  <rect x="7" y="7" width="34" height="34" fill="none" stroke="#ffffff" stroke-width="2.4"/>
+  <!-- Floor-plan room + interior wall stub -->
+  <path d="M15 19h18v13H15z M24 19v7" fill="none" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+</svg>
