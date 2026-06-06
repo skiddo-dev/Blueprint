@@ -7,6 +7,7 @@ import { ensureGraphSubscriptions } from '$lib/server/graphSubscription'
 import { runEmailSync } from '$lib/server/emailSync'
 import { log } from '$lib/server/log'
 import { building } from '$app/environment'
+import { missingProdEnv } from '$lib/server/config'
 
 // ── Production safety guard ───────────────────────────────────────────────────
 // Refuse to boot a production build that still has the dev-only auth bypass
@@ -21,6 +22,20 @@ if (!building && fakeAuthInProd(process.env.NODE_ENV, env.DEV_FAKE_AUTH)) {
     'Refusing to start: DEV_FAKE_AUTH is set with NODE_ENV=production. This dev-only ' +
       'auth bypass must never run in production — unset DEV_FAKE_AUTH.',
   )
+}
+
+// Refuse to boot a production runtime that is missing required configuration,
+// rather than silently degrade (blank Entra creds / localhost Mongo / keyless
+// OpenAI). Production-only (NODE_ENV is set by the Dockerfile); dev keeps its
+// convenient fallbacks. Skipped during build.
+if (!building && process.env.NODE_ENV === 'production') {
+  const missing = missingProdEnv()
+  if (missing.length) {
+    throw new Error(
+      `Refusing to start: missing required production env (${missing.join(', ')}). ` +
+        'Set them as Container App secrets/settings.',
+    )
+  }
 }
 
 // ── Background jobs ──────────────────────────────────────────────────────────

@@ -79,7 +79,11 @@ async function ensureIndexes(d: Db): Promise<void> {
       col(d, 'tasks').createIndex({ assignee_email: 1 }),          // getTasksForUser (My Work) — identity match
       col(d, 'attachments').createIndex({ task_id: 1 }),           // deleteTask cascade + per-task attachment lookups
       col(d, 'quotes').createIndex({ created_at: -1 }),            // getQuotes sort
-      col(d, 'quotes').createIndex({ year: 1, quote_number: -1 }), // getNextQuoteNumber
+      col(d, 'quotes').createIndex({ year: 1, quote_number: -1 }), // legacy quote-number lookup
+      col(d, 'quotes').createIndex(                                // unique per-year number — defense in depth atop the atomic counter
+        { year: 1, quote_number: 1 },
+        { unique: true, partialFilterExpression: { quote_number: { $exists: true } } },
+      ),
       col(d, 'prospects').createIndex({ distance_miles: 1 }),      // getProspects sort
       col(d, 'users').createIndex({ role: 1, name: 1 }),           // getUsersByRole
     ])
@@ -132,6 +136,19 @@ async function runMigrations(d: Db): Promise<void> {
     console.error('[db] runMigrations failed (non-fatal):', e)
   } finally {
     await releaseLease('migrations')
+  }
+}
+
+/** Whether every known migration has been recorded as applied. Surfaced by
+ *  /readyz so a replica that booted before its data migration ran reads as
+ *  not-ready. Best-effort: false on any error. */
+export async function migrationsApplied(): Promise<boolean> {
+  try {
+    const d = await getDb()
+    const applied = await col(d, 'migrations').countDocuments({ _id: { $in: MIGRATIONS.map((m) => m.id) } })
+    return applied >= MIGRATIONS.length
+  } catch {
+    return false
   }
 }
 
