@@ -1,4 +1,4 @@
-import type { TaskStatus, StatusMeta } from './types'
+import type { TaskStatus, StatusMeta, ProspectStatus } from './types'
 
 export const KANBAN_STATUSES: TaskStatus[] = [
   'To Do', 'In Progress', 'Review', 'Done', 'On Hold', 'Cancelled',
@@ -63,3 +63,14 @@ export const PROSPECT_CENTER = { label: 'Bloomfield Hills, MI', lat: 42.5836, ln
 // Default pull window: warehouses 45,000–75,000 sq ft within 30 miles. These
 // seed the form on the Prospects page; an admin can widen/narrow per pull.
 export const PROSPECT_DEFAULTS = { radiusMiles: 30, minSqft: 45_000, maxSqft: 75_000 }
+
+// Lead-pipeline stages for prospects, in order. Drive the status dropdown,
+// status-colored map markers, and the pipeline breakdown chart.
+export const PROSPECT_STATUSES: ProspectStatus[] = ['new', 'contacted', 'qualified', 'dead']
+
+export const PROSPECT_STATUS_META: Record<ProspectStatus, { label: string; color: string; bg: string; text: string }> = {
+  'new':       { label: 'New',       color: '#6366f1', bg: '#eef2ff', text: '#4338ca' },
+  'contacted': { label: 'Contacted', color: '#f59e0b', bg: '#fffbeb', text: '#b45309' },
+  'qualified': { label: 'Qualified', color: '#10b981', bg: '#d1fae5', text: '#047857' },
+  'dead':      { label: 'Dead',      color: '#94a3b8', bg: '#f1f5f9', text: '#475569' },
+}

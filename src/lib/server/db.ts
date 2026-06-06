@@ -189,11 +189,13 @@ export async function getProspects(): Promise<Prospect[]> {
   }
   const d = await getDb()
   const rows = await col(d, 'prospects').find().sort({ distance_miles: 1 }).toArray()
-  return rows.map(r => ({ ...r, _id: String(r._id) })) as Prospect[]
+  return rows.map(r => ({ pipeline_status: 'new', ...r, _id: String(r._id) })) as Prospect[]
 }
 
 /** Upsert a batch of prospects by attom_id. Returns how many were new vs.
- *  refreshed so the UI can report "X added, Y updated". */
+ *  refreshed so the UI can report "X added, Y updated". User-managed pipeline
+ *  fields (status / assignee / notes) are written ONLY on first insert, so a
+ *  later ATTOM re-pull refreshes the property data without wiping a rep's work. */
 export async function upsertProspects(
   prospects: Prospect[],
 ): Promise<{ added: number; updated: number }> {
@@ -201,13 +203,20 @@ export async function upsertProspects(
   const d = await getDb()
   const now = new Date().toISOString()
   const ops = prospects.map(p => {
-    const { _id, created_at, ...rest } = p
+    // Strip identity + user-managed fields from $set so re-pulls never clobber them.
+    const { _id, created_at, pipeline_status, assignee, notes, ...attomFields } = p
     return {
       updateOne: {
         filter: { _id: p.attom_id },
         update: {
-          $set: { ...rest, updated_at: now },
-          $setOnInsert: { _id: p.attom_id, created_at: created_at ?? now },
+          $set: { ...attomFields, updated_at: now },
+          $setOnInsert: {
+            _id: p.attom_id,
+            created_at: created_at ?? now,
+            pipeline_status: pipeline_status ?? 'new',
+            ...(assignee !== undefined ? { assignee } : {}),
+            ...(notes !== undefined ? { notes } : {}),
+          },
         },
         upsert: true,
       },
@@ -216,6 +225,20 @@ export async function upsertProspects(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const res = await col(d, 'prospects').bulkWrite(ops as any, { ordered: false })
   return { added: res.upsertedCount ?? 0, updated: res.modifiedCount ?? 0 }
+}
+
+/** Patch a prospect's user-managed pipeline fields (status / assignee / notes). */
+export async function updateProspectFields(
+  id: string,
+  patch: Partial<Pick<Prospect, 'pipeline_status' | 'assignee' | 'notes'>>,
+): Promise<boolean> {
+  if (USE_MOCK) return true // dev/demo: edits are optimistic, no Atlas needed
+  const d = await getDb()
+  const res = await col(d, 'prospects').updateOne(
+    { _id: id },
+    { $set: { ...patch, updated_at: new Date().toISOString() } },
+  )
+  return res.matchedCount > 0
 }
 
 export async function saveAttachment(
