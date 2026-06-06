@@ -3,6 +3,7 @@
   import { STATUS_META, QUOTE_STATUSES, QUOTE_STATUS_META } from '$lib/constants'
   import type { Task, AppSession, Quote } from '$lib/types'
   import { extractStoreNumbers } from '$lib/storeNumbers'
+  import { canonicalizeContact, canonicalizeWorkType } from '$lib/quoteCanonical'
   import Chart from '$lib/components/Chart.svelte'
   import NavDrawer from '$lib/components/NavDrawer.svelte'
   import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
@@ -15,6 +16,28 @@
   const user = { name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' }
 
   let sidebarOpen = $state(false)
+
+  // ── Quote tracker (win/loss toggle) ───────────────────────────────────────
+  const filterOptions = ['open', 'won', 'lost', 'all'] as const
+  let quoteFilter = $state<(typeof filterOptions)[number]>('open')
+  let savingId = $state<string | null>(null)
+  let trackerError = $state('')
+  async function setQuoteStatus(id: string, status: string) {
+    savingId = id
+    trackerError = ''
+    try {
+      const r = await fetch(`/api/quotes/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      location.reload() // refresh charts + metrics from fresh data
+    } catch (e) {
+      trackerError = String(e)
+      savingId = null
+    }
+  }
 
   // ── Palette & formatters ────────────────────────────────────────────────
   const PALETTE = [
@@ -57,11 +80,17 @@
       })),
     ...genQuotes.map(q => ({
       value: q.amount,
-      type: q.description || 'Not Set',
-      person: q.point_of_contact || 'Unassigned',
+      type: canonicalizeWorkType(q.description) || 'Not Set',
+      person: canonicalizeContact(q.point_of_contact) || 'Unassigned',
       date: q.date_sent,
     })),
   ]
+
+  // Quote tracker rows (newest first), filtered by the chip selection.
+  const quotesByDate = [...genQuotes].sort((a, b) => (b.date_sent ?? '').localeCompare(a.date_sent ?? ''))
+  const shownQuotes = $derived(
+    (quoteFilter === 'all' ? quotesByDate : quotesByDate.filter(q => (q.status ?? 'open') === quoteFilter)).slice(0, 200),
+  )
 
   const sumInto = (map: Map<string, number>, key: string, val: number) =>
     map.set(key, (map.get(key) ?? 0) + val)
@@ -119,11 +148,11 @@
 
   // ── Insight aggregations ──────────────────────────────────────────────────
   // Win rate by estimator (≥5 decided) and by work type (≥4 decided)
-  const estWin = [...groupQuotes(q => q.point_of_contact).entries()]
+  const estWin = [...groupQuotes(q => canonicalizeContact(q.point_of_contact)).entries()]
     .map(([name, rs]) => ({ name, ...winRateOf(rs) }))
     .filter(e => e.decided >= 5)
     .sort((a, b) => b.rate - a.rate)
-  const typeWin = [...groupQuotes(q => q.description).entries()]
+  const typeWin = [...groupQuotes(q => canonicalizeWorkType(q.description)).entries()]
     .map(([name, rs]) => ({ name, ...winRateOf(rs) }))
     .filter(e => e.decided >= 4)
     .sort((a, b) => b.rate - a.rate)
@@ -444,6 +473,57 @@
         </article>
       </section>
 
+      <!-- Quote tracker (win/loss toggle) -->
+      <hr style="margin: 24px 0 16px" />
+      <div class="tracker-head">
+        <h2 class="section-heading" style="margin: 0">🧾 Quote Tracker</h2>
+        <div class="filter-row">
+          {#each filterOptions as f}
+            <button class="chip" class:active={quoteFilter === f} onclick={() => (quoteFilter = f)}>
+              {f[0].toUpperCase() + f.slice(1)}
+            </button>
+          {/each}
+        </div>
+      </div>
+      {#if trackerError}<p class="error">❌ {trackerError}</p>{/if}
+      <p class="muted-note">
+        Mark a quote Won/Lost to feed the win-rate. Showing {shownQuotes.length}
+        {quoteFilter === 'all' ? '' : quoteFilter} quote{shownQuotes.length === 1 ? '' : 's'} (newest first, max 200).
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Store</th><th>Point of Contact</th><th>Work Type</th><th>Amount</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {#each shownQuotes as q (q._id)}
+              <tr>
+                <td>{q.date_sent ?? '—'}</td>
+                <td>{q.store_number || '—'}</td>
+                <td>{q.point_of_contact || '—'}</td>
+                <td>{q.description || '—'}</td>
+                <td>{money(q.amount)}</td>
+                <td>
+                  <select
+                    class="status-select status-{q.status ?? 'open'}"
+                    value={q.status ?? 'open'}
+                    disabled={savingId === q._id}
+                    onchange={(e) => setQuoteStatus(q._id, e.currentTarget.value)}
+                  >
+                    <option value="open">Open</option>
+                    <option value="won">Won</option>
+                    <option value="lost">Lost</option>
+                  </select>
+                </td>
+              </tr>
+            {/each}
+            {#if shownQuotes.length === 0}
+              <tr><td colspan="6" class="muted-note">No {quoteFilter} quotes.</td></tr>
+            {/if}
+          </tbody>
+        </table>
+      </div>
+
       <!-- Raw table -->
       <hr style="margin: 24px 0 16px" />
       <h2 class="section-heading">📋 Raw Task Data</h2>
@@ -514,6 +594,17 @@
   .canvas-wrap { position: relative; height: 260px; }
   .canvas-wrap.tall { height: 300px; }
   .chart-note { font-size: 11px; color: #64748b; margin: 6px 2px 2px; }
+
+  .tracker-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .filter-row { display: flex; gap: 6px; }
+  .chip { font-size: 12px; padding: 4px 12px; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; border-radius: 999px; cursor: pointer; }
+  .chip.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+  .muted-note { font-size: 11px; color: #94a3b8; margin: 4px 2px 10px; }
+  .error { color: #dc2626; font-size: 13px; margin: 6px 2px; }
+  .status-select { font-size: 12px; padding: 3px 6px; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
+  .status-select.status-won { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
+  .status-select.status-lost { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+  .status-select:disabled { opacity: 0.5; cursor: wait; }
 
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }

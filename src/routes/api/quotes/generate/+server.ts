@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types'
 import { generateQuotePdf } from '$lib/server/pdf'
 import type { QuoteData } from '$lib/server/pdf'
 import { insertQuote, getNextQuoteNumber } from '$lib/server/db'
+import { canonicalizeContact, canonicalizeWorkType } from '$lib/quoteCanonical'
 
 // Payload from the Quote Generator form: log fields (store #, point of contact,
 // work type, amount, …) plus the customer-facing proposal fields.
@@ -57,8 +58,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       quote_number,
       year,
       store_number: storeNumber,
-      point_of_contact: body.point_of_contact ?? '',
-      description: body.work_type ?? '',
+      point_of_contact: canonicalizeContact(body.point_of_contact),
+      description: canonicalizeWorkType(body.work_type),
       amount,
       date_sent: dateSent,
       sitefolio: !!body.sitefolio,

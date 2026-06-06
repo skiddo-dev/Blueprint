@@ -158,6 +158,19 @@ export async function getNextQuoteNumber(year: number): Promise<number> {
   return (Number.isFinite(max) ? max : 0) + 1
 }
 
+// Mark a quote won / lost / open (the dashboard win/loss toggle).
+export async function updateQuoteStatus(
+  id: string,
+  status: 'won' | 'lost' | 'open',
+): Promise<boolean> {
+  const d = await getDb()
+  const res = await col(d, 'quotes').updateOne(
+    { _id: id },
+    { $set: { status, updated_at: new Date().toISOString() } },
+  )
+  return res.matchedCount > 0
+}
+
 export async function saveAttachment(
   taskId: string,
   filename: string,
