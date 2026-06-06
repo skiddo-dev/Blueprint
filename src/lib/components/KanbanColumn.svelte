@@ -16,7 +16,7 @@
     items = $bindable(),
     assignees,
     storeFilter = null,
-    viewMine = false,
+    view = 'mine',
     myName = '',
     onMoved,
     onDragStateChange,
@@ -28,7 +28,7 @@
     items: Task[]
     assignees: string[]
     storeFilter?: string | null
-    viewMine?: boolean
+    view?: 'mine' | 'all' | 'review'
     myName?: string
     onMoved: (status: TaskStatus, taskId: string) => void
     onDragStateChange: (dragging: boolean) => void
@@ -40,14 +40,17 @@
   const meta = $derived(STATUS_META[status])
   const flipDurationMs = 200
 
-  // View ("My Work") + store-filter visibility. Non-matching cards are hidden via
-  // CSS (kept in the dnd `items` list so the bound array — and drag/drop — stays
-  // intact).
+  // View (My Work / All / Needs Review) + store-filter visibility. Non-matching
+  // cards are hidden via CSS (kept in the dnd `items` list so the bound array —
+  // and drag/drop — stays intact).
   const norm = (s?: string | null) => (s ?? '').trim().toLowerCase()
   const taskStores = (t: Task) => t.store_numbers ?? extractStoreNumbers(t.title)
+  const inView = (t: Task) =>
+    view === 'all' ? true
+    : view === 'review' ? !!t.needs_review
+    : norm(t.assigned_to) === norm(myName) // 'mine'
   const matches = (t: Task) =>
-    (!viewMine || norm(t.assigned_to) === norm(myName)) &&
-    (!storeFilter || taskStores(t).includes(storeFilter))
+    inView(t) && (!storeFilter || taskStores(t).includes(storeFilter))
   const visibleCount = $derived(items.filter(matches).length)
 
   function handleConsider(e: CustomEvent) {
@@ -104,7 +107,13 @@
 
     {#if visibleCount === 0}
       <div class="empty-zone">
-        {storeFilter ? `No #${storeFilter} here` : viewMine ? 'None assigned to you' : 'No tasks'}
+        {storeFilter
+          ? `No #${storeFilter} here`
+          : view === 'review'
+            ? 'Nothing to review'
+            : view === 'mine'
+              ? 'None assigned to you'
+              : 'No tasks'}
       </div>
     {/if}
   </div>

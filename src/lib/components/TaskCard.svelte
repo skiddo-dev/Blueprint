@@ -71,12 +71,31 @@
       ? `📩 ${task.sender_name || task.sender_email || 'Email'}`
       : `✏️ ${task.created_by || 'Manual'}`
   )
+
+  // Compact "Jun 5" stamp for activity-timeline entries.
+  function fmtWhen(iso: string): string {
+    const d = new Date(iso)
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  }
+  // Newest activity first.
+  let timeline = $derived([...(task.timeline ?? [])].reverse())
 </script>
 
 <div class="card" class:card-hidden={hidden} style:border-top="3px solid {meta.color}">
   <!-- Drag handle — the ONLY element that initiates a drag, so the rest of the
        card (quote dropdown, selects, notes, links) stays tappable/scrollable. -->
   <div class="drag-hint" use:dragHandle aria-label="Drag to move this task">⠿⠿</div>
+
+  <!-- AI review flag — low-confidence extraction or a thread reply the PM should
+       eyeball. One tap confirms and clears it. -->
+  {#if task.needs_review}
+    <div class="review-banner">
+      <span class="rb-text">🔍 {task.review_reason || 'Needs review'}</span>
+      <button class="rb-confirm" onclick={() => onFieldUpdate(task._id, 'needs_review', false)}>
+        ✓ Looks good
+      </button>
+    </div>
+  {/if}
 
   <!-- Title -->
   <div class="title">{task.title}</div>
@@ -94,6 +113,11 @@
         >#{n}</button>
       {/each}
     </div>
+  {/if}
+
+  <!-- PO (from a reply or a parsed attachment) -->
+  {#if task.po}
+    <div class="po-row"><span class="po-chip">🧾 PO {task.po}</span></div>
   {/if}
 
   <!-- Source + assignee -->
@@ -231,6 +255,21 @@
     </details>
   {/if}
 
+  <!-- Activity timeline — how this card evolved (created, replies, parsed docs) -->
+  {#if timeline.length}
+    <details class="activity-expand">
+      <summary>🕓 Activity ({timeline.length})</summary>
+      <div class="activity-list">
+        {#each timeline as entry}
+          <div class="activity-item">
+            <span class="ai-when">{fmtWhen(entry.at)}</span>
+            <span class="ai-text">{entry.text}{#if entry.from}<span class="ai-from"> · {entry.from}</span>{/if}</span>
+          </div>
+        {/each}
+      </div>
+    </details>
+  {/if}
+
   <!-- Delete -->
   <button class="delete-btn" onclick={() => onDelete(task._id)} title="Delete task">
     ✕
@@ -270,6 +309,39 @@
   }
   .drag-hint:active { cursor: grabbing; }
 
+  .review-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 7px;
+    padding: 5px 8px;
+    margin-bottom: 8px;
+    margin-right: 28px;            /* clear the drag handle */
+  }
+  .rb-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: #b45309;
+    line-height: 1.35;
+  }
+  .rb-confirm {
+    background: #fff;
+    border: 1px solid #fbbf24;
+    color: #b45309;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    min-height: 0;
+    cursor: pointer;
+  }
+  .rb-confirm:hover { background: #fef3c7; }
+
   .title {
     font-size: 13px;
     font-weight: 600;
@@ -277,6 +349,19 @@
     line-height: 1.4;
     margin-bottom: 6px;
     padding-right: 30px;
+  }
+
+  .po-row { margin-bottom: 6px; }
+  .po-chip {
+    display: inline-block;
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
   }
 
   .store-tags {
@@ -336,11 +421,35 @@
 
   .email-expand summary,
   .notes-expand summary,
-  .att-expand summary {
+  .att-expand summary,
+  .activity-expand summary {
     font-size: 11px;
     color: #6366f1;
     padding: 4px 0;
   }
+
+  .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+    border-left: 2px solid #e2e8f0;
+    padding-left: 8px;
+  }
+  .activity-item {
+    display: flex;
+    gap: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .ai-when {
+    color: #94a3b8;
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 38px;
+  }
+  .ai-text { color: #475569; }
+  .ai-from { color: #94a3b8; }
   .email-body {
     font-size: 11px;
     color: #475569;

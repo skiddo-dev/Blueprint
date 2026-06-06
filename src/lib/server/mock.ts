@@ -1,8 +1,7 @@
 // Dev-only mock task generator. Enabled by USE_MOCK_DATA=true so the app
 // (dashboard, board) renders without a populated MongoDB.
-import type { Task, TaskStatus, Prospect } from '$lib/types'
+import type { Task, TaskStatus, Prospect, TimelineEntry, ProspectStatus } from '$lib/types'
 import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, PROSPECT_CENTER } from '$lib/constants'
-import type { ProspectStatus } from '$lib/types'
 import { milesBetween, destinationPoint } from '$lib/geo'
 
 const ASSIGNEES = [
@@ -50,23 +49,54 @@ export function generateMockTasks(count = 35): Task[] {
     const [lo, hi] = RANGES[quoteType] ?? [250, 5000]
     const amount = lo + randInt(hi - lo)
     const id = `mock_${String(i).padStart(2, '0')}`
+    const quoteStr = `$${amount.toLocaleString('en-US')}.00`
+    const createdAt = new Date(Date.now() - randInt(60) * DAY_MS).toISOString()
+    // Seed a slice of tasks with the AI trust signals so the Needs Review lane,
+    // PO chip, and activity timeline have something to render in mock mode.
+    const flagged = i % 4 === 0
+    const hasPo = i % 3 === 0
+    const po = hasPo ? `45${1000 + i}` : undefined
+    const timeline: TimelineEntry[] = [
+      { at: createdAt, kind: 'created', text: `Created from email — ${description}`, from: 'Vendor Co.' },
+    ]
+    if (hasPo) {
+      timeline.push({
+        at: new Date(Date.now() - randInt(10) * DAY_MS).toISOString(),
+        kind: 'attachment',
+        text: `📎 PO_${po}.pdf: PO ${po} — ${quoteStr}`,
+      })
+    }
+    if (flagged) {
+      timeline.push({
+        at: new Date().toISOString(),
+        kind: 'email',
+        text: 'Reply received — customer asked to confirm scope',
+        from: 'Vendor Co.',
+      })
+    }
     tasks.push({
       _id: id,
       id,
       title,
       description,
       notes,
-      quote: `$${amount.toLocaleString('en-US')}.00`,
+      quote: quoteStr,
       quote_type: quoteType,
       quote_assignee: pick(QUOTE_PEOPLE),
       quote_status: pick(QUOTE_STATUSES),
+      po,
       assigned_to: pick(ASSIGNEES),
       date: new Date(Date.now() - randInt(270) * DAY_MS).toISOString().slice(0, 10),
       status: pick(KANBAN_STATUSES) as TaskStatus,
       exchange_id: `mock_exchange_${String(i).padStart(3, '0')}`,
+      conversation_id: `mock_thread_${String(i).padStart(3, '0')}`,
       created_by: 'system',
       attachment_ids: [],
-      created_at: new Date(Date.now() - randInt(60) * DAY_MS).toISOString(),
+      confidence: flagged ? 0.4 : 0.9,
+      needs_review: flagged,
+      review_reason: flagged ? 'Low extraction confidence (40%)' : undefined,
+      timeline,
+      created_at: createdAt,
     })
   }
   return tasks
