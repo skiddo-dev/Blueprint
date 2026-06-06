@@ -29,7 +29,7 @@
     items: Task[]
     assignees: string[]
     storeFilter?: string | null
-    view?: 'mine' | 'all' | 'review'
+    view?: 'mine' | 'all'
     myName?: string
     isAdmin?: boolean
     onMoved: (status: TaskStatus, taskId: string) => void
@@ -42,15 +42,13 @@
   const meta = $derived(STATUS_META[status])
   const flipDurationMs = 200
 
-  // View (My Work / All / Needs Review) + store-filter visibility. Non-matching
-  // cards are hidden via CSS (kept in the dnd `items` list so the bound array —
-  // and drag/drop — stays intact).
+  // View (My Work / All) + store-filter visibility. Non-matching cards are
+  // hidden via CSS (kept in the dnd `items` list so the bound array — and
+  // drag/drop — stays intact).
   const norm = (s?: string | null) => (s ?? '').trim().toLowerCase()
   const taskStores = (t: Task) => t.store_numbers ?? extractStoreNumbers(t.title)
   const inView = (t: Task) =>
-    view === 'all' ? true
-    : view === 'review' ? !!t.needs_review
-    : norm(t.assigned_to) === norm(myName) // 'mine'
+    view === 'all' ? true : norm(t.assigned_to) === norm(myName) // 'mine'
   const matches = (t: Task) =>
     inView(t) && (!storeFilter || taskStores(t).includes(storeFilter))
   const visibleCount = $derived(items.filter(matches).length)
@@ -112,11 +110,9 @@
       <div class="empty-zone">
         {storeFilter
           ? `No #${storeFilter} here`
-          : view === 'review'
-            ? 'Nothing to review'
-            : view === 'mine'
-              ? 'None assigned to you'
-              : 'No tasks'}
+          : view === 'mine'
+            ? 'None assigned to you'
+            : 'No tasks'}
       </div>
     {/if}
   </div>

@@ -91,17 +91,6 @@
        card (quote dropdown, selects, notes, links) stays tappable/scrollable. -->
   <div class="drag-hint" use:dragHandle aria-label="Drag to move this task">⠿⠿</div>
 
-  <!-- AI review flag — low-confidence extraction or a thread reply the PM should
-       eyeball. One tap confirms and clears it. -->
-  {#if task.needs_review}
-    <div class="review-banner">
-      <span class="rb-text">🔍 {task.review_reason || 'Needs review'}</span>
-      <button class="rb-confirm" onclick={() => onFieldUpdate(task._id, 'needs_review', false)}>
-        ✓ Looks good
-      </button>
-    </div>
-  {/if}
-
   <!-- Title -->
   <div class="title">{task.title}</div>
 
@@ -316,39 +305,6 @@
     border-radius: 6px;
   }
   .drag-hint:active { cursor: grabbing; }
-
-  .review-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    flex-wrap: wrap;
-    background: #fffbeb;
-    border: 1px solid #fde68a;
-    border-radius: 7px;
-    padding: 5px 8px;
-    margin-bottom: 8px;
-    margin-right: 28px;            /* clear the drag handle */
-  }
-  .rb-text {
-    font-size: 11px;
-    font-weight: 600;
-    color: #b45309;
-    line-height: 1.35;
-  }
-  .rb-confirm {
-    background: #fff;
-    border: 1px solid #fbbf24;
-    color: #b45309;
-    border-radius: 6px;
-    padding: 3px 8px;
-    font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
-    min-height: 0;
-    cursor: pointer;
-  }
-  .rb-confirm:hover { background: #fef3c7; }
 
   .title {
     font-size: 13px;

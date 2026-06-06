@@ -64,8 +64,8 @@
   // Each user lands on just their assigned tasks (the board-of-everything is a
   // manager view); a toggle flips to all. Remembered per browser. Composes with
   // the store filter.
-  let view = $state<'mine' | 'all' | 'review'>('mine')
-  function setView(v: 'mine' | 'all' | 'review') {
+  let view = $state<'mine' | 'all'>('mine')
+  function setView(v: 'mine' | 'all') {
     view = v
     try { localStorage.setItem('blueprint:boardView', v) } catch { /* ignore */ }
   }
@@ -77,7 +77,7 @@
     !!t.date && t.date < today && t.status !== 'Done' && t.status !== 'Cancelled'
   // Which tasks the current view shows (before the store filter).
   const inView = (t: Task) =>
-    view === 'all' ? true : view === 'review' ? !!t.needs_review : isMine(t)
+    view === 'all' ? true : isMine(t)
   // Visible under the current view + store filter — used for the column-nav pill
   // counts so they reflect what's actually shown.
   const matchesView = (t: Task) =>
@@ -86,10 +86,6 @@
     KANBAN_STATUSES.reduce((n, s) => n + columns[s].filter(t => isMine(t) && isOverdue(t)).length, 0),
   )
   let myTotal = $derived(KANBAN_STATUSES.reduce((n, s) => n + columns[s].filter(isMine).length, 0))
-  // AI-flagged tasks awaiting a human's eye (drives the Needs Review pill).
-  let needsReviewCount = $derived(
-    KANBAN_STATUSES.reduce((n, s) => n + columns[s].filter(t => t.needs_review).length, 0),
-  )
 
   // ── Connectivity + real-time polling (2 s) ───────────────────────────
   // The 2s poll doubles as a connectivity heartbeat: a failed fetch flags the
@@ -147,7 +143,7 @@
 
   onMount(async () => {
     const savedView = localStorage.getItem('blueprint:boardView')
-    if (savedView === 'mine' || savedView === 'all' || savedView === 'review') view = savedView
+    if (savedView === 'mine' || savedView === 'all') view = savedView
     online = navigator.onLine
     try {
       const r = await fetch('/api/tasks/signature')
@@ -282,10 +278,6 @@
   <button class="vt-btn" class:active={view === 'all'} aria-pressed={view === 'all'} onclick={() => setView('all')}>
     📋 All Tasks
   </button>
-  <button class="vt-btn" class:active={view === 'review'} aria-pressed={view === 'review'} onclick={() => setView('review')}>
-    🔍 Needs Review
-    {#if needsReviewCount > 0}<span class="vt-review">{needsReviewCount}</span>{/if}
-  </button>
 </div>
 
 {#if syncMessage}
@@ -417,15 +409,6 @@
     font-size: 11px;
     font-weight: 700;
   }
-  .vt-review {
-    background: #fef3c7;
-    color: #b45309;
-    border-radius: 999px;
-    padding: 1px 7px;
-    font-size: 11px;
-    font-weight: 700;
-  }
-
   .mywork-empty {
     background: var(--bg);
     border: 1px dashed var(--border);

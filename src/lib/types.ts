@@ -34,11 +34,7 @@ export interface Task {
   sender_email?: string
   created_by: string
   attachment_ids: string[]
-  // ── AI extraction trust signals ──────────────────────────────────────────
-  confidence?: number          // overall extraction confidence 0–1
-  needs_review?: boolean       // flagged for a human to confirm (low confidence / thread update)
-  review_reason?: string       // why it's flagged (shown on the card badge)
-  timeline?: TimelineEntry[]   // activity log
+  timeline?: TimelineEntry[]   // activity log (created / replies / parsed attachments)
   created_at: string
   updated_at?: string
 }

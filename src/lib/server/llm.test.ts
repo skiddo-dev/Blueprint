@@ -29,7 +29,7 @@ describe('parseEmailWithLLM — success path', () => {
         {
           message: {
             content: JSON.stringify({
-              date: '2026-01-15',
+              title: 'Walk-in cooler repair quote — Store 412',
               assigned_to: 'Bob',
               quote: '$12,300',
               quote_type: 'T&M',
@@ -38,8 +38,6 @@ describe('parseEmailWithLLM — success path', () => {
               store_numbers: ['D-412', '118', 'not-a-number'],
               summary: 'Quote the walk-in cooler repair.',
               event: 'Customer approved; PO 4471 issued',
-              confidence: 0.9,
-              uncertain_fields: [],
             }),
           },
         },
@@ -48,7 +46,7 @@ describe('parseEmailWithLLM — success path', () => {
 
     const result = await parseEmailWithLLM(EMAIL, { assignees: ['Bob', 'Ben'] })
 
-    expect(result.date).toBe('2026-01-15')
+    expect(result.title).toBe('Walk-in cooler repair quote — Store 412')
     expect(result.assigned_to).toBe('Bob')
     expect(result.quote).toBe('$12,300')
     expect(result.quote_type).toBe('T&M')
@@ -58,16 +56,37 @@ describe('parseEmailWithLLM — success path', () => {
     expect(result.store_numbers).toEqual(['118', '412'])
     expect(result.summary).toBe('Quote the walk-in cooler repair.')
     expect(result.event).toBe('Customer approved; PO 4471 issued')
-    expect(result.confidence).toBe(0.9)
-    expect(result.uncertain_fields).toEqual([])
+  })
+
+  it('falls back to the raw subject when the model returns no title', async () => {
+    createMock.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({
+        title: '', assigned_to: null, quote: null, quote_type: null, po: null,
+        quote_status: null, store_numbers: [], summary: 'misc', event: '',
+      }) } }],
+    })
+
+    const result = await parseEmailWithLLM(EMAIL)
+    expect(result.title).toBe(EMAIL.subject)
+  })
+
+  it('clamps an over-long title to 80 chars', async () => {
+    createMock.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({
+        title: 'x'.repeat(200), assigned_to: null, quote: null, quote_type: null,
+        po: null, quote_status: null, store_numbers: [], summary: '', event: '',
+      }) } }],
+    })
+
+    const result = await parseEmailWithLLM(EMAIL)
+    expect(result.title).toHaveLength(80)
   })
 
   it('passes a PRIOR TASK STATE block to the model on a thread reply', async () => {
     createMock.mockResolvedValue({
       choices: [{ message: { content: JSON.stringify({
-        date: null, assigned_to: null, quote: null, quote_type: null, po: '4471',
-        quote_status: 'Won', store_numbers: [], summary: 'Approved.',
-        event: 'Approved', confidence: 0.8, uncertain_fields: [],
+        title: 'Refrigeration approval', assigned_to: null, quote: null, quote_type: null,
+        po: '4471', quote_status: 'Won', store_numbers: [], summary: 'Approved.', event: 'Approved',
       }) } }],
     })
 
@@ -84,7 +103,7 @@ describe('parseEmailWithLLM — success path', () => {
   it('clamps an over-long summary to 200 chars', async () => {
     createMock.mockResolvedValue({
       choices: [{ message: { content: JSON.stringify({
-        date: null, assigned_to: null, quote: null, quote_type: null,
+        title: 'Long one', assigned_to: null, quote: null, quote_type: null,
         store_numbers: [], summary: 'x'.repeat(500),
       }) } }],
     })
@@ -103,7 +122,7 @@ describe('parseEmailWithLLM — graceful degradation (never blocks a sync)', () 
     const result = await parseEmailWithLLM(EMAIL)
 
     expect(result).toEqual({
-      date: null,
+      title: EMAIL.subject,
       assigned_to: null,
       quote: null,
       quote_type: null,
@@ -112,8 +131,6 @@ describe('parseEmailWithLLM — graceful degradation (never blocks a sync)', () 
       store_numbers: [],
       summary: FALLBACK_BODY,
       event: '',
-      confidence: 0,
-      uncertain_fields: [],
     })
   })
 
