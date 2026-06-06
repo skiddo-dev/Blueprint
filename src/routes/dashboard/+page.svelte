@@ -7,6 +7,8 @@
   import Chart from '$lib/components/Chart.svelte'
   import NavDrawer from '$lib/components/NavDrawer.svelte'
   import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
+  import { page } from '$app/state'
+  import { replaceState } from '$app/navigation'
 
   let { data }: { data: PageData } = $props()
   const tasks: Task[] = data.tasks
@@ -23,8 +25,14 @@
   let savingId = $state<string | null>(null)
   let trackerError = $state('')
   async function setQuoteStatus(id: string, status: string) {
+    const idx = genQuotes.findIndex(q => q._id === id)
+    if (idx === -1) return
+    const prev = genQuotes[idx].status
     savingId = id
     trackerError = ''
+    // Optimistic: flip the status locally so the charts/metrics/tables update
+    // instantly, then persist. Revert the row if the server write fails.
+    genQuotes = genQuotes.map(q => (q._id === id ? { ...q, status: status as Quote['status'] } : q))
     try {
       const r = await fetch(`/api/quotes/${id}/status`, {
         method: 'POST',
@@ -32,9 +40,10 @@
         body: JSON.stringify({ status }),
       })
       if (!r.ok) throw new Error(await r.text())
-      location.reload() // refresh charts + metrics from fresh data
     } catch (e) {
+      genQuotes = genQuotes.map(q => (q._id === id ? { ...q, status: prev } : q))
       trackerError = String(e)
+    } finally {
       savingId = null
     }
   }
@@ -64,8 +73,11 @@
   type Valued = Task & { quote_value: number }
   const withValues: Valued[] = tasks.map(t => ({ ...t, quote_value: parseQuote(t.quote) }))
 
-  // Tracked quotes (the `quotes` collection) drive the analytics below.
-  const genQuotes: Quote[] = data.quotes ?? []
+  // Tracked quotes (the `quotes` collection) drive the analytics below. Held as
+  // $state so the win/loss toggle can update a row optimistically and have every
+  // chart/metric/table react live — no full-page reload (mirrors the board's and
+  // prospects' optimistic-persist pattern).
+  let genQuotes = $state<Quote[]>(data.quotes ?? [])
   const totalQuotes = genQuotes.length
 
   // ── Interactive filters (sliders) ─────────────────────────────────────────
@@ -74,21 +86,48 @@
   const yearMin = allYears[0] ?? new Date().getFullYear()
   const yearMax = allYears.at(-1) ?? yearMin
   const amtCeil = Math.max(10_000, Math.ceil(Math.max(0, ...genQuotes.map(q => Math.abs(q.amount))) / 10_000) * 10_000)
-  let yearFrom = $state(yearMin)
-  let yearTo = $state(yearMax)
-  let amtLo = $state(0)
-  let amtHi = $state(amtCeil)
-  let monthFrom = $state(1)
-  let monthTo = $state(12)
-  let minSample = $state(5) // ≥N decided threshold for the win-rate charts
+  // Initial filter values come from the URL → shareable/bookmarkable views.
+  const sp = page.url.searchParams
+  const numP = (k: string, d: number) => { const v = sp.get(k); const n = Number(v); return v !== null && Number.isFinite(n) ? n : d }
+  let yearFrom = $state(numP('yf', yearMin))
+  let yearTo = $state(numP('yt', yearMax))
+  let amtLo = $state(numP('al', 0))
+  let amtHi = $state(numP('ah', amtCeil))
+  let monthFrom = $state(numP('mf', 1))
+  let monthTo = $state(numP('mt', 12))
+  let minSample = $state(numP('ms', 5)) // ≥N decided threshold for the win-rate charts
+  let estimatorFilter = $state(sp.get('est') ?? 'All')
+  let workTypeFilter = $state(sp.get('wt') ?? 'All')
+  const estimatorOptions = $derived([...new Set(genQuotes.map(q => canonicalizeContact(q.point_of_contact)).filter(Boolean))].sort())
+  const workTypeOptions = $derived([...new Set(genQuotes.map(q => canonicalizeWorkType(q.description)).filter(Boolean))].sort())
+
   const filtersActive = $derived(
     yearFrom !== yearMin || yearTo !== yearMax || amtLo !== 0 || amtHi !== amtCeil ||
-    monthFrom !== 1 || monthTo !== 12 || minSample !== 5,
+    monthFrom !== 1 || monthTo !== 12 || minSample !== 5 ||
+    estimatorFilter !== 'All' || workTypeFilter !== 'All',
   )
   function resetFilters() {
     yearFrom = yearMin; yearTo = yearMax; amtLo = 0; amtHi = amtCeil
     monthFrom = 1; monthTo = 12; minSample = 5
+    estimatorFilter = 'All'; workTypeFilter = 'All'
   }
+
+  // Persist active (non-default) filters to the URL — shallow replaceState, so
+  // no load re-run or scroll jump. Makes the current view shareable.
+  $effect(() => {
+    const p = new URLSearchParams()
+    if (yearFrom !== yearMin) p.set('yf', String(yearFrom))
+    if (yearTo !== yearMax) p.set('yt', String(yearTo))
+    if (amtLo !== 0) p.set('al', String(amtLo))
+    if (amtHi !== amtCeil) p.set('ah', String(amtHi))
+    if (monthFrom !== 1) p.set('mf', String(monthFrom))
+    if (monthTo !== 12) p.set('mt', String(monthTo))
+    if (minSample !== 5) p.set('ms', String(minSample))
+    if (estimatorFilter !== 'All') p.set('est', estimatorFilter)
+    if (workTypeFilter !== 'All') p.set('wt', workTypeFilter)
+    const qs = p.toString()
+    replaceState(qs ? `?${qs}` : page.url.pathname, {})
+  })
 
   const fq = $derived.by(() => {
     const ylo = Math.min(yearFrom, yearTo), yhi = Math.max(yearFrom, yearTo)
@@ -100,7 +139,9 @@
       const mo = q.date_sent ? Number(q.date_sent.slice(5, 7)) : 0
       // Keep no-date quotes only when the month window is wide open.
       const monthOk = allMonths || (mo >= mlo && mo <= mhi)
-      return yr >= ylo && yr <= yhi && a >= alo && a <= ahi && monthOk
+      const estOk = estimatorFilter === 'All' || canonicalizeContact(q.point_of_contact) === estimatorFilter
+      const wtOk = workTypeFilter === 'All' || canonicalizeWorkType(q.description) === workTypeFilter
+      return yr >= ylo && yr <= yhi && a >= alo && a <= ahi && monthOk && estOk && wtOk
     })
   })
 
@@ -276,10 +317,12 @@
   }).filter(x => x > 0)
   const projectedFY = priorShares.length ? annualValue(curYear) / (priorShares.reduce((a, b) => a + b, 0) / priorShares.length) : null
 
-  const poNeedsReview = genQuotes
-    .filter(q => (q.po || '').trim() && q.status !== 'won')
-    .sort((a, b) => (b.date_sent ?? '').localeCompare(a.date_sent ?? ''))
-    .slice(0, 50)
+  const poNeedsReview = $derived(
+    genQuotes
+      .filter(q => (q.po || '').trim() && q.status !== 'won')
+      .sort((a, b) => (b.date_sent ?? '').localeCompare(a.date_sent ?? ''))
+      .slice(0, 50),
+  )
 
   // ── Chart datasets (reactive) ─────────────────────────────────────────────
   const bar = (data: number[], colors: string[]) =>
@@ -538,6 +581,20 @@
           <span class="filter-label">Min decided <span class="muted">(win-rate charts)</span> <strong>≥{minSample}</strong></span>
           <input type="range" min="1" max="15" step="1" bind:value={minSample} aria-label="Minimum decided sample" />
         </div>
+        <div class="filter-group">
+          <span class="filter-label">Estimator</span>
+          <select bind:value={estimatorFilter} aria-label="Filter by estimator">
+            <option value="All">All estimators</option>
+            {#each estimatorOptions as e}<option value={e}>{e}</option>{/each}
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Work type</span>
+          <select bind:value={workTypeFilter} aria-label="Filter by work type">
+            <option value="All">All work types</option>
+            {#each workTypeOptions as w}<option value={w}>{w}</option>{/each}
+          </select>
+        </div>
         <div class="filter-meta">
           <span>{fq.length} of {totalQuotes} quotes</span>
           {#if filtersActive}<button class="chip" onclick={resetFilters}>Reset</button>{/if}
@@ -792,6 +849,7 @@
   .filter-label { font-size: 12px; color: #64748b; }
   .filter-label strong { color: #1e293b; font-weight: 700; }
   .filter-group input[type="range"] { width: 100%; accent-color: #4f46e5; margin: 0; height: 18px; }
+  .filter-group select { width: 100%; font-size: 12px; padding: 5px 7px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: #1e293b; }
   .filter-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #94a3b8; white-space: nowrap; }
 
   .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
