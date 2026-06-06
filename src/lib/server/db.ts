@@ -6,6 +6,7 @@ import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 
 let client: MongoClient | null = null
 let db: Db | null = null
+let connecting: Promise<Db> | null = null
 let indexesEnsured = false
 
 // Dev escape hatch: serve generated tasks instead of hitting Mongo. Lets the
@@ -14,16 +15,30 @@ const USE_MOCK = env.USE_MOCK_DATA === 'true'
 
 export async function getDb(): Promise<Db> {
   if (db) return db
-  // Read via $env/dynamic/private, NOT process.env: under Vite 8 SSR process.env
-  // is unpopulated from .env, so MONGODB_URI fell back to localhost and the app
-  // silently used a local mongo instead of Atlas. Same root cause as src/lib/auth.ts.
-  const uri = env.MONGODB_URI ?? env.MONGO_URI ?? 'mongodb://localhost:27017/'
-  const dbName = env.MONGODB_DB_NAME ?? env.MONGO_DB_NAME ?? 'blueprint'
-  client = new MongoClient(uri)
-  await client.connect()
-  db = client.db(dbName)
-  await ensureIndexes(db)
-  return db
+  // Memoize the in-flight connection so concurrent cold-start callers share a
+  // single connect() instead of each constructing its own MongoClient — every
+  // extra client opens its own pool and is then leaked, unreferenced. On
+  // failure, clear the memo so the next call retries rather than awaiting a
+  // permanently-rejected promise.
+  if (!connecting) {
+    connecting = (async () => {
+      // Read via $env/dynamic/private, NOT process.env: under Vite 8 SSR process.env
+      // is unpopulated from .env, so MONGODB_URI fell back to localhost and the app
+      // silently used a local mongo instead of Atlas. Same root cause as src/lib/auth.ts.
+      const uri = env.MONGODB_URI ?? env.MONGO_URI ?? 'mongodb://localhost:27017/'
+      const dbName = env.MONGODB_DB_NAME ?? env.MONGO_DB_NAME ?? 'blueprint'
+      const c = new MongoClient(uri)
+      await c.connect()
+      client = c
+      db = c.db(dbName)
+      await ensureIndexes(db)
+      return db
+    })().catch((e) => {
+      connecting = null
+      throw e
+    })
+  }
+  return connecting
 }
 
 // Our tasks use string UUIDs as _id (not MongoDB ObjectIds).
