@@ -18,6 +18,7 @@
     storeFilter = null,
     view = 'mine',
     myName = '',
+    isAdmin = false,
     onMoved,
     onDragStateChange,
     onFieldUpdate,
@@ -30,6 +31,7 @@
     storeFilter?: string | null
     view?: 'mine' | 'all' | 'review'
     myName?: string
+    isAdmin?: boolean
     onMoved: (status: TaskStatus, taskId: string) => void
     onDragStateChange: (dragging: boolean) => void
     onFieldUpdate: (id: string, field: string, value: unknown) => void
@@ -96,6 +98,7 @@
         <TaskCard
           {task}
           {assignees}
+          {isAdmin}
           {onFieldUpdate}
           {onDelete}
           {onStoreFilter}

@@ -345,6 +345,7 @@
         {storeFilter}
         {view}
         myName={userName}
+        isAdmin={role === 'admin'}
         onMoved={handleMoved}
         onDragStateChange={(d) => (dragging = d)}
         onFieldUpdate={handleFieldUpdate}

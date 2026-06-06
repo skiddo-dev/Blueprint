@@ -14,6 +14,7 @@
     onStoreFilter,
     activeStore = null,
     hidden = false,
+    isAdmin = false,
   }: {
     task: Task
     assignees: string[]
@@ -22,6 +23,7 @@
     onStoreFilter?: (n: string) => void
     activeStore?: string | null
     hidden?: boolean
+    isAdmin?: boolean
   } = $props()
 
   let meta = $derived(STATUS_META[task.status] ?? STATUS_META['To Do'])
@@ -79,6 +81,9 @@
   }
   // Newest activity first.
   let timeline = $derived([...(task.timeline ?? [])].reverse())
+  // Which PM inbox this was flagged in (admin-only chip); show the local part,
+  // full address in the tooltip.
+  let inbox = $derived(task.source_mailbox ? task.source_mailbox.split('@')[0] : '')
 </script>
 
 <div class="card" class:card-hidden={hidden} style:border-top="3px solid {meta.color}">
@@ -127,6 +132,9 @@
       <span class="chip">👤 {task.assigned_to}</span>
     {:else}
       <span class="unassigned">Unassigned</span>
+    {/if}
+    {#if isAdmin && task.source_mailbox}
+      <span class="inbox-chip" title="Flagged in {task.source_mailbox}">📥 {inbox}</span>
     {/if}
   </div>
 
@@ -411,6 +419,15 @@
     font-weight: 500;
   }
   .unassigned { font-size: 11px; color: var(--text-faint); }
+  /* Admin-only: which PM inbox this email was flagged in. */
+  .inbox-chip {
+    background: #f1f5f9;
+    color: var(--text-muted, #64748b);
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 500;
+  }
 
   .desc {
     font-size: 12px;
