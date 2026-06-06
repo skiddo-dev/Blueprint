@@ -46,6 +46,18 @@ export async function getDb(): Promise<Db> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function col(d: Db, name: string) { return d.collection<any>(name) }
 
+/** Lightweight connectivity check for the readiness probe (/readyz): connect and
+ *  issue a `ping`. Returns false instead of throwing so the caller maps it to 503. */
+export async function pingDb(): Promise<boolean> {
+  try {
+    const d = await getDb()
+    await d.command({ ping: 1 })
+    return true
+  } catch {
+    return false
+  }
+}
+
 // Create the indexes the app's hot queries depend on. Idempotent — createIndex is
 // a no-op when an equivalent index already exists — so it's safe to run on every
 // cold connect, and it keeps the index set version-controlled (SSOT) instead of
