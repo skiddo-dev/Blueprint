@@ -200,3 +200,68 @@ export async function parseEmailWithLLM(
     }
   }
 }
+
+const SUMMARY_SYSTEM_PROMPT = `You summarize a RAVES grocery-construction task thread (the original email plus any later replies and PM comments) into ONE tight, factual summary for the board card.
+- Lead with the current ask / state, then the key facts (store #, quote/PO, dates, who's waiting on what).
+- Reflect the LATEST state of the thread — if a reply changed something (approved, declined, rescheduled), say the current status, not the original request.
+- No greetings, signatures, or filler. Plain text, ≤ ~280 characters.`
+
+/**
+ * Condense a card's whole thread (title + raw email body + later reply/comment
+ * events) into a single at-a-glance summary for the board card's description.
+ *
+ * Reuses the same client/model as the email parser. Returns `null` on any error
+ * (or an empty result) so the caller can leave the existing description in place
+ * — never throws, mirroring parseEmailWithLLM's never-block discipline.
+ */
+export async function summarizeThread(input: {
+  title?: string
+  body?: string
+  events?: string[]
+}): Promise<string | null> {
+  const events = (input.events ?? []).filter(Boolean)
+  const content = [
+    input.title ? `Task: ${input.title}` : '',
+    events.length ? `Thread updates (oldest → newest):\n- ${events.join('\n- ')}` : '',
+    input.body ? `Original email:\n${input.body}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+    .slice(0, 6000)
+
+  if (!content.trim()) return null
+
+  try {
+    const resp = await getClient().chat.completions.create({
+      model: MODEL,
+      temperature: 0,
+      messages: [
+        { role: 'system', content: SUMMARY_SYSTEM_PROMPT },
+        { role: 'user', content },
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'thread_summary',
+          strict: true,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['summary'],
+            properties: {
+              summary: { type: 'string', description: 'The condensed task summary (≤ ~280 chars).' },
+            },
+          },
+        },
+      },
+    })
+
+    const choice = resp.choices[0]?.message
+    if (choice?.refusal) return null
+    const data = JSON.parse(choice?.content ?? '{}')
+    const summary = String(data.summary ?? '').trim().slice(0, 280)
+    return summary || null
+  } catch {
+    return null
+  }
+}

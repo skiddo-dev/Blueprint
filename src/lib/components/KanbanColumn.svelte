@@ -15,6 +15,7 @@
     status,
     items = $bindable(),
     assignees,
+    mentionCandidates = [],
     storeFilter = null,
     view = 'mine',
     myName = '',
@@ -24,10 +25,13 @@
     onFieldUpdate,
     onDelete,
     onStoreFilter,
+    onComment,
+    onSummarize,
   }: {
     status: TaskStatus
     items: Task[]
     assignees: string[]
+    mentionCandidates?: string[]
     storeFilter?: string | null
     view?: 'mine' | 'all'
     myName?: string
@@ -37,6 +41,8 @@
     onFieldUpdate: (id: string, field: string, value: unknown) => void
     onDelete: (id: string) => void
     onStoreFilter?: (n: string) => void
+    onComment: (id: string, text: string) => void
+    onSummarize: (id: string) => Promise<void>
   } = $props()
 
   const meta = $derived(STATUS_META[status])
@@ -96,10 +102,13 @@
         <TaskCard
           {task}
           {assignees}
+          {mentionCandidates}
           {isAdmin}
           {onFieldUpdate}
           {onDelete}
           {onStoreFilter}
+          {onComment}
+          {onSummarize}
           activeStore={storeFilter}
           hidden={!matches(task)}
         />
