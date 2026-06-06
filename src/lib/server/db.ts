@@ -8,6 +8,7 @@ let client: MongoClient | null = null
 let db: Db | null = null
 let connecting: Promise<Db> | null = null
 let indexesEnsured = false
+let migrationsRun = false
 
 // Dev escape hatch: serve generated tasks instead of hitting Mongo. Lets the
 // dashboard/board render with realistic data when no Atlas/seed is available.
@@ -32,6 +33,7 @@ export async function getDb(): Promise<Db> {
       client = c
       db = c.db(dbName)
       await ensureIndexes(db)
+      await runMigrations(db)
       return db
     })().catch((e) => {
       connecting = null
@@ -46,22 +48,35 @@ export async function getDb(): Promise<Db> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function col(d: Db, name: string) { return d.collection<any>(name) }
 
+/** Lightweight connectivity check for the readiness probe (/readyz): connect and
+ *  issue a `ping`. Returns false instead of throwing so the caller maps it to 503. */
+export async function pingDb(): Promise<boolean> {
+  try {
+    const d = await getDb()
+    await d.command({ ping: 1 })
+    return true
+  } catch {
+    return false
+  }
+}
+
 // Create the indexes the app's hot queries depend on. Idempotent — createIndex is
 // a no-op when an equivalent index already exists — so it's safe to run on every
 // cold connect, and it keeps the index set version-controlled (SSOT) instead of
 // hand-applied per environment. Best-effort: a failure is logged, never fatal, so
 // a transient index issue can't take the whole DB layer down.
 //
-// Not indexed on purpose: tasks.assigned_to / created_by. getTasksForUser matches
-// them with a case-insensitive ($options:'i') anchored regex, which a plain btree
-// index can't serve; serving it would need a stored normalized-lowercase field
-// (a separate change). The collection is small, so the sort indexes above carry it.
+// The My Work query (getTasksForUser) is served by the created_by_email /
+// assignee_email indexes; its legacy case-insensitive name regex is only a
+// transition fallback for un-backfilled tasks (can't use a btree, but rare).
 async function ensureIndexes(d: Db): Promise<void> {
   if (indexesEnsured) return
   try {
     await Promise.all([
       col(d, 'tasks').createIndex({ updated_at: -1 }),             // getTasksSignature — polled ~every 2s by every open client
       col(d, 'tasks').createIndex({ created_at: -1 }),             // getTasks / getTasksForUser sort
+      col(d, 'tasks').createIndex({ created_by_email: 1 }),        // getTasksForUser (My Work) — identity match
+      col(d, 'tasks').createIndex({ assignee_email: 1 }),          // getTasksForUser (My Work) — identity match
       col(d, 'attachments').createIndex({ task_id: 1 }),           // deleteTask cascade + per-task attachment lookups
       col(d, 'quotes').createIndex({ created_at: -1 }),            // getQuotes sort
       col(d, 'quotes').createIndex({ year: 1, quote_number: -1 }), // getNextQuoteNumber
@@ -72,6 +87,66 @@ async function ensureIndexes(d: Db): Promise<void> {
   } catch (e) {
     console.error('[db] ensureIndexes failed (non-fatal):', e)
   }
+}
+
+// ── Migrations ────────────────────────────────────────────────────────────────
+// Ordered, run-once data migrations. Each records its id in the `migrations`
+// collection so it never re-runs; the whole pass is single-flighted across
+// replicas with a short lease and is best-effort (a failure logs, never fatal).
+interface Migration { id: string; up: (d: Db) => Promise<void> }
+
+const MIGRATIONS: Migration[] = [
+  { id: '0001-backfill-task-owner-emails', up: backfillTaskOwnerEmails },
+]
+
+async function runMigrations(d: Db): Promise<void> {
+  if (migrationsRun) return
+  if (!(await tryAcquireLease('migrations', 60_000))) return // another replica is applying them
+  try {
+    for (const m of MIGRATIONS) {
+      if (await col(d, 'migrations').findOne({ _id: m.id })) continue
+      await m.up(d)
+      await col(d, 'migrations').insertOne({ _id: m.id, applied_at: new Date().toISOString() })
+    }
+    migrationsRun = true
+  } catch (e) {
+    console.error('[db] runMigrations failed (non-fatal):', e)
+  } finally {
+    await releaseLease('migrations')
+  }
+}
+
+// 0001: backfill created_by_email / assignee_email on tasks that predate
+// identity-based ownership, resolving the stored display names against the users
+// collection (users._id is the login email). Names that don't map to a
+// provisioned user are left null — those tasks keep the legacy name-based
+// ownership fallback. Idempotent: only fills fields that are still empty.
+async function backfillTaskOwnerEmails(d: Db): Promise<void> {
+  const users = await col(d, 'users').find({}, { projection: { _id: 1, name: 1 } }).toArray()
+  const byName = new Map<string, string>()
+  for (const u of users) {
+    const n = normName(u.name as string)
+    if (n) byName.set(n, String(u._id).toLowerCase())
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ops: any[] = []
+  const cursor = col(d, 'tasks').find(
+    { $or: [{ created_by_email: { $in: [null, ''] } }, { assignee_email: { $in: [null, ''] } }] },
+    { projection: { created_by: 1, assigned_to: 1, created_by_email: 1, assignee_email: 1 } },
+  )
+  for await (const t of cursor) {
+    const set: Record<string, string> = {}
+    if (!t.created_by_email) {
+      const e = byName.get(normName(t.created_by as string))
+      if (e) set.created_by_email = e
+    }
+    if (!t.assignee_email) {
+      const e = byName.get(normName(t.assigned_to as string))
+      if (e) set.assignee_email = e
+    }
+    if (Object.keys(set).length) ops.push({ updateOne: { filter: { _id: t._id }, update: { $set: set } } })
+  }
+  if (ops.length) await col(d, 'tasks').bulkWrite(ops, { ordered: false })
 }
 
 // Canonical form for comparing a person's name across sources (Entra display
@@ -103,22 +178,29 @@ export async function getTasks(): Promise<Task[]> {
   return tasks.map(normalizeTask)
 }
 
-export async function getTasksForUser(userName: string): Promise<Task[]> {
-  const target = normName(userName)
+export async function getTasksForUser(email: string | null | undefined, name: string): Promise<Task[]> {
+  const target = normName(name)
   if (USE_MOCK) {
     return generateMockTasks().filter(
       t => normName(t.assigned_to) === target || normName(t.created_by) === target,
     )
   }
   const d = await getDb()
-  // Match case-insensitively and ignore surrounding whitespace (mirrors normName)
-  // so a user's tasks still surface if casing/padding drifts between their Entra
-  // display name and the stored assigned/created name. Escape the name so any
-  // regex metacharacters in it are treated literally.
-  const pattern = { $regex: `^\\s*${escapeRegex(userName.trim())}\\s*$`, $options: 'i' }
-  const tasks = await col(d, 'tasks').find({
-    $or: [{ assigned_to: pattern }, { created_by: pattern }],
-  }).sort({ created_at: -1 }).toArray()
+  // Identity match (login email) against either owner field — the indexed paths.
+  // Plus a transition fallback: tasks that carry NO identity yet (un-backfilled)
+  // still surface via the legacy case-insensitive, whitespace-tolerant name match
+  // (escaped so regex metacharacters in a name are treated literally).
+  const e = normName(email)
+  const nameP = { $regex: `^\\s*${escapeRegex(name.trim())}\\s*$`, $options: 'i' }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const or: any[] = []
+  if (e) or.push({ created_by_email: e }, { assignee_email: e })
+  or.push({
+    created_by_email: { $in: [null, ''] },
+    assignee_email: { $in: [null, ''] },
+    $or: [{ assigned_to: nameP }, { created_by: nameP }],
+  })
+  const tasks = await col(d, 'tasks').find({ $or: or }).sort({ created_at: -1 }).toArray()
   return tasks.map(normalizeTask)
 }
 
@@ -342,6 +424,19 @@ export async function getUsersByRole(role: string): Promise<User[]> {
 export async function getUser(email: string) {
   const d = await getDb()
   return col(d, 'users').findOne({ _id: email.toLowerCase() })
+}
+
+/** Resolve a person's display name to their stable login email (users._id),
+ *  case-insensitively. Returns null for names that aren't provisioned app users
+ *  (e.g. field crews) — those simply get no identity-based ownership. */
+export async function getUserEmailByName(name: string): Promise<string | null> {
+  if (!normName(name)) return null
+  const d = await getDb()
+  const u = await col(d, 'users').findOne(
+    { name: { $regex: `^\\s*${escapeRegex(name.trim())}\\s*$`, $options: 'i' } },
+    { projection: { _id: 1 } },
+  )
+  return u ? String(u._id).toLowerCase() : null
 }
 
 export async function upsertUser(email: string, role: string, name: string): Promise<void> {

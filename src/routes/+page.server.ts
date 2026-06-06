@@ -6,6 +6,7 @@ export const load: PageServerLoad = async (event) => {
   const user = session?.user as Record<string, unknown> | undefined
   const role = user?.role as string | undefined
   const displayName = (user?.displayName as string) ?? (user?.name as string) ?? ''
+  const email = (user?.email as string | undefined) ?? null
 
   const pmUsers = await getUsersByRole('pm')
 
@@ -13,7 +14,7 @@ export const load: PageServerLoad = async (event) => {
   if (role === 'admin') {
     tasks = await getTasks()
   } else {
-    tasks = await getTasksForUser(displayName)
+    tasks = await getTasksForUser(email, displayName)
   }
 
   return {
