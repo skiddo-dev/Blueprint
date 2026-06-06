@@ -701,7 +701,7 @@
               <tr>
                 <td>{e.name}</td>
                 <td>{e.n}</td>
-                <td>{e.decided ? `${Math.round(e.rate)}% (${e.w}-${e.l})` : '—'}</td>
+                <td>{e.decided ? `${Math.round(e.rate * 100)}% (${e.w}-${e.l})` : '—'}</td>
                 <td>{e.avg ? money(e.avg) : '—'}</td>
                 <td>{e.topType}</td>
                 <td>{money(e.value)}</td>
