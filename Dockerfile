@@ -12,15 +12,28 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/package*.json ./
-COPY logo.png ./
-
-RUN npm ci --omit=dev
-
 ENV NODE_ENV=production
 # Azure App Service / Container Apps: set WEBSITES_PORT=8501
 ENV PORT=8501
+
+# Production deps first (own layer → cached unless package files change). Drop the
+# npm cache to keep the runtime image small.
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Build output + the single runtime asset.
+COPY --from=builder /app/build ./build
+COPY logo.png ./
+
+# Run unprivileged: the official node image ships a non-root `node` user. Nothing
+# at runtime writes to the image (attachments live in Mongo), so read-only is fine.
+USER node
+
 EXPOSE 8501
+
+# Container-level liveness against the app's own /healthz (Container Apps also runs
+# its configured probes). Uses node's global fetch — no extra tooling in the image.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8501)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "build"]
