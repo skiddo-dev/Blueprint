@@ -32,6 +32,11 @@ describe('PATCH /api/tasks/[id] — field allowlist (mass-assignment guard)', ()
     expect(updateTaskField).toHaveBeenCalledWith('t1', 'status', 'Done')
   })
 
+  it('rejects an invalid value for an allowlisted field', async () => {
+    await expect(PATCH(ev('t1', { field: 'status', value: 'Nonsense' }))).rejects.toMatchObject({ status: 400 })
+    expect(updateTaskField).not.toHaveBeenCalled()
+  })
+
   it('reassigning refreshes assignee identity (patchTask with resolved email)', async () => {
     const res = await PATCH(ev('t1', { field: 'assigned_to', value: 'Dana' }))
     expect(await res.json()).toEqual({ ok: true })
