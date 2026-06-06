@@ -1,6 +1,6 @@
 import { MongoClient, type Db } from 'mongodb'
 import { env } from '$env/dynamic/private'
-import type { Task, User, Quote } from '$lib/types'
+import type { Task, User, Quote, TimelineEntry } from '$lib/types'
 import { generateMockTasks } from './mock'
 
 let client: MongoClient | null = null
@@ -114,6 +114,22 @@ export async function updateTaskField(taskId: string, field: string, value: unkn
     { _id: taskId },
     { $set: { [field]: value, updated_at: new Date().toISOString() } },
   )
+  return result.modifiedCount > 0
+}
+
+/** Set multiple fields at once and optionally append a timeline entry, atomically.
+ *  Used by the email sync to apply a thread-reply patch or merge a parsed
+ *  attachment without a read-modify-write race. */
+export async function patchTask(
+  taskId: string,
+  set: Record<string, unknown>,
+  push?: TimelineEntry,
+): Promise<boolean> {
+  const d = await getDb()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const update: any = { $set: { ...set, updated_at: new Date().toISOString() } }
+  if (push) update.$push = { timeline: push }
+  const result = await col(d, 'tasks').updateOne({ _id: taskId }, update)
   return result.modifiedCount > 0
 }
 

@@ -1,37 +1,45 @@
-import OpenAI from 'openai'
-import { env } from '$env/dynamic/private'
-import { QUOTE_TYPES } from '$lib/constants'
+import { getClient, MODEL } from './openai'
+import { QUOTE_TYPES, QUOTE_STATUSES } from '$lib/constants'
 import { normalizeStoreNumbers } from '$lib/storeNumbers'
-
-// Lazily initialized — avoids throwing during build when OPENAI_API_KEY isn't set.
-// Reads via $env/dynamic/private, NOT process.env (empty under Vite 8 SSR — an
-// empty key silently degrades parsing via the catch below). See src/lib/server/db.ts.
-let _client: OpenAI | null = null
-function getClient() {
-  if (!_client) _client = new OpenAI({ apiKey: env.OPENAI_API_KEY })
-  return _client
-}
-
-// Email-to-task extraction is a bulk, structured-parsing job: pick a fast,
-// cheap, non-reasoning model (reasoning/"think-always" models are slower and
-// worse for this — see the local-LLM bench notes). gpt-4o-mini supports strict
-// Structured Outputs; override with OPENAI_MODEL (e.g. gpt-4.1-mini) if desired.
-const MODEL = env.OPENAI_MODEL || 'gpt-4o-mini'
 
 export interface ParsedEmail {
   date: string | null
   assigned_to: string | null
   quote: string | null
   quote_type: string | null
+  po: string | null
+  quote_status: 'Draft' | 'Sent' | 'Won' | 'Lost' | null
   store_numbers: string[]
   summary: string
+  /** One-line description of what THIS message says/changes, for the activity timeline. */
+  event: string
+  /** Model's self-assessed extraction confidence, 0–1. Drives the review flag. */
+  confidence: number
+  /** Field names the model was unsure about (subset of the extracted fields). */
+  uncertain_fields: string[]
+}
+
+/** Compact prior-task state, passed when an email is a reply to an existing
+ *  thread so the model reports what CHANGED rather than re-deriving from scratch. */
+export interface PriorTask {
+  quote?: string | null
+  quote_type?: string | null
+  quote_status?: string | null
+  po?: string | null
+  store_numbers?: string[]
+  assigned_to?: string | null
+  date?: string | null
 }
 
 interface ParseOpts {
   /** Known people the work can be assigned to; constrains `assigned_to` to real
    *  names (matching the board's "Assign to" dropdown) instead of free text. */
   assignees?: string[]
+  /** When set, this email is a follow-up on an existing task — report deltas. */
+  priorTask?: PriorTask
 }
+
+const UNCERTAINTY_FIELDS = ['date', 'assigned_to', 'quote', 'quote_type', 'po', 'store_numbers']
 
 /** JSON schema for OpenAI Structured Outputs (strict mode → guaranteed valid,
  *  schema-shaped JSON). Every property must be listed in `required`; nullable
@@ -49,7 +57,10 @@ function buildSchema(assignees: string[]) {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['date', 'assigned_to', 'quote', 'quote_type', 'store_numbers', 'summary'],
+    required: [
+      'date', 'assigned_to', 'quote', 'quote_type', 'po', 'quote_status',
+      'store_numbers', 'summary', 'event', 'confidence', 'uncertain_fields',
+    ],
     properties: {
       date: {
         type: ['string', 'null'],
@@ -65,6 +76,16 @@ function buildSchema(assignees: string[]) {
         enum: [...QUOTE_TYPES, null],
         description: 'Category of the request. Null if the email is not a quote/estimate request.',
       },
+      po: {
+        type: ['string', 'null'],
+        description: 'Purchase order or work-order number if the email provides one (e.g. "4471", "PO-4471"). Null if none.',
+      },
+      quote_status: {
+        type: ['string', 'null'],
+        enum: [...QUOTE_STATUSES, null],
+        description:
+          'Pipeline stage IF the message signals one: explicit approval / "go ahead" / a PO being issued → "Won"; an estimate being sent → "Sent"; a decline / "passing" / "went another way" → "Lost". Null if the message does not change the stage.',
+      },
       store_numbers: {
         type: 'array',
         items: { type: 'string' },
@@ -75,6 +96,21 @@ function buildSchema(assignees: string[]) {
         type: 'string',
         description: 'One or two sentences (≤200 chars) describing what the email is asking for.',
       },
+      event: {
+        type: 'string',
+        description:
+          'Very short (≤120 chars) note of what THIS message conveys or changes, for an activity log. E.g. "Customer approved; PO 4471 issued" or "Requested quote for cooler repair".',
+      },
+      confidence: {
+        type: 'number',
+        description:
+          'Your overall confidence in this extraction, from 0 (guessing) to 1 (certain). Be honest — low values route the task to a human for review.',
+      },
+      uncertain_fields: {
+        type: 'array',
+        items: { type: 'string', enum: UNCERTAINTY_FIELDS },
+        description: 'Names of any fields above you are NOT confident about. Empty array if confident in all.',
+      },
     },
   }
 }
@@ -84,7 +120,23 @@ Notes for this domain:
 - Stores are often referenced as "D-123", "D123", or a bare 3-digit number — keep them in the summary when present.
 - "quote_type" classifies the request; pick the closest option or null if it isn't a quote/estimate.
 - Map "assigned_to" to one of the provided people; prefer null over guessing a wrong name.
-Be precise and prefer null when genuinely unsure rather than fabricating a value.`
+- Capture a purchase-order / work-order number in "po" when present.
+- Set "quote_status" ONLY when the message clearly signals a stage change (approval, sent, declined); otherwise null.
+- If a "PRIOR TASK STATE" block is given, this email is a follow-up: report only what changed versus that state.
+Be precise and prefer null when genuinely unsure rather than fabricating a value, and reflect that uncertainty in "confidence" / "uncertain_fields".`
+
+function priorTaskBlock(p: PriorTask): string {
+  const parts = [
+    p.quote ? `quote ${p.quote}` : null,
+    p.quote_status ? `status ${p.quote_status}` : null,
+    p.quote_type ? `type ${p.quote_type}` : null,
+    p.po ? `PO ${p.po}` : null,
+    p.store_numbers?.length ? `stores ${p.store_numbers.join(', ')}` : null,
+    p.assigned_to ? `assigned ${p.assigned_to}` : null,
+    p.date ? `due ${p.date}` : null,
+  ].filter(Boolean)
+  return `PRIOR TASK STATE: ${parts.length ? parts.join('; ') : '(empty)'}\nThis email is a reply on that thread — report what changed.`
+}
 
 export async function parseEmailWithLLM(
   email: {
@@ -105,6 +157,7 @@ export async function parseEmailWithLLM(
     .join(', ')
 
   const userContent = [
+    opts.priorTask ? priorTaskBlock(opts.priorTask) : '',
     assignees.length ? `Known assignees: ${assignees.join(', ')}` : '',
     `Subject: ${email.subject}`,
     `From: ${email.sender_name || email.from}`,
@@ -139,18 +192,29 @@ export async function parseEmailWithLLM(
       assigned_to: data.assigned_to ?? null,
       quote: data.quote ?? null,
       quote_type: data.quote_type ?? null,
+      po: data.po ?? null,
+      quote_status: data.quote_status ?? null,
       store_numbers: normalizeStoreNumbers(Array.isArray(data.store_numbers) ? data.store_numbers : []),
       summary: String(data.summary ?? '').slice(0, 200),
+      event: String(data.event ?? '').slice(0, 120),
+      confidence: typeof data.confidence === 'number' ? data.confidence : 0,
+      uncertain_fields: Array.isArray(data.uncertain_fields) ? data.uncertain_fields.map(String) : [],
     }
   } catch {
-    // Degrade gracefully — never block a sync on a parse failure.
+    // Degrade gracefully — never block a sync on a parse failure. confidence 0
+    // routes the task to the review lane so the miss is visible, not silent.
     return {
       date: null,
       assigned_to: null,
       quote: null,
       quote_type: null,
+      po: null,
+      quote_status: null,
       store_numbers: [],
       summary: email.body.slice(0, 200),
+      event: '',
+      confidence: 0,
+      uncertain_fields: [],
     }
   }
 }

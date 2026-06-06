@@ -39,7 +39,7 @@ export async function fetchRecentEmails(maxResults = 30) {
 
   const params = new URLSearchParams({
     $top: String(maxResults),
-    $select: 'id,subject,from,receivedDateTime,bodyPreview,body',
+    $select: 'id,conversationId,subject,from,receivedDateTime,bodyPreview,body',
     $filter: "flag/flagStatus eq 'flagged'",
   })
 
@@ -94,6 +94,7 @@ export async function fetchRecentEmails(maxResults = 30) {
 
     emails.push({
       id: msgId,
+      conversation_id: (msg.conversationId as string) ?? null,
       subject: (msg.subject as string) ?? '(no subject)',
       from: senderName ? `${senderName} <${senderEmail}>` : senderEmail,
       sender_name: senderName,

@@ -1,5 +1,15 @@
 export type TaskStatus = 'To Do' | 'In Progress' | 'Review' | 'Done' | 'On Hold' | 'Cancelled'
 
+// One entry in a task's activity log. Email syncs append entries as a thread
+// progresses (a reply lands, an attachment is parsed) so a card carries its own
+// history instead of the board silently mutating under the PM.
+export interface TimelineEntry {
+  at: string                                       // ISO timestamp
+  kind: 'created' | 'email' | 'attachment' | 'system'
+  text: string                                     // e.g. "Customer approved; PO 4471; due 6/12"
+  from?: string                                    // sender name, for email entries
+}
+
 export interface Task {
   _id: string
   id: string  // mirrors _id — required by svelte-dnd-action
@@ -10,17 +20,24 @@ export interface Task {
   quote_type?: string
   quote_assignee?: string
   quote_status?: string
+  po?: string                  // purchase order # (from a reply or a parsed attachment)
   store_numbers?: string[]
   assigned_to: string
   notes?: string
   date?: string
   status: TaskStatus
   exchange_id?: string
+  conversation_id?: string     // Graph thread id — replies match back to this card
   from?: string
   sender_name?: string
   sender_email?: string
   created_by: string
   attachment_ids: string[]
+  // ── AI extraction trust signals ──────────────────────────────────────────
+  confidence?: number          // overall extraction confidence 0–1
+  needs_review?: boolean       // flagged for a human to confirm (low confidence / thread update)
+  review_reason?: string       // why it's flagged (shown on the card badge)
+  timeline?: TimelineEntry[]   // activity log
   created_at: string
   updated_at?: string
 }
