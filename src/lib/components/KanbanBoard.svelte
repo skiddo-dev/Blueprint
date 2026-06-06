@@ -41,6 +41,7 @@
   }
 
   // initialTasks is server-loaded data — initialize once, then manage locally
+  // svelte-ignore state_referenced_locally
   let columns = $state(group(initialTasks as Task[]))
   let showNewTask = $state(false)
   let syncing = $state(false)

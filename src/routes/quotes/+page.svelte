@@ -6,6 +6,7 @@
 
   let { data }: { data: PageData } = $props()
   // Session comes from the root layout load; this route is admin-only.
+  // svelte-ignore state_referenced_locally
   const session = data.session as unknown as AppSession
   const user = { name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' }
 

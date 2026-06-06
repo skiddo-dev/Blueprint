@@ -46,6 +46,7 @@
 
   // Local editable notes to avoid resetting while user types
   // Local editable copy — task prop won't reactively update notesValue while user types
+  // svelte-ignore state_referenced_locally
   let notesValue = $state(task.notes ?? '')
   let notesDirty = $state(false)
   $effect(() => { if (!notesDirty) notesValue = (task as Task).notes ?? '' })

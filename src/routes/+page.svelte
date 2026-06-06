@@ -8,10 +8,13 @@
   let { data }: { data: PageData } = $props()
 
   // Cast session — Auth.js session is extended with role/displayName in the callback
+  // svelte-ignore state_referenced_locally
   const session = data.session as unknown as AppSession
 
   let users = $state<{ _id: string; name: string; role: string }[]>([])
   let viewAsUser = $state<string | null>(null)
+  // Seeded from server data, then owned/mutated locally (drag-drop, optimistic edits).
+  // svelte-ignore state_referenced_locally
   let boardTasks = $state(data.tasks)
 
   // Sidebar open/close lives here so the board's mobile top bar (in KanbanBoard)

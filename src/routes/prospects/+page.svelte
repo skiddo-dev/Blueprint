@@ -15,20 +15,26 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props()
 
+  // svelte-ignore state_referenced_locally
   const session = data.session as unknown as AppSession
   const user = { name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' }
   const ASSIGNEES = ['Unassigned', ...QUOTE_PEOPLE]
 
+  // svelte-ignore state_referenced_locally
   const center = data.center
 
   // Local, mutable copy of the loaded prospects so inline edits update instantly;
   // re-synced from the server whenever a pull reloads the page data.
+  // svelte-ignore state_referenced_locally
   let prospectList = $state<Prospect[]>(data.prospects ?? [])
   $effect(() => { prospectList = data.prospects ?? [] })
 
   // ── Pull form ──────────────────────────────────────────────────────────────
+  // svelte-ignore state_referenced_locally
   let radiusMiles = $state(data.defaults.radiusMiles)
+  // svelte-ignore state_referenced_locally
   let minSqft = $state(data.defaults.minSqft)
+  // svelte-ignore state_referenced_locally
   let maxSqft = $state(data.defaults.maxSqft)
   let pulling = $state(false)
   const handlePull = () => {
@@ -60,6 +66,7 @@
     }
   }
   const bnd = $derived(boundsOf(prospectList))
+  // svelte-ignore state_referenced_locally
   const b0 = boundsOf(data.prospects ?? [])
 
   let search = $state('')
