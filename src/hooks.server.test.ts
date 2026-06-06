@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { handleError } from './hooks.server'
+import { handleError, fakeAuthInProd } from './hooks.server'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -21,5 +21,18 @@ describe('handleError', () => {
     expect(logged).toMatchObject({ msg: 'unhandled server error', path: '/api/tasks', method: 'POST', error: 'kaboom' })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(logged.id).toBe((result as any).id)
+  })
+})
+
+describe('fakeAuthInProd (DEV_FAKE_AUTH production guard)', () => {
+  it('flags only NODE_ENV=production WITH the bypass set', () => {
+    expect(fakeAuthInProd('production', '1')).toBe(true)
+    expect(fakeAuthInProd('production', 'true')).toBe(true)
+  })
+  it('is safe in dev/preview, or when the flag is unset', () => {
+    expect(fakeAuthInProd('production', undefined)).toBe(false)
+    expect(fakeAuthInProd('production', '')).toBe(false)
+    expect(fakeAuthInProd('development', '1')).toBe(false) // dev/preview bypass is fine
+    expect(fakeAuthInProd(undefined, '1')).toBe(false)
   })
 })
