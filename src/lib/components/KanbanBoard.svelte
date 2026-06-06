@@ -216,12 +216,6 @@
     return false
   }
 
-  function flashToast(msg: string) {
-    saveToast = msg
-    clearTimeout(saveToastTimer)
-    saveToastTimer = setTimeout(() => (saveToast = ''), 4000)
-  }
-
   // ── Comment (optimistic) ────────────────────────────────────────────────
   // Append the comment to the card's timeline locally, then POST. The server
   // recomputes mentions authoritatively; the 2s poll reconciles to it.
@@ -241,25 +235,6 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: body }),
     }))
-  }
-
-  // ── Summarize thread (AI) ───────────────────────────────────────────────
-  // On-demand: ask the server to regenerate the card's description from the whole
-  // thread. Updates the card on success; a graceful toast (never an error) when
-  // the model is unavailable / has nothing to condense.
-  async function handleSummarize(id: string) {
-    try {
-      const r = await fetch(`/api/tasks/${id}/summarize`, { method: 'POST' })
-      if (!r.ok) throw new Error(`summarize ${r.status}`)
-      const { summary } = await r.json()
-      if (summary) {
-        patchLocal(id, t => ({ ...t, description: summary }))
-      } else {
-        flashToast('✨ Couldn’t summarize this thread — try again in a moment.')
-      }
-    } catch {
-      flashToast('✨ Couldn’t summarize this thread — try again in a moment.')
-    }
   }
 
   // ── Delete ────────────────────────────────────────────────────────────
@@ -410,7 +385,6 @@
         onDelete={handleDelete}
         onStoreFilter={setStoreFilter}
         onComment={handleComment}
-        onSummarize={handleSummarize}
       />
     </div>
   {/each}

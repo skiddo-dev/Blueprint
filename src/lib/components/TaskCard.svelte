@@ -14,7 +14,6 @@
     onDelete,
     onStoreFilter,
     onComment,
-    onSummarize,
     activeStore = null,
     hidden = false,
     isAdmin = false,
@@ -26,7 +25,6 @@
     onDelete: (id: string) => void
     onStoreFilter?: (n: string) => void
     onComment?: (id: string, text: string) => void
-    onSummarize?: (id: string) => Promise<void>
     activeStore?: string | null
     hidden?: boolean
     isAdmin?: boolean
@@ -83,21 +81,6 @@
   // Which PM inbox this was flagged in (admin-only chip); show the local part,
   // full address in the tooltip.
   let inbox = $derived(task.source_mailbox ? task.source_mailbox.split('@')[0] : '')
-
-  // ── AI: summarize thread ──────────────────────────────────────────────────
-  // Offer it only when there's something to condense (a raw email, or a thread of
-  // replies/comments). The endpoint enforces access; the board shows a graceful
-  // toast if the model is unavailable.
-  let canSummarize = $derived(
-    !!onSummarize &&
-    (!!task.full_body || (task.timeline ?? []).some(e => e.kind === 'email' || e.kind === 'comment')),
-  )
-  let summarizing = $state(false)
-  async function doSummarize() {
-    if (summarizing || !onSummarize) return
-    summarizing = true
-    try { await onSummarize(task._id) } finally { summarizing = false }
-  }
 
   // ── Comments + @mentions ──────────────────────────────────────────────────
   let comments = $derived((task.timeline ?? []).filter(e => e.kind === 'comment'))
@@ -256,19 +239,6 @@
       {/if}
     </details>
   {/if}
-
-  {#if canSummarize}
-    <button
-      type="button"
-      class="summarize-btn"
-      onclick={doSummarize}
-      disabled={summarizing}
-      title="Regenerate the summary from the whole thread (email + replies + comments)"
-    >
-      {summarizing ? '✨ Summarizing…' : '✨ Summarize thread'}
-    </button>
-  {/if}
-
   <!-- Status + Assignee selects -->
   <div class="row-2">
     <select
@@ -651,25 +621,6 @@
     padding: 3px 0;
   }
   .att-link:hover { text-decoration: underline; }
-
-  /* ── Summarize (AI) ──────────────────────────────────────────────────── */
-  .summarize-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: var(--primary-bg);
-    color: var(--primary-text);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 4px 9px;
-    font-size: 11px;
-    font-weight: 600;
-    min-height: 0;
-    margin-bottom: 6px;
-    cursor: pointer;
-  }
-  .summarize-btn:hover:not(:disabled) { background: #e0e7ff; }
-  .summarize-btn:disabled { opacity: 0.6; cursor: default; }
 
   /* ── Comments + @mentions ────────────────────────────────────────────── */
   /* Extra bottom room so the absolutely-positioned ✕ delete button clears the

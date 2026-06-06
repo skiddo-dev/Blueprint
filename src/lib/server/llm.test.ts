@@ -9,7 +9,7 @@ vi.mock('openai', () => ({
   },
 }))
 
-import { parseEmailWithLLM, summarizeThread } from './llm'
+import { parseEmailWithLLM } from './llm'
 
 const EMAIL = {
   subject: 'D-412 refrigeration quote',
@@ -143,51 +143,5 @@ describe('parseEmailWithLLM — graceful degradation (never blocks a sync)', () 
     expect(result.assigned_to).toBeNull()
     expect(result.store_numbers).toEqual([])
     expect(result.summary).toBe(FALLBACK_BODY)
-  })
-})
-
-describe('summarizeThread', () => {
-  it('returns the model summary and includes thread updates in the prompt', async () => {
-    createMock.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify({ summary: 'Cooler repair approved; PO 4471; store 412.' }) } }],
-    })
-
-    const out = await summarizeThread({
-      title: 'Cooler repair — Store 412',
-      body: 'Please quote the walk-in cooler repair.',
-      events: ['Requested quote', 'Customer approved; PO 4471 issued'],
-    })
-
-    expect(out).toBe('Cooler repair approved; PO 4471; store 412.')
-    const userMsg = createMock.mock.calls[0][0].messages[1].content as string
-    expect(userMsg).toContain('Customer approved; PO 4471 issued')
-    expect(userMsg).toContain('Cooler repair — Store 412')
-  })
-
-  it('clamps an over-long summary to 280 chars', async () => {
-    createMock.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify({ summary: 'x'.repeat(500) }) } }],
-    })
-    const out = await summarizeThread({ body: 'something to summarize' })
-    expect(out).toHaveLength(280)
-  })
-
-  it('returns null with nothing to summarize (no API call)', async () => {
-    const out = await summarizeThread({ title: '', body: '', events: [] })
-    expect(out).toBeNull()
-    expect(createMock).not.toHaveBeenCalled()
-  })
-
-  it('returns null when the API throws', async () => {
-    createMock.mockRejectedValue(new Error('network down'))
-    expect(await summarizeThread({ body: 'x' })).toBeNull()
-  })
-
-  it('returns null when the model refuses or returns an empty summary', async () => {
-    createMock.mockResolvedValueOnce({ choices: [{ message: { refusal: 'no' } }] })
-    expect(await summarizeThread({ body: 'x' })).toBeNull()
-
-    createMock.mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ summary: '  ' }) } }] })
-    expect(await summarizeThread({ body: 'x' })).toBeNull()
   })
 })

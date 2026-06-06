@@ -26,7 +26,6 @@
     onDelete,
     onStoreFilter,
     onComment,
-    onSummarize,
   }: {
     status: TaskStatus
     items: Task[]
@@ -42,7 +41,6 @@
     onDelete: (id: string) => void
     onStoreFilter?: (n: string) => void
     onComment: (id: string, text: string) => void
-    onSummarize: (id: string) => Promise<void>
   } = $props()
 
   const meta = $derived(STATUS_META[status])
@@ -108,7 +106,6 @@
           {onDelete}
           {onStoreFilter}
           {onComment}
-          {onSummarize}
           activeStore={storeFilter}
           hidden={!matches(task)}
         />
