@@ -9,7 +9,7 @@
     filterProspects, statusOf, sizeHistogram, byCity, byDecade, distanceBands, byStatus, toCSV,
     type ProspectFilters, type Bucket,
   } from '$lib/prospects'
-  import NavDrawer from '$lib/components/NavDrawer.svelte'
+  import PageShell from '$lib/components/PageShell.svelte'
   import Chart from '$lib/components/Chart.svelte'
   import type { ChartData, ChartOptions } from 'chart.js'
 
@@ -19,7 +19,6 @@
   const user = { name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' }
   const ASSIGNEES = ['Unassigned', ...QUOTE_PEOPLE]
 
-  let sidebarOpen = $state(false)
   const center = data.center
 
   // Local, mutable copy of the loaded prospects so inline edits update instantly;
@@ -282,23 +281,15 @@
 
 <svelte:head><title>Prospects · Blueprint</title></svelte:head>
 
-<div class="app-layout">
-  <NavDrawer bind:open={sidebarOpen} {user} />
-
-  <main class="main-content">
-    <div class="mobile-topbar">
-      <button class="menu-btn" onclick={() => (sidebarOpen = true)} aria-label="Open menu">☰</button>
-      <span class="topbar-title">🏭 Prospects</span>
-    </div>
-
-    <div class="page-head">
-      <h1 class="page-title">🏭 Warehouse Prospects</h1>
-      <p class="page-sub">
-        Warehouse properties within {radiusMiles} mi of {center.label} · Admin only
-        {#if !data.live}<span class="badge mock">Demo data — set ATTOM_API_KEY for live results</span>{/if}
-      </p>
-      <hr style="margin: 12px 0 18px" />
-    </div>
+<PageShell {user} title="🏭 Prospects">
+  {#snippet head()}
+    <h1 class="page-title">🏭 Warehouse Prospects</h1>
+    <p class="page-sub">
+      Warehouse properties within {radiusMiles} mi of {center.label} · Admin only
+      {#if !data.live}<span class="badge mock">Demo data — set ATTOM_API_KEY for live results</span>{/if}
+    </p>
+    <hr style="margin: 12px 0 18px" />
+  {/snippet}
 
     <!-- Pull controls -->
     <form method="POST" action="?/refresh" use:enhance={handlePull} class="pull-bar">
@@ -423,8 +414,7 @@
     {:else if prospectList.length > 0}
       <p class="empty">No prospects match the current filters. <button class="chip" onclick={resetFilters}>Reset</button></p>
     {/if}
-  </main>
-</div>
+</PageShell>
 
 <!-- Detail modal -->
 {#if modal}
@@ -487,7 +477,6 @@
 {/if}
 
 <style>
-  .page-head { display: block; }
   .page-title { font-size: 22px; font-weight: 800; color: #1e293b; }
   .page-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
   .empty { color: #94a3b8; font-size: 14px; }

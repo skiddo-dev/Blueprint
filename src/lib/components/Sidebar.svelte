@@ -157,12 +157,12 @@
 
 <style>
   .full-w { width: 100%; justify-content: center; }
-  hr { border: none; border-top: 1px solid #f1f5f9; margin: 4px 0; }
+  hr { border: none; border-top: 1px solid var(--border-soft); margin: 4px 0; }
 
   .section-label {
     font-size: 11px;
     font-weight: 600;
-    color: #94a3b8;
+    color: var(--text-faint);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     margin-bottom: 4px;
@@ -174,12 +174,12 @@
     align-items: center;
     padding: 6px 10px;
     background: #fff;
-    border: 1px solid #f1f5f9;
+    border: 1px solid var(--border-soft);
     border-radius: 7px;
   }
   .stat-label {
     font-size: 13px;
-    color: #374151;
+    color: var(--text-body);
     display: flex;
     align-items: center;
     gap: 7px;
@@ -198,11 +198,11 @@
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--text-faint);
     margin-bottom: 4px;
   }
   .progress-track {
-    background: #e2e8f0;
+    background: var(--border);
     border-radius: 4px;
     height: 5px;
   }
@@ -217,7 +217,7 @@
   .expander-title {
     font-size: 13px;
     font-weight: 500;
-    color: #374151;
+    color: var(--text-body);
     padding: 6px 2px;
     cursor: pointer;
   }
@@ -229,17 +229,17 @@
     padding: 6px 2px 8px;
   }
 
-  .hint { font-size: 11px; color: #94a3b8; }
+  .hint { font-size: 11px; color: var(--text-faint); }
 
   .user-row {
     display: flex;
     align-items: center;
     gap: 4px;
   }
-  .user-email { font-size: 11px; color: #374151; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .user-role { font-size: 10px; color: #94a3b8; }
+  .user-email { font-size: 11px; color: var(--text-body); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .user-role { font-size: 10px; color: var(--text-faint); }
 
-  label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #374151; }
+  label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-body); }
   .checkbox-label { flex-direction: row; align-items: center; gap: 6px; font-size: 12px; }
   .danger-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

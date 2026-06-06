@@ -5,7 +5,7 @@
   import { extractStoreNumbers } from '$lib/storeNumbers'
   import { canonicalizeContact, canonicalizeWorkType } from '$lib/quoteCanonical'
   import Chart from '$lib/components/Chart.svelte'
-  import NavDrawer from '$lib/components/NavDrawer.svelte'
+  import PageShell from '$lib/components/PageShell.svelte'
   import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
   import { page } from '$app/state'
   import { replaceState } from '$app/navigation'
@@ -16,8 +16,6 @@
   // Session comes from the root layout load; this route is admin-only.
   const session = data.session as unknown as AppSession
   const user = { name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' }
-
-  let sidebarOpen = $state(false)
 
   // ── Quote tracker (win/loss toggle) ───────────────────────────────────────
   const filterOptions = ['open', 'won', 'lost', 'all'] as const
@@ -539,21 +537,12 @@
 
 <svelte:head><title>Dashboard · Blueprint</title></svelte:head>
 
-<div class="app-layout">
-  <NavDrawer bind:open={sidebarOpen} {user} />
-
-  <main class="main-content">
-    <!-- Mobile top bar: shared `☰` opens the drawer. -->
-    <div class="mobile-topbar">
-      <button class="menu-btn" onclick={() => (sidebarOpen = true)} aria-label="Open menu">☰</button>
-      <span class="topbar-title">📊 Dashboard</span>
-    </div>
-
-    <div class="page-head">
-      <h1 class="page-title">📊 Dashboard</h1>
-      <p class="page-sub">Quote insights from the RAVES quote log · Admin only</p>
-      <hr style="margin: 12px 0 20px" />
-    </div>
+<PageShell {user} title="📊 Dashboard">
+  {#snippet head()}
+    <h1 class="page-title">📊 Dashboard</h1>
+    <p class="page-sub">Quote insights from the RAVES quote log · Admin only</p>
+    <hr style="margin: 12px 0 20px" />
+  {/snippet}
 
     {#if tasks.length === 0 && genQuotes.length === 0}
       <p class="empty">No tasks or generated quotes found yet.</p>
@@ -826,15 +815,10 @@
         <button class="secondary" type="submit">📥 Download CSV</button>
       </form>
     {/if}
-  </main>
-</div>
+</PageShell>
 
 <style>
-  .app-layout { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
   hr { border: none; border-top: 1px solid #f1f5f9; }
-  .main-content { flex: 1; overflow-y: auto; padding: 1.2rem 1.4rem; }
-  /* Heading shows on desktop; on mobile the shared .mobile-topbar carries the title. */
-  .page-head { display: block; }
   .page-title { font-size: 22px; font-weight: 800; color: #1e293b; }
   .page-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
   .section-heading { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 12px; }
@@ -899,17 +883,5 @@
     background: #1e3a8a; color: #fff;
     border-radius: 4px; padding: 1px 6px; margin-right: 3px;
     font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
-  }
-
-  @media (max-width: 768px) {
-    /* The page title lives in the .mobile-topbar on small screens. */
-    .page-head { display: none; }
-    /* No top padding so the sticky .mobile-topbar pins flush to the top. */
-    .main-content {
-      padding-top: 0;
-      padding-left: max(0.5rem, env(safe-area-inset-left));
-      padding-right: max(0.5rem, env(safe-area-inset-right));
-      padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
-    }
   }
 </style>

@@ -170,7 +170,7 @@
     outline: none;
   }
   .dropzone:focus-visible {
-    outline: 2px dashed #6366f1;
+    outline: 2px dashed var(--primary);
   }
 
   .empty-zone {
@@ -181,7 +181,7 @@
     justify-content: center;
     text-align: center;
     color: #cbd5e1;
-    border: 2px dashed #e2e8f0;
+    border: 2px dashed var(--border);
     border-radius: 8px;
     font-size: 12px;
     pointer-events: none;

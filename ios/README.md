@@ -83,12 +83,31 @@ edit in code to point at a different environment. The default and the
 [`Blueprint/Info.plist`](Blueprint/Info.plist) (an App Transport Security
 exception scoped to `localhost`; production HTTPS needs none).
 
+## Shared config (generated)
+
+`Models/BlueprintConfig.generated.swift` is the Swift mirror of the web app's UI
+constants — status colours/icons, quote rosters, quote/prospect status meta. It
+is **generated, never hand-edited**: the single source of truth is
+[`src/lib/constants.ts`](../src/lib/constants.ts) (also served at `GET /api/config`).
+`TaskStatus` reads its colours/glyph from it, so the board can no longer silently
+drift from the web app's palette the way the old hand-copied tables did.
+
+Regenerate after changing `constants.ts` — run from the **repo root** (needs Node ≥23):
+
+```bash
+npm run gen:ios
+```
+
+CI can guard a stale checkout with `npm run gen:ios:check` (regenerates, fails on a
+diff). The file is wired into both `project.yml` (folder glob, for `xcodegen`) and
+the committed `Blueprint.xcodeproj`.
+
 ## Project layout
 
 ```
 Blueprint/
   BlueprintApp.swift        @main entry; injects AppConfig + SessionStore
-  Models/                   BoardTask, TaskStatus (+ STATUS_META colors)
+  Models/                   BoardTask, TaskStatus, BlueprintConfig.generated (npm run gen:ios)
   Networking/               AppConfig (base URL), APIClient (URLSession)
   Auth/                     SessionStore, WebAuthView (cookie hand-off)
   Views/                    Root, Login, Board, Column, TaskCard, TaskDetail

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { QUOTE_CONTACTS, QUOTE_WORK_TYPES } from '$lib/constants'
-  import NavDrawer from '$lib/components/NavDrawer.svelte'
+  import PageShell from '$lib/components/PageShell.svelte'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -24,7 +24,6 @@
   let error = $state('')
   let downloadUrl = $state('')
   let filename = $state('')
-  let sidebarOpen = $state(false)
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -62,21 +61,12 @@
 
 <svelte:head><title>Quote Generator · Blueprint</title></svelte:head>
 
-<div class="app-layout">
-  <NavDrawer bind:open={sidebarOpen} {user} />
-
-  <main class="main-content">
-    <!-- Mobile top bar: shared `☰` opens the drawer. -->
-    <div class="mobile-topbar">
-      <button class="menu-btn" onclick={() => (sidebarOpen = true)} aria-label="Open menu">☰</button>
-      <span class="topbar-title">📝 Quote Generator</span>
-    </div>
-
-    <div class="page-head">
-      <h1>📝 RAVES Construction Quote Generator</h1>
-      <p class="sub">Generate professional proposal PDFs matching your company template</p>
-      <hr style="margin: 14px 0 20px" />
-    </div>
+<PageShell {user} title="📝 Quote Generator" maxWidth="720px">
+  {#snippet head()}
+    <h1>📝 RAVES Construction Quote Generator</h1>
+    <p class="sub">Generate professional proposal PDFs matching your company template</p>
+    <hr style="margin: 14px 0 20px" />
+  {/snippet}
 
     <div class="form-grid">
       <label>
@@ -155,16 +145,9 @@
         <li>Each quote is logged (auto Quote #/year, Store #, Point of Contact, Work Type, Amount) and tracked in the Dashboard analytics.</li>
       </ul>
     </details>
-  </main>
-</div>
+</PageShell>
 
 <style>
-  /* Fixed shell + internally-scrolling content, matching the board/dashboard so
-     the sticky .mobile-topbar behaves identically. */
-  .app-layout { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
-  .main-content { flex: 1; overflow-y: auto; padding: 1.4rem; max-width: 720px; }
-  /* Heading shows on desktop; on mobile the shared .mobile-topbar carries the title. */
-  .page-head { display: block; }
   h1 { font-size: 20px; font-weight: 800; color: #1e293b; }
   .sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
 
@@ -193,18 +176,6 @@
   .how-it-works summary { font-size: 13px; color: #374151; cursor: pointer; }
   .how-it-works ul { font-size: 12px; color: #64748b; margin-top: 8px; padding-left: 16px; }
   .how-it-works li { margin-bottom: 4px; }
-
-  @media (max-width: 768px) {
-    /* The page title lives in the .mobile-topbar on small screens. */
-    .page-head { display: none; }
-    /* No top padding so the sticky .mobile-topbar pins flush to the top. */
-    .main-content {
-      padding-top: 0;
-      padding-left: max(0.5rem, env(safe-area-inset-left));
-      padding-right: max(0.5rem, env(safe-area-inset-right));
-      padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
-    }
-  }
 
   @media (max-width: 640px) {
     .form-grid { grid-template-columns: 1fr; }
