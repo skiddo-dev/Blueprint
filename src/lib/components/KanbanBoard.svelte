@@ -262,8 +262,9 @@
         class="secondary"
         onclick={syncEmails}
         disabled={syncing}
+        title="Flagged email syncs automatically — tap to pull it in right now"
       >
-        {syncing ? '⏳ Syncing…' : '🔄 Sync Emails'}
+        {syncing ? '⏳ Refreshing…' : '🔄 Refresh now'}
       </button>
     {/if}
     <button class="primary" onclick={() => { showNewTask = true }}>✏️ New Task</button>
