@@ -551,5 +551,27 @@
       align-items: center;
       justify-content: center;
     }
+
+    /* The editable controls — selects, date, quote amount, notes. A 16px font
+       stops iOS Safari from zooming the whole page on focus (it zooms anything
+       <16px), and a 44px min-height makes them comfortable to tap. */
+    select, input[type="date"], input[type="text"], textarea {
+      font-size: 16px;
+      min-height: 44px;
+      padding: 9px 10px;
+    }
+    input[type="date"]::-webkit-date-and-time-value { font-size: 16px; }
+    textarea { min-height: 56px; }
+
+    /* Roomier tap targets for the disclosure toggles (email / notes / quote /
+       attachments / activity). */
+    .email-expand summary,
+    .notes-expand summary,
+    .att-expand summary,
+    .activity-expand summary,
+    .quote-pop summary {
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
   }
 </style>
