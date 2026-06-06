@@ -426,14 +426,13 @@
     padding: 0;
     font-size: 12px;
   }
-  /* Overdue, still-open task → a soft red tint, not a loud box. The calm red
-     text (plus the title="Overdue" tooltip) carries the signal; the border is a
-     gentle red-200 and the fill a barely-there wash. */
+  /* Overdue, still-open task → a calm, muted nudge — NOT a bold red box. A soft
+     border + desaturated rose text (plus the title="Overdue" tooltip) is enough;
+     no fill and no bold weight, so it doesn't shout (especially full-width on
+     mobile). */
   input[type="date"].overdue {
     border-color: #fecaca;
-    color: #dc2626;
-    background: #fef5f5;
-    font-weight: 600;
+    color: #b06a72;
   }
   select:focus, input:focus, textarea:focus {
     border-color: var(--primary);
