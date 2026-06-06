@@ -53,3 +53,13 @@ export const QUOTE_STATUS_META: Record<string, { color: string; bg: string; text
   'Won':   { color: '#10b981', bg: '#d1fae5', text: '#047857' },
   'Lost':  { color: '#ef4444', bg: '#fee2e2', text: '#dc2626' },
 }
+
+// ── Prospecting (warehouse leads) ────────────────────────────────────────────
+// Search center for the Prospects page. Bloomfield Hills, MI (Oakland County) —
+// the geographic anchor for the warehouse pull. Lat/lng feed both the ATTOM
+// radius query and the map's center marker + radius circle.
+export const PROSPECT_CENTER = { label: 'Bloomfield Hills, MI', lat: 42.5836, lng: -83.2455 }
+
+// Default pull window: warehouses 45,000–75,000 sq ft within 30 miles. These
+// seed the form on the Prospects page; an admin can widen/narrow per pull.
+export const PROSPECT_DEFAULTS = { radiusMiles: 30, minSqft: 45_000, maxSqft: 75_000 }
