@@ -279,7 +279,7 @@
 <style>
   .card {
     background: #fff;
-    border: 1px solid #e8ecf1;
+    border: 1px solid var(--border-card);
     border-radius: 10px;
     padding: 12px;
     margin-bottom: 8px;
@@ -297,7 +297,7 @@
     top: 2px;
     right: 2px;
     padding: 6px 8px;
-    color: #94a3b8;
+    color: var(--text-faint);
     font-size: 15px;
     line-height: 1;
     letter-spacing: -2px;
@@ -345,7 +345,7 @@
   .title {
     font-size: 13px;
     font-weight: 600;
-    color: #1e293b;
+    color: var(--text);
     line-height: 1.4;
     margin-bottom: 6px;
     padding-right: 30px;
@@ -401,20 +401,20 @@
     margin-bottom: 6px;
     flex-wrap: wrap;
   }
-  .source { font-size: 11px; color: #94a3b8; }
+  .source { font-size: 11px; color: var(--text-faint); }
   .chip {
     background: #e0e7ff;
-    color: #4338ca;
+    color: var(--primary-text);
     border-radius: 20px;
     padding: 2px 9px;
     font-size: 11px;
     font-weight: 500;
   }
-  .unassigned { font-size: 11px; color: #94a3b8; }
+  .unassigned { font-size: 11px; color: var(--text-faint); }
 
   .desc {
     font-size: 12px;
-    color: #64748b;
+    color: var(--text-muted);
     margin-bottom: 6px;
     line-height: 1.45;
   }
@@ -424,7 +424,7 @@
   .att-expand summary,
   .activity-expand summary {
     font-size: 11px;
-    color: #6366f1;
+    color: var(--primary);
     padding: 4px 0;
   }
 
@@ -433,7 +433,7 @@
     flex-direction: column;
     gap: 4px;
     margin-top: 4px;
-    border-left: 2px solid #e2e8f0;
+    border-left: 2px solid var(--border);
     padding-left: 8px;
   }
   .activity-item {
@@ -443,23 +443,23 @@
     line-height: 1.4;
   }
   .ai-when {
-    color: #94a3b8;
+    color: var(--text-faint);
     font-weight: 600;
     flex-shrink: 0;
     min-width: 38px;
   }
-  .ai-text { color: #475569; }
-  .ai-from { color: #94a3b8; }
+  .ai-text { color: var(--text-soft); }
+  .ai-from { color: var(--text-faint); }
   .email-body {
     font-size: 11px;
-    color: #475569;
+    color: var(--text-soft);
     max-height: 120px;
     overflow-y: auto;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 6px 8px;
     margin-top: 4px;
-    background: #f8fafc;
+    background: var(--bg);
   }
 
   .row-2 {
@@ -474,10 +474,10 @@
   select, input[type="date"], input[type="text"], textarea {
     font-size: 12px;
     padding: 5px 8px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border);
     border-radius: 6px;
     background: #fff;
-    color: #374151;
+    color: var(--text-body);
     width: 100%;
     box-sizing: border-box;
     outline: none;
@@ -504,15 +504,15 @@
     font-weight: 600;
   }
   select:focus, input:focus, textarea:focus {
-    border-color: #6366f1;
+    border-color: var(--primary);
     box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
   }
   textarea { resize: none; font-family: inherit; }
 
   .quote-pop summary {
     font-size: 12px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 5px 8px;
     cursor: pointer;
@@ -533,7 +533,7 @@
     gap: 4px;
     margin-top: 4px;
     padding: 8px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border);
     border-radius: 8px;
     background: #fff;
   }
@@ -541,7 +541,7 @@
   .att-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
   .att-link {
     font-size: 11px;
-    color: #4338ca;
+    color: var(--primary-text);
     text-decoration: none;
     padding: 3px 0;
   }

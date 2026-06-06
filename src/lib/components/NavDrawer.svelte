@@ -17,11 +17,13 @@
     children?: Snippet
   } = $props()
 
+  // Icon is kept separate from the label (not baked into the string) so a native
+  // client can map each route to an SF Symbol while the web renders the emoji.
   const NAV = [
-    { href: '/', label: '🏗️ Kanban Board' },
-    { href: '/dashboard', label: '📊 Dashboard' },
-    { href: '/quotes', label: '💰 Quote Generator' },
-    { href: '/prospects', label: '🏭 Prospects' },
+    { href: '/', icon: '🏗️', label: 'Kanban Board' },
+    { href: '/dashboard', icon: '📊', label: 'Dashboard' },
+    { href: '/quotes', icon: '💰', label: 'Quote Generator' },
+    { href: '/prospects', icon: '🏭', label: 'Prospects' },
   ]
   const isActive = (href: string) =>
     href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href)
@@ -64,7 +66,7 @@
           aria-current={isActive(item.href) ? 'page' : undefined}
           onclick={() => (open = false)}
         >
-          {item.label}
+          <span class="nav-icon" aria-hidden="true">{item.icon}</span>{item.label}
         </a>
       {/each}
     </nav>
@@ -80,7 +82,7 @@
   .sidebar {
     width: var(--sidebar-width, 240px);
     background: #ffffff;
-    border-right: 1px solid #e2e8f0;
+    border-right: 1px solid var(--border);
     padding: 14px 12px;
     overflow-y: auto;
     display: flex;
@@ -106,10 +108,10 @@
     gap: 8px;
   }
   .user-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .user-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+  .user-name { font-size: 13px; font-weight: 600; color: var(--text); }
   .role-badge {
     background: #e0e7ff;
-    color: #4338ca;
+    color: var(--primary-text);
     border-radius: 10px;
     padding: 1px 7px;
     font-size: 11px;
@@ -125,14 +127,14 @@
     align-items: center;
     justify-content: center;
     font-size: 15px;
-    color: #64748b;
-    background: #f8fafc;
+    color: var(--text-muted);
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 9px;
   }
 
   .full-w { width: 100%; justify-content: center; }
-  hr { border: none; border-top: 1px solid #f1f5f9; margin: 4px 0; }
+  hr { border: none; border-top: 1px solid var(--border-soft); margin: 4px 0; }
 
   .nav-links { display: flex; flex-direction: column; gap: 4px; }
   .nav-link {
@@ -140,14 +142,14 @@
     padding: 8px 10px;
     font-size: 13px;
     font-weight: 500;
-    color: #374151;
+    color: var(--text-body);
     text-decoration: none;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border);
     border-radius: 7px;
-    background: #f8fafc;
+    background: var(--bg);
     transition: background 0.15s, border-color 0.15s;
   }
-  .nav-link:hover { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+  .nav-link:hover { background: var(--primary-bg); border-color: #c7d2fe; color: var(--primary-text); }
   /* Highlight the page you're on. */
   .nav-link.active {
     background: var(--primary-bg);
@@ -155,6 +157,8 @@
     color: var(--primary-dark);
     font-weight: 600;
   }
+  /* Decorative leading glyph; kept out of the label text (see NAV). */
+  .nav-icon { margin-right: 8px; }
 
   @media (max-width: 768px) {
     .sidebar {

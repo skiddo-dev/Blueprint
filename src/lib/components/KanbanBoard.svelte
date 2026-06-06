@@ -367,12 +367,12 @@
   .board-title {
     font-size: 22px;
     font-weight: 800;
-    color: #1e293b;
+    color: var(--text);
     letter-spacing: -0.02em;
   }
   .board-sub {
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--text-faint);
     margin-top: 2px;
   }
   .toolbar-right {
@@ -385,7 +385,7 @@
   .view-toggle {
     display: inline-flex;
     gap: 2px;
-    background: #eef2ff;
+    background: var(--primary-bg);
     border: 1px solid var(--border);
     border-radius: 9px;
     padding: 2px;
@@ -397,7 +397,7 @@
     gap: 6px;
     background: transparent;
     border: none;
-    color: #475569;
+    color: var(--text-soft);
     font-size: 13px;
     font-weight: 600;
     border-radius: 7px;
@@ -426,12 +426,12 @@
   }
 
   .mywork-empty {
-    background: #f8fafc;
+    background: var(--bg);
     border: 1px dashed var(--border);
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 13px;
-    color: #64748b;
+    color: var(--text-muted);
     margin-bottom: 10px;
   }
   .link-btn {
@@ -492,13 +492,13 @@
   .sf-clear {
     background: #fff;
     border: 1px solid #c7d2fe;
-    color: #4338ca;
+    color: var(--primary-text);
     border-radius: 6px;
     padding: 4px 10px;
     font-size: 12px;
     font-weight: 600;
   }
-  .sf-clear:hover { background: #eef2ff; }
+  .sf-clear:hover { background: var(--primary-bg); }
 
   .board-columns {
     display: flex;
@@ -555,7 +555,7 @@
       gap: 6px;
       background: #fff;
       border: 1px solid var(--border);
-      color: #475569;
+      color: var(--text-soft);
       border-radius: 999px;
       padding: 8px 12px;
       font-size: 13px;
@@ -574,8 +574,8 @@
       flex-shrink: 0;
     }
     .tab-count {
-      background: #f1f5f9;
-      color: #64748b;
+      background: var(--border-soft);
+      color: var(--text-muted);
       border-radius: 999px;
       padding: 0 7px;
       font-size: 11px;

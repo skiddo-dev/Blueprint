@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// The six Kanban statuses, mirroring `KANBAN_STATUSES` / `STATUS_META`
-/// in the web app (`src/lib/constants.ts`). The `rawValue` is the exact
-/// string the backend stores and returns, so JSON decodes straight into this.
+/// The six Kanban statuses, mirroring `KANBAN_STATUSES` in the web app
+/// (`src/lib/constants.ts`). The `rawValue` is the exact string the backend
+/// stores and returns, so JSON decodes straight into this. Per-status colours
+/// and glyphs come from the generated `BlueprintConfig.statusMeta`, kept in
+/// sync with the web app via `npm run gen:ios` (never hand-edit them here).
 enum TaskStatus: String, CaseIterable, Codable, Hashable, Identifiable {
     case toDo = "To Do"
     case inProgress = "In Progress"
@@ -13,52 +15,25 @@ enum TaskStatus: String, CaseIterable, Codable, Hashable, Identifiable {
 
     var id: String { rawValue }
 
-    /// Strong accent (column header / status pill border).
-    var accent: Color {
-        switch self {
-        case .toDo:       return Color(hex: 0x6366F1)
-        case .inProgress: return Color(hex: 0xF59E0B)
-        case .review:     return Color(hex: 0x3B82F6)
-        case .done:       return Color(hex: 0x10B981)
-        case .onHold:     return Color(hex: 0x94A3B8)
-        case .cancelled:  return Color(hex: 0xF87171)
-        }
+    /// Generated colours + glyph for this status (single source of truth:
+    /// `src/lib/constants.ts` → `BlueprintConfig.generated.swift`). Falls back
+    /// to a neutral slate only if the status string is ever missing from the
+    /// generated table — which would mean the enum and the generator drifted.
+    private var meta: BlueprintConfig.StatusMeta {
+        BlueprintConfig.statusMeta[rawValue]
+            ?? BlueprintConfig.StatusMeta(color: 0x94A3B8, bg: 0xF1F5F9, text: 0x475569, icon: "•")
     }
+
+    /// Strong accent (column header / status pill border).
+    var accent: Color { Color(hex: meta.color) }
 
     /// Soft background (pill fill).
-    var background: Color {
-        switch self {
-        case .toDo:       return Color(hex: 0xEEF2FF)
-        case .inProgress: return Color(hex: 0xFFFBEB)
-        case .review:     return Color(hex: 0xDBEAFE)
-        case .done:       return Color(hex: 0xD1FAE5)
-        case .onHold:     return Color(hex: 0xF1F5F9)
-        case .cancelled:  return Color(hex: 0xFEE2E2)
-        }
-    }
+    var background: Color { Color(hex: meta.bg) }
 
     /// Readable foreground on `background`.
-    var textColor: Color {
-        switch self {
-        case .toDo:       return Color(hex: 0x4338CA)
-        case .inProgress: return Color(hex: 0xB45309)
-        case .review:     return Color(hex: 0x1D4ED8)
-        case .done:       return Color(hex: 0x047857)
-        case .onHold:     return Color(hex: 0x475569)
-        case .cancelled:  return Color(hex: 0xDC2626)
-        }
-    }
+    var textColor: Color { Color(hex: meta.text) }
 
-    var icon: String {
-        switch self {
-        case .toDo:       return "○"
-        case .inProgress: return "◑"
-        case .review:     return "◎"
-        case .done:       return "●"
-        case .onHold:     return "⊘"
-        case .cancelled:  return "✕"
-        }
-    }
+    var icon: String { meta.icon }
 }
 
 extension Color {

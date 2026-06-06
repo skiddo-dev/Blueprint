@@ -9,7 +9,9 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:ios": "node scripts/gen-ios-config.ts",
+    "gen:ios:check": "node scripts/gen-ios-config.ts && git diff --exit-code -- ios/Blueprint/Models/BlueprintConfig.generated.swift"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.5.0",

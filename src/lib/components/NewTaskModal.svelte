@@ -162,10 +162,10 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px 12px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--border);
   }
-  .modal-header h2 { font-size: 16px; font-weight: 700; color: #1e293b; }
-  .close-btn { font-size: 16px; color: #94a3b8; padding: 4px 8px; }
+  .modal-header h2 { font-size: 16px; font-weight: 700; color: var(--text); }
+  .close-btn { font-size: 16px; color: var(--text-faint); padding: 4px 8px; }
   .modal-body {
     padding: 16px 20px;
     display: flex;
@@ -176,14 +176,14 @@
     min-height: 0;  /* allow it to shrink below content height inside the flex column */
   }
   label { display: flex; flex-direction: column; gap: 4px; }
-  label span { font-size: 12px; font-weight: 500; color: #374151; }
+  label span { font-size: 12px; font-weight: 500; color: var(--text-body); }
   .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .modal-footer {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
     padding: 12px 20px 16px;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--border);
   }
   .error { font-size: 12px; color: #dc2626; }
 

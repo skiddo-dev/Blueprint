@@ -5,8 +5,8 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
                Arial, system-ui, sans-serif;
   font-size: 14px;
-  background: #f8fafc;
-  color: #1e293b;
+  background: var(--bg);
+  color: var(--text);
   height: 100%;
   /* Don't let iOS auto-inflate text on orientation change, and kill the grey
      flash when tapping interactive elements on touch devices. */
@@ -15,18 +15,40 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Design tokens — the app's palette in one place. Status/quote colours live in
+   src/lib/constants.ts (single-sourced to iOS via /api/config); these are the
+   neutral chrome + brand tokens. Keep literal values here only; reference them
+   everywhere else as var(--token). A native client mirrors this set as a
+   SwiftUI Color palette. */
 :root {
+  /* Brand */
   --primary: #6366f1;
   --primary-dark: #4f46e5;
   --primary-bg: #eef2ff;
-  --border: #e2e8f0;
-  --muted: #64748b;
-  --card-bg: #ffffff;
+  --primary-text: #4338ca;
+
+  /* Text (dark → faint) */
+  --text: #1e293b;        /* headings / primary text */
+  --text-body: #374151;   /* body text inside controls */
+  --text-muted: #64748b;  /* secondary text */
+  --text-soft: #475569;   /* slate labels */
+  --text-faint: #94a3b8;  /* tertiary text / placeholders / glyphs */
+
+  /* Surfaces & borders */
+  --bg: #f8fafc;          /* app background / subtle fills */
+  --card-bg: #ffffff;     /* cards / inputs / popovers */
+  --border: #e2e8f0;      /* default control + card border */
+  --border-soft: #f1f5f9; /* hairline dividers */
+  --border-card: #e8ecf1; /* board / analytics card border */
+
+  /* Back-compat alias (older rules reference --muted) */
+  --muted: var(--text-muted);
+
   --sidebar-width: 240px;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-track { background: var(--border-soft); }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 
 button {
@@ -42,7 +64,7 @@ button {
   touch-action: manipulation;
 }
 button.primary {
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
   color: #fff;
   box-shadow: 0 2px 8px rgba(99,102,241,0.35);
 }
@@ -53,16 +75,16 @@ button.primary:hover {
 button.secondary {
   background: #ffffff;
   border-color: var(--border);
-  color: #374151;
+  color: var(--text-body);
 }
-button.secondary:hover { background: #f8fafc; }
+button.secondary:hover { background: var(--bg); }
 button.ghost {
   background: transparent;
   border-color: transparent;
   color: var(--muted);
   padding: 4px 8px;
 }
-button.ghost:hover { background: #f1f5f9; color: #374151; }
+button.ghost:hover { background: var(--border-soft); color: var(--text-body); }
 
 input[type="text"],
 input[type="date"],
@@ -74,8 +96,8 @@ select {
   border: 1px solid var(--border);
   border-radius: 7px;
   padding: 6px 10px;
-  background: #ffffff;
-  color: #374151;
+  background: var(--card-bg);
+  color: var(--text-body);
   width: 100%;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -129,7 +151,7 @@ details summary::-webkit-details-marker { display: none; }
     margin: 0 -0.5rem 8px; /* bleed to the screen edges past .main-content padding */
     padding: 6px 0.5rem 10px;
     padding-top: max(6px, env(safe-area-inset-top));
-    background: #f8fafc;
+    background: var(--bg);
     border-bottom: 1px solid var(--border);
     box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
   }
@@ -142,15 +164,15 @@ details summary::-webkit-details-marker { display: none; }
     justify-content: center;
     font-size: 18px;
     line-height: 1;
-    color: #475569;
-    background: #fff;
+    color: var(--text-soft);
+    background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 10px;
   }
   .topbar-title {
     font-size: 15px;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

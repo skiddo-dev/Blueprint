@@ -16,6 +16,7 @@
 		AA0000000000000000000046 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000026 /* TaskDetailView.swift */; };
 		AA0000000000000000000047 /* BoardTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000027 /* BoardTask.swift */; };
 		AA0000000000000000000048 /* TaskStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000028 /* TaskStatus.swift */; };
+		AA000000000000000000004E /* BlueprintConfig.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000002F /* BlueprintConfig.generated.swift */; };
 		AA0000000000000000000049 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000029 /* AppConfig.swift */; };
 		AA000000000000000000004A /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000002A /* APIClient.swift */; };
 		AA000000000000000000004B /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000002B /* SessionStore.swift */; };
@@ -34,6 +35,7 @@
 		AA0000000000000000000026 /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		AA0000000000000000000027 /* BoardTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardTask.swift; sourceTree = "<group>"; };
 		AA0000000000000000000028 /* TaskStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskStatus.swift; sourceTree = "<group>"; };
+		AA000000000000000000002F /* BlueprintConfig.generated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlueprintConfig.generated.swift; sourceTree = "<group>"; };
 		AA0000000000000000000029 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		AA000000000000000000002A /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		AA000000000000000000002B /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
@@ -88,6 +90,7 @@
 			children = (
 				AA0000000000000000000027 /* BoardTask.swift */,
 				AA0000000000000000000028 /* TaskStatus.swift */,
+				AA000000000000000000002F /* BlueprintConfig.generated.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -201,6 +204,7 @@
 				AA0000000000000000000046 /* TaskDetailView.swift in Sources */,
 				AA0000000000000000000047 /* BoardTask.swift in Sources */,
 				AA0000000000000000000048 /* TaskStatus.swift in Sources */,
+				AA000000000000000000004E /* BlueprintConfig.generated.swift in Sources */,
 				AA0000000000000000000049 /* AppConfig.swift in Sources */,
 				AA000000000000000000004A /* APIClient.swift in Sources */,
 				AA000000000000000000004B /* SessionStore.swift in Sources */,
