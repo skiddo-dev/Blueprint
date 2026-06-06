@@ -54,9 +54,9 @@ export function generateMockTasks(count = 35): Task[] {
     const id = `mock_${String(i).padStart(2, '0')}`
     const quoteStr = `$${amount.toLocaleString('en-US')}.00`
     const createdAt = new Date(Date.now() - randInt(60) * DAY_MS).toISOString()
-    // Seed a slice of tasks with the AI trust signals so the Needs Review lane,
-    // PO chip, and activity timeline have something to render in mock mode.
-    const flagged = i % 4 === 0
+    // Seed a slice of tasks with a PO + activity timeline so the PO chip and the
+    // Activity log have something to render in mock mode.
+    const hasReply = i % 4 === 0
     const hasPo = i % 3 === 0
     const po = hasPo ? `45${1000 + i}` : undefined
     const timeline: TimelineEntry[] = [
@@ -69,7 +69,7 @@ export function generateMockTasks(count = 35): Task[] {
         text: `📎 PO_${po}.pdf: PO ${po} — ${quoteStr}`,
       })
     }
-    if (flagged) {
+    if (hasReply) {
       timeline.push({
         at: new Date().toISOString(),
         kind: 'email',
@@ -96,9 +96,6 @@ export function generateMockTasks(count = 35): Task[] {
       source_mailbox: pick(MOCK_INBOXES),
       created_by: 'system',
       attachment_ids: [],
-      confidence: flagged ? 0.4 : 0.9,
-      needs_review: flagged,
-      review_reason: flagged ? 'Low extraction confidence (40%)' : undefined,
       timeline,
       created_at: createdAt,
     })

@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   classifyEmail,
-  computeReview,
   buildNewTask,
   buildThreadPatch,
   buildAttachmentPatch,
@@ -21,9 +20,8 @@ function task(p: Partial<Task>): Task {
 
 function parsed(p: Partial<ParsedEmail> = {}): ParsedEmail {
   return {
-    date: null, assigned_to: null, quote: null, quote_type: null, po: null,
-    quote_status: null, store_numbers: [], summary: '', event: '',
-    confidence: 1, uncertain_fields: [], ...p,
+    title: '', assigned_to: null, quote: null, quote_type: null, po: null,
+    quote_status: null, store_numbers: [], summary: '', event: '', ...p,
   }
 }
 
@@ -53,50 +51,26 @@ describe('classifyEmail', () => {
   })
 })
 
-describe('computeReview', () => {
-  it('flags low confidence', () => {
-    const r = computeReview(parsed({ confidence: 0.3, assigned_to: 'Bob' }))
-    expect(r.needs_review).toBe(true)
-    expect(r.review_reason).toMatch(/confidence/i)
-  })
-  it('flags a missing assignee', () => {
-    expect(computeReview(parsed({ assigned_to: null })).needs_review).toBe(true)
-  })
-  it('flags a quote with no type', () => {
-    const r = computeReview(parsed({ assigned_to: 'Bob', quote: '$5,000', quote_type: null }))
-    expect(r.needs_review).toBe(true)
-  })
-  it('flags self-reported uncertain fields', () => {
-    expect(computeReview(parsed({ assigned_to: 'Bob', uncertain_fields: ['date'] })).needs_review).toBe(true)
-  })
-  it('passes a clean, confident extraction', () => {
-    const r = computeReview(parsed({ assigned_to: 'Bob', quote: '$5,000', quote_type: 'T&M' }))
-    expect(r.needs_review).toBe(false)
-  })
-})
-
 describe('buildNewTask', () => {
-  it('defaults a quoted task to Draft and opens a timeline', () => {
+  it('defaults a quoted task to Draft, opens a timeline, and leaves the due date empty', () => {
     const doc = buildNewTask(email(), parsed({ quote: '$1,000', assigned_to: 'Bob', quote_type: 'T&M', event: 'Quote requested' }), ['412'], 'admin')
     expect(doc.quote_status).toBe('Draft')
     expect(doc.assigned_to).toBe('Bob')
+    expect(doc.date).toBeNull()            // due date is never AI-guessed
     expect(doc.conversation_id).toBeNull()
     expect((doc.timeline as unknown[]).length).toBe(1)
-    expect(doc.needs_review).toBe(false)
   })
-  it('falls back to Unassigned and flags for review', () => {
-    const doc = buildNewTask(email(), parsed({ confidence: 0.2 }), [], 'admin')
+  it('falls back to Unassigned when the LLM and inbox owner give nothing', () => {
+    const doc = buildNewTask(email(), parsed(), [], 'admin')
     expect(doc.assigned_to).toBe('Unassigned')
-    expect(doc.needs_review).toBe(true)
   })
   it('defaults to the inbox owner when the LLM has no assignee, and tags the source mailbox', () => {
-    const doc = buildNewTask(email(), parsed({ confidence: 0.9, assigned_to: null }), [], 'admin', {
+    const doc = buildNewTask(email(), parsed({ assigned_to: null }), [], 'admin', {
       mailbox: 'ben@raves.com',
       defaultAssignee: 'Ben',
     })
     expect(doc.assigned_to).toBe('Ben')              // lands in Ben's My Work
     expect(doc.source_mailbox).toBe('ben@raves.com')
-    expect(doc.needs_review).toBe(true)              // still flagged — owner is a fallback guess
   })
   it('keeps the LLM assignee over the inbox owner', () => {
     const doc = buildNewTask(email(), parsed({ assigned_to: 'Kris' }), [], 'admin', {
@@ -105,39 +79,18 @@ describe('buildNewTask', () => {
     })
     expect(doc.assigned_to).toBe('Kris')
   })
-})
-
-describe('resolveMailboxes', () => {
-  const users = [
-    { _id: 'ben@raves.com', name: 'Ben', role: 'pm' },
-    { _id: 'andrew@raves.com', name: 'Andrew', role: 'pm' },
-    { _id: 'boss@raves.com', name: 'Boss', role: 'admin' },
-    { _id: 'viewer@raves.com', name: 'Vic', role: 'viewer' },
-  ]
-
-  it('derives PM mailboxes from provisioned pm-role users, with owner names', () => {
-    const out = resolveMailboxes({ users })
-    expect(out).toEqual([
-      { email: 'ben@raves.com', owner: 'Ben' },
-      { email: 'andrew@raves.com', owner: 'Andrew' },
-    ])
+  it('titles the card from the LLM, not the raw subject', () => {
+    const doc = buildNewTask(email({ subject: 'RE: D-412 cooler' }), parsed({ title: 'Cooler repair quote — Store 412' }), [], 'admin')
+    expect(doc.title).toBe('Cooler repair quote — Store 412')
   })
-
-  it('always includes the central mailbox and de-dupes', () => {
-    const out = resolveMailboxes({ users, central: 'Ben@Raves.com' })
-    // central first, lower-cased, and Ben is not repeated by the pm scan
-    expect(out.map(m => m.email)).toEqual(['ben@raves.com', 'andrew@raves.com'])
-  })
-
-  it('lets an explicit list override the role-based auto-discovery', () => {
-    const out = resolveMailboxes({ users, explicit: 'kris@raves.com, ANDREW@raves.com' })
-    expect(out.map(m => m.email)).toEqual(['kris@raves.com', 'andrew@raves.com'])
-    expect(out.find(m => m.email === 'andrew@raves.com')?.owner).toBe('Andrew') // owner still resolved
+  it('falls back to the email subject when the LLM gives no title', () => {
+    const doc = buildNewTask(email({ subject: 'D-412 cooler' }), parsed({ title: '' }), [], 'admin')
+    expect(doc.title).toBe('D-412 cooler')
   })
 })
 
 describe('buildThreadPatch', () => {
-  it('applies only fields the reply newly provides, unions stores, flags review', () => {
+  it('applies only fields the reply newly provides, unions stores, refreshes exchange_id', () => {
     const t = task({ quote: '$12,300', quote_status: 'Sent', store_numbers: ['412'], assigned_to: 'Bob' })
     const p = parsed({ po: '4471', quote_status: 'Won', store_numbers: ['118'], quote: '$99,999', event: 'Approved' })
     const { set, timelineEntry } = buildThreadPatch(t, p, email({ id: 'msg2', sender_name: 'Jeff' }))
@@ -148,7 +101,6 @@ describe('buildThreadPatch', () => {
     expect(set.quote).toBeUndefined()           // never overwrite an existing amount
     expect(set.assigned_to).toBeUndefined()      // already assigned
     expect(set.exchange_id).toBe('msg2')
-    expect(set.needs_review).toBe(true)
     expect(timelineEntry.kind).toBe('email')
     expect(timelineEntry.text).toBe('Approved')
     expect(timelineEntry.from).toBe('Jeff')
@@ -181,5 +133,33 @@ describe('buildAttachmentPatch', () => {
   it('returns null when the document yields nothing useful', () => {
     const doc: ParsedDoc = { doc_type: 'Other', po: null, amount: null, store_numbers: [], summary: 'misc', confidence: 0.2 }
     expect(buildAttachmentPatch({}, doc, 'misc.pdf')).toBeNull()
+  })
+})
+
+describe('resolveMailboxes', () => {
+  const users = [
+    { _id: 'ben@raves.com', name: 'Ben', role: 'pm' },
+    { _id: 'andrew@raves.com', name: 'Andrew', role: 'pm' },
+    { _id: 'boss@raves.com', name: 'Boss', role: 'admin' },
+    { _id: 'viewer@raves.com', name: 'Vic', role: 'viewer' },
+  ]
+
+  it('derives PM mailboxes from provisioned pm-role users, with owner names', () => {
+    const out = resolveMailboxes({ users })
+    expect(out).toEqual([
+      { email: 'ben@raves.com', owner: 'Ben' },
+      { email: 'andrew@raves.com', owner: 'Andrew' },
+    ])
+  })
+
+  it('always includes the central mailbox and de-dupes', () => {
+    const out = resolveMailboxes({ users, central: 'Ben@Raves.com' })
+    expect(out.map(m => m.email)).toEqual(['ben@raves.com', 'andrew@raves.com'])
+  })
+
+  it('lets an explicit list override the role-based auto-discovery', () => {
+    const out = resolveMailboxes({ users, explicit: 'kris@raves.com, ANDREW@raves.com' })
+    expect(out.map(m => m.email)).toEqual(['kris@raves.com', 'andrew@raves.com'])
+    expect(out.find(m => m.email === 'andrew@raves.com')?.owner).toBe('Andrew') // owner still resolved
   })
 })

@@ -132,7 +132,6 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
               po: task.po,
               store_numbers: task.store_numbers,
               assigned_to: task.assigned_to,
-              date: task.date,
             },
           })
           const { set, timelineEntry } = buildThreadPatch(task, parsed, e)

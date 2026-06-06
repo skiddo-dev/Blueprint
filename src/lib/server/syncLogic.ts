@@ -6,9 +6,6 @@ import { normalizeStoreNumbers } from '$lib/storeNumbers'
 // Pure decision/merge logic for the email sync, kept free of db/network so it's
 // unit-testable. runEmailSync (emailSync.ts) wires these to Mongo + the LLM.
 
-/** Below this self-reported confidence, a new task is routed to the review lane. */
-export const REVIEW_CONFIDENCE = 0.6
-
 export interface SyncEmail {
   id: string
   subject: string
@@ -82,26 +79,13 @@ export function classifyEmail(
   return { action: 'new' }
 }
 
-/** Whether an extraction should be flagged for a human, and why. The reason is
- *  user-facing (shown on the card badge), so keep it plain. */
-export function computeReview(parsed: ParsedEmail): { needs_review: boolean; review_reason: string } {
-  if (parsed.confidence < REVIEW_CONFIDENCE)
-    return { needs_review: true, review_reason: `Low extraction confidence (${Math.round(parsed.confidence * 100)}%)` }
-  if (!parsed.assigned_to)
-    return { needs_review: true, review_reason: 'No assignee found — confirm who owns this' }
-  if (parsed.quote && !parsed.quote_type)
-    return { needs_review: true, review_reason: 'Has a quote amount but no quote type' }
-  if (parsed.uncertain_fields.length)
-    return { needs_review: true, review_reason: `Unsure about: ${parsed.uncertain_fields.join(', ')}` }
-  return { needs_review: false, review_reason: '' }
-}
-
 /** Build the task document for a brand-new email (shape mirrors the manual
- *  "New Task" path plus the AI trust signals + opening timeline entry).
- *  `opts.defaultAssignee` (the owner of the inbox it was flagged in) is used when
- *  the LLM couldn't infer an assignee, so the card lands in that PM's "My Work";
- *  it's still review-flagged via computeReview since the LLM itself was unsure.
- *  `opts.mailbox` records which inbox the email came from. */
+ *  "New Task" path plus an opening timeline entry). `opts.defaultAssignee` (the
+ *  owner of the inbox it was flagged in) is used when the LLM couldn't infer an
+ *  assignee, so the card lands in that PM's "My Work". `opts.mailbox` records
+ *  which inbox the email came from. The card title is the LLM's cleaned-up task
+ *  name (falling back to the raw subject). The due date is left empty for a PM to
+ *  set — it's not AI-guessed. */
 export function buildNewTask(
   email: SyncEmail,
   parsed: ParsedEmail,
@@ -110,14 +94,13 @@ export function buildNewTask(
   opts: { mailbox?: string; defaultAssignee?: string } = {},
 ): Record<string, unknown> {
   const now = new Date().toISOString()
-  const review = computeReview(parsed)
   const opening = (parsed.event || parsed.summary || email.subject).slice(0, 160)
   const timeline: TimelineEntry[] = [
     { at: now, kind: 'created', text: `Created from email — ${opening}`.slice(0, 180), from: email.sender_name },
   ]
   const fallbackAssignee = opts.defaultAssignee?.trim() || 'Unassigned'
   return {
-    title: email.subject,
+    title: parsed.title || email.subject,
     description: parsed.summary ?? '',
     full_body: email.body,
     quote: parsed.quote,
@@ -127,7 +110,7 @@ export function buildNewTask(
     store_numbers: storeNumbers,
     assigned_to: parsed.assigned_to ?? fallbackAssignee,
     notes: '',
-    date: parsed.date,
+    date: null,
     status: 'To Do',
     exchange_id: email.id,
     conversation_id: email.conversation_id ?? null,
@@ -137,9 +120,6 @@ export function buildNewTask(
     sender_email: email.sender_email,
     created_by: triggeredBy,
     attachment_ids: [],
-    confidence: parsed.confidence,
-    needs_review: review.needs_review,
-    review_reason: review.review_reason,
     timeline,
     created_at: now,
   }
@@ -147,9 +127,9 @@ export function buildNewTask(
 
 /** Patch an existing thread's card from a reply. Sets ONLY fields the reply
  *  actually provides (never silently overwrites a value the PM may have set):
- *  a changed due date, a newly-present quote/PO, a stage change, an assignee for
- *  a still-unassigned task, and the union of store numbers. Always refreshes
- *  exchange_id, flags for review, and contributes a timeline entry. */
+ *  a newly-present quote/PO, a stage change, an assignee for a still-unassigned
+ *  task, and the union of store numbers. Always refreshes exchange_id and
+ *  contributes a timeline entry. */
 export function buildThreadPatch(
   task: Task,
   parsed: ParsedEmail,
@@ -157,7 +137,6 @@ export function buildThreadPatch(
 ): { set: Record<string, unknown>; timelineEntry: TimelineEntry } {
   const set: Record<string, unknown> = {}
 
-  if (parsed.date && parsed.date !== task.date) set.date = parsed.date
   if (parsed.quote && !task.quote) set.quote = parsed.quote
   if (parsed.quote_type && !task.quote_type) set.quote_type = parsed.quote_type
   if (parsed.quote_status && parsed.quote_status !== task.quote_status) set.quote_status = parsed.quote_status
@@ -169,9 +148,6 @@ export function buildThreadPatch(
   if (union.length !== (task.store_numbers?.length ?? 0)) set.store_numbers = union
 
   set.exchange_id = email.id
-  set.needs_review = true
-  const who = email.sender_name || email.sender_email || 'someone'
-  set.review_reason = `Reply from ${who} updated this thread`
 
   const timelineEntry: TimelineEntry = {
     at: new Date().toISOString(),
