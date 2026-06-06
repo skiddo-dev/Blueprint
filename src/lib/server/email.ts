@@ -75,7 +75,7 @@ export async function fetchRecentEmails(mailbox: string, maxResults = 30) {
       const attRes = await fetch(`${base}/messages/${msgId}/attachments`, { headers })
       if (attRes.ok) {
         const attData = await attRes.json()
-        for (const att of (attData.value as Record<string, unknown>[]).slice(0, maxAttachmentsPerEmail)) {
+        for (const att of (((attData.value as Record<string, unknown>[]) ?? []).slice(0, maxAttachmentsPerEmail))) {
           const size = (att.size as number) ?? 0
           if (att.isInline) {
             attachments.push({ filename: att.name, size, skipped: true, is_inline: true })
