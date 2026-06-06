@@ -124,7 +124,10 @@ const guard: Handle = async ({ event, resolve }) => {
 
   // Admin-only pages (API routes do their own role checks + return 403)
   if (
-    (path.startsWith('/dashboard') || path.startsWith('/quotes') || path.startsWith('/prospects')) &&
+    (path.startsWith('/dashboard') ||
+      path.startsWith('/quotes') ||
+      path.startsWith('/prospects') ||
+      path.startsWith('/competitive-landscape')) &&
     user.role !== 'admin'
   ) {
     throw redirect(302, '/')

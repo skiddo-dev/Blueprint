@@ -25,6 +25,7 @@
     { href: '/dashboard', icon: '📊', label: 'Dashboard' },
     { href: '/quotes', icon: '💰', label: 'Quote Generator' },
     { href: '/prospects', icon: '🏭', label: 'Prospects' },
+    { href: '/competitive-landscape', icon: '🗺️', label: 'Competitive Landscape' },
   ]
   const isActive = (href: string) =>
     href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href)

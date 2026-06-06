@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Raves Construction — Competitive Landscape Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Saira:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --blueprint:#0a2a66;
+    --blueprint-2:#0e3174;
+    --ink:#eef3ff;
+    --ink-dim:rgba(238,243,255,.60);
+    --ink-faint:rgba(238,243,255,.34);
+    --cyan:#5cc6f0;
+    --amber:#ffcf5c;
+    --steel:#aebfe0;
+    --redline:#ff5a4d;
+    --grid:rgba(174,191,224,.10);
+    --grid-strong:rgba(174,191,224,.20);
+    --line:rgba(174,191,224,.35);
+    --font-display:"Saira Condensed",sans-serif;
+    --font-body:"Saira",sans-serif;
+    --font-mono:"Space Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--font-body);
+    color:var(--ink);
+    background-color:var(--blueprint);
+    background-image:
+      radial-gradient(120% 90% at 50% 0%, rgba(92,198,240,.10), transparent 55%),
+      radial-gradient(140% 120% at 100% 100%, rgba(10,28,66,.65), transparent 60%),
+      repeating-linear-gradient(0deg, var(--grid) 0 1px, transparent 1px 26px),
+      repeating-linear-gradient(90deg, var(--grid) 0 1px, transparent 1px 26px),
+      repeating-linear-gradient(0deg, var(--grid-strong) 0 1px, transparent 1px 130px),
+      repeating-linear-gradient(90deg, var(--grid-strong) 0 1px, transparent 1px 130px);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+    padding:26px;
+    min-height:100vh;
+  }
+  .sheet{
+    max-width:1180px;
+    margin:0 auto;
+    border:1.5px solid var(--line);
+    position:relative;
+    background:
+      linear-gradient(0deg, rgba(8,24,58,.35), rgba(8,24,58,.35));
+    box-shadow:0 30px 80px -30px rgba(0,0,0,.6);
+  }
+  .sheet::before{
+    /* inner drafting border */
+    content:"";position:absolute;inset:10px;border:1px solid rgba(174,191,224,.18);pointer-events:none;
+  }
+  .pad{padding:34px 38px}
+
+  /* ---------- top title block ---------- */
+  .titlebar{
+    display:grid;grid-template-columns:1fr 360px;gap:0;
+    border-bottom:1.5px solid var(--line);
+  }
+  .titlebar .lead{padding:30px 38px 26px;border-right:1.5px solid var(--line)}
+  .eyebrow{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.32em;
+    color:var(--cyan);text-transform:uppercase;display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:"";width:30px;height:1px;background:var(--cyan)}
+  h1{
+    font-family:var(--font-display);font-weight:700;line-height:.94;
+    font-size:clamp(34px,5.6vw,68px);letter-spacing:.005em;text-transform:uppercase;
+    margin:14px 0 8px;
+  }
+  h1 .thin{font-weight:500;color:var(--ink-dim);display:block;font-size:.46em;letter-spacing:.06em}
+  .lead p{max-width:60ch;color:var(--ink-dim);font-size:15px}
+  .lead p strong{color:var(--ink);font-weight:600}
+
+  .meta{display:grid;grid-template-columns:1fr 1fr}
+  .meta .cell{
+    border-bottom:1px solid var(--line);border-right:1px solid var(--line);
+    padding:12px 16px;
+  }
+  .meta .cell:nth-child(2n){border-right:none}
+  .meta .cell.full{grid-column:1/-1}
+  .meta .k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.2em;color:var(--ink-faint);text-transform:uppercase}
+  .meta .v{font-family:var(--font-display);font-size:18px;font-weight:600;letter-spacing:.02em;margin-top:3px}
+  .meta .v.cyan{color:var(--cyan)} .meta .v.red{color:var(--redline)}
+
+  /* ---------- section scaffold ---------- */
+  .section{border-bottom:1.5px solid var(--line)}
+  .sec-head{
+    display:flex;align-items:baseline;gap:14px;margin-bottom:22px;
+  }
+  .sec-no{
+    font-family:var(--font-mono);font-size:12px;color:var(--blueprint);
+    background:var(--cyan);padding:3px 9px;letter-spacing:.1em;font-weight:700;
+  }
+  .sec-title{font-family:var(--font-display);font-weight:600;font-size:26px;letter-spacing:.04em;text-transform:uppercase}
+  .sec-sub{font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);letter-spacing:.06em;margin-left:auto;text-align:right;max-width:42ch}
+
+  /* ---------- subject callout ---------- */
+  .subject{
+    border:1.5px solid var(--redline);position:relative;
+    padding:24px 26px;
+    background:linear-gradient(0deg, rgba(255,90,77,.06), rgba(255,90,77,.06));
+  }
+  .subject .tag{
+    position:absolute;top:-11px;left:20px;background:var(--blueprint);
+    color:var(--redline);font-family:var(--font-mono);font-size:11px;letter-spacing:.22em;
+    padding:2px 10px;border:1px solid var(--redline);text-transform:uppercase;
+  }
+  .subject h3{font-family:var(--font-display);font-size:30px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
+  .subject .sub{font-family:var(--font-mono);font-size:12px;color:var(--ink-dim);margin-bottom:14px;letter-spacing:.04em}
+  .subject .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:6px}
+  .subject .grid3 .b .k{font-family:var(--font-mono);font-size:10px;letter-spacing:.16em;color:var(--ink-faint);text-transform:uppercase}
+  .subject .grid3 .b p{font-size:14px;color:var(--ink);margin-top:4px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+  .chip{font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;border:1px solid var(--line);
+    padding:4px 10px;color:var(--ink-dim);border-radius:1px}
+  .chip.hl{border-color:var(--redline);color:var(--redline)}
+
+  /* ---------- radius study ---------- */
+  .study{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:30px;align-items:start}
+  .plot-wrap{border:1px solid var(--line);padding:10px;background:rgba(7,22,54,.4)}
+  svg.plot{display:block;width:100%;height:auto}
+  .ring{fill:none;stroke:var(--cyan);stroke-opacity:.30;stroke-width:1;stroke-dasharray:3 5}
+  .ring.outer{stroke-opacity:.55;stroke-dasharray:none}
+  .axis{stroke:var(--steel);stroke-opacity:.25;stroke-width:1;stroke-dasharray:2 6}
+  .ringlabel{font-family:var(--font-mono);font-size:11px;fill:var(--cyan);fill-opacity:.8;letter-spacing:.08em}
+  .compass{font-family:var(--font-display);font-size:15px;fill:var(--ink-dim);font-weight:600}
+  .origin-l{font-family:var(--font-mono);font-size:10.5px;fill:var(--ink-dim);letter-spacing:.1em}
+  .pinnum{font-family:var(--font-mono);font-size:12px;font-weight:700;fill:var(--blueprint);text-anchor:middle;dominant-baseline:central}
+  .pin{cursor:default;transform-box:fill-box;transform-origin:center;opacity:0;animation:pop .55s cubic-bezier(.2,.8,.3,1.2) forwards;transition:opacity .3s ease}
+  .pin .body{transition:filter .2s ease}
+  .pin:hover .body{filter:drop-shadow(0 0 6px currentColor)}
+  .pin .tip{opacity:0;transition:opacity .18s ease;font-family:var(--font-mono);font-size:11px;fill:var(--ink);letter-spacing:.03em}
+  .pin .tipbg{opacity:0;transition:opacity .18s ease}
+  .pin:hover .tip,.pin:hover .tipbg{opacity:1}
+  .pin.dim{opacity:.1 !important;pointer-events:none}
+  .pin.dim:hover .tip,.pin.dim:hover .tipbg{opacity:0}
+  .c-cyan{color:var(--cyan)} .c-amber{color:var(--amber)} .c-steel{color:var(--steel)} .c-red{color:var(--redline)}
+  @keyframes pop{0%{opacity:0;transform:scale(.2)}70%{transform:scale(1.14)}100%{opacity:1;transform:scale(1)}}
+
+  /* legend */
+  .legend{font-family:var(--font-mono)}
+  .legend h4{font-family:var(--font-display);font-size:14px;letter-spacing:.16em;color:var(--ink-dim);text-transform:uppercase;margin-bottom:12px;font-weight:600}
+  .leg-row{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-bottom:1px dashed rgba(174,191,224,.16);font-size:12px;transition:opacity .25s ease}
+  .leg-row.dim{opacity:.3}
+  .leg-row .mk{width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--blueprint);margin:0 auto}
+  .mk.circle{border-radius:50%} .mk.square{border-radius:2px}
+  .mk.diamond{transform:rotate(45deg);border-radius:2px}.mk.diamond span{transform:rotate(-45deg)}
+  .leg-row .nm{color:var(--ink);font-family:var(--font-body);font-size:13px;font-weight:500;line-height:1.2}
+  .leg-row .nm small{display:block;color:var(--ink-faint);font-family:var(--font-mono);font-size:10px;letter-spacing:.04em}
+  .leg-row .di{color:var(--cyan);font-size:11px;white-space:nowrap}
+  .leg-note{margin-top:14px;font-size:10.5px;color:var(--ink-faint);line-height:1.6;letter-spacing:.02em}
+
+  /* ---------- filters ---------- */
+  .controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+  .controls .ctl-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.2em;color:var(--ink-faint);text-transform:uppercase;margin-right:2px}
+  .fbtn{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--ink-dim);
+    background:transparent;border:1px solid var(--line);padding:5px 12px;cursor:pointer;
+    text-transform:uppercase;transition:color .18s ease,border-color .18s ease,background .18s ease;border-radius:1px;
+  }
+  .fbtn:hover{color:var(--ink);border-color:var(--cyan)}
+  .fbtn.active{color:var(--blueprint);background:var(--cyan);border-color:var(--cyan);font-weight:700}
+  .fbtn[data-f="2"].active{background:var(--amber);border-color:var(--amber)}
+  .fbtn[data-f="3"].active{background:var(--steel);border-color:var(--steel)}
+
+  /* ---------- competitor schedule (tiered cards) ---------- */
+  .tier{margin-top:26px}
+  .tier:first-child{margin-top:0}
+  .tier-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .tier-id{font-family:var(--font-mono);font-size:11px;letter-spacing:.18em;padding:3px 10px;border:1px solid var(--line);color:var(--ink)}
+  .tier-id.t1{border-color:var(--cyan);color:var(--cyan)}
+  .tier-id.t2{border-color:var(--amber);color:var(--amber)}
+  .tier-id.t3{border-color:var(--steel);color:var(--steel)}
+  .tier-name{font-family:var(--font-display);font-size:18px;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+  .tier-desc{font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);letter-spacing:.03em}
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .card{
+    border:1px solid var(--line);padding:18px 20px 16px;position:relative;
+    background:rgba(7,22,54,.34);transition:transform .2s ease,border-color .2s ease,background .2s ease;
+  }
+  .card:hover{transform:translateY(-3px);border-color:var(--cyan);background:rgba(11,40,90,.5)}
+  .card.note{display:flex;flex-direction:column;justify-content:center;border-style:dashed}
+  .card.note:hover{transform:none;border-color:var(--line);background:rgba(7,22,54,.34)}
+  .card.note .desc{color:var(--ink-dim)}
+  .card .row1{display:flex;align-items:flex-start;gap:12px}
+  .badge{
+    flex:0 0 auto;width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);font-weight:700;font-size:13px;color:var(--blueprint);
+  }
+  .badge.circle{border-radius:50%} .badge.square{border-radius:3px}
+  .card h5{font-family:var(--font-display);font-size:20px;font-weight:600;letter-spacing:.02em;line-height:1;text-transform:uppercase}
+  .card .loc{font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);margin-top:3px;letter-spacing:.03em}
+  .dimwrap{margin:13px 0 11px}
+  .dim{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;color:var(--cyan);letter-spacing:.06em}
+  .dim .tick{width:1.5px;height:9px;background:currentColor}
+  .dim .ln{width:26px;height:1px;background:currentColor}
+  .dim .val{font-weight:700}
+  .dim .bear{color:var(--ink-faint);font-size:10px;margin-left:2px}
+  .card .desc{font-size:13px;color:var(--ink);line-height:1.5}
+  .card .foot{display:flex;justify-content:space-between;align-items:center;margin-top:13px;padding-top:11px;border-top:1px dashed rgba(174,191,224,.18)}
+  .card .tel{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-dim);letter-spacing:.04em}
+  .card .rate{font-family:var(--font-mono);font-size:11px;color:var(--amber)}
+  .card .rate.na{color:var(--ink-faint)}
+  .card.edge::after{content:"BOUNDARY";position:absolute;top:10px;right:12px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.18em;color:var(--redline);border:1px solid var(--redline);padding:1px 5px}
+
+  /* ---------- notes + footer ---------- */
+  .footgrid{display:grid;grid-template-columns:1fr 380px;gap:0}
+  .notes{padding:30px 38px;border-right:1.5px solid var(--line)}
+  .notes h4,.rev h4{font-family:var(--font-display);font-size:14px;letter-spacing:.18em;color:var(--cyan);text-transform:uppercase;margin-bottom:14px;font-weight:600}
+  .notes ol{list-style:none;counter-reset:n}
+  .notes li{counter-increment:n;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-dim);line-height:1.6;padding-left:34px;position:relative;margin-bottom:9px;letter-spacing:.01em}
+  .notes li::before{content:"N" counter(n);position:absolute;left:0;top:0;color:var(--cyan);font-weight:700;opacity:.8}
+  .rev{padding:30px 30px 0}
+  .rev table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:10.5px}
+  .rev th,.rev td{border:1px solid var(--line);padding:6px 8px;text-align:left;letter-spacing:.04em}
+  .rev th{color:var(--ink-faint);font-weight:400;font-size:9px;letter-spacing:.14em;text-transform:uppercase}
+  .rev td{color:var(--ink-dim)}
+
+  .tblock{margin-top:26px;border:1.5px solid var(--line)}
+  .tblock .trow{display:grid;border-bottom:1px solid var(--line)}
+  .tblock .trow:last-child{border-bottom:none}
+  .tblock .trow.c2{grid-template-columns:1fr 1fr}
+  .tblock .trow.c3{grid-template-columns:1fr 1fr 1fr}
+  .tblock .tc{padding:9px 12px;border-right:1px solid var(--line)}
+  .tblock .tc:last-child{border-right:none}
+  .tblock .tk{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.18em;color:var(--ink-faint);text-transform:uppercase}
+  .tblock .tv{font-family:var(--font-display);font-size:15px;font-weight:600;letter-spacing:.03em;margin-top:2px}
+  .tblock .tv.big{font-size:18px}
+  .tblock .firm{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);letter-spacing:.1em;padding:8px 12px;text-align:center}
+
+  /* reveal animation */
+  .reveal{opacity:0;animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+  @media (max-width:880px){
+    body{padding:12px}
+    .pad{padding:24px 20px}
+    .titlebar{grid-template-columns:1fr}
+    .titlebar .lead{border-right:none;border-bottom:1.5px solid var(--line)}
+    .study{grid-template-columns:1fr}
+    .cards{grid-template-columns:1fr}
+    .subject .grid3{grid-template-columns:1fr}
+    .footgrid{grid-template-columns:1fr}
+    .notes{border-right:none;border-bottom:1.5px solid var(--line)}
+    .sec-sub{display:none}
+  }
+  @media print{
+    body{background:var(--blueprint);padding:0}
+    .sheet{box-shadow:none;max-width:none}
+    .card:hover,.pin:hover{transform:none}
+    .controls{display:none}
+  }
+</style>
+</head>
+<body>
+<main class="sheet">
+
+  <!-- ============ TITLE BAR ============ -->
+  <header class="titlebar">
+    <div class="lead reveal" style="animation-delay:.05s">
+      <div class="eyebrow">Market Intelligence · Drawing CL-001</div>
+      <h1>Competitive<br>Landscape
+        <span class="thin">Raves Construction — Market Position Study</span>
+      </h1>
+      <p><strong>Raves Inc (Raves Construction)</strong> is a Highland Township commercial general contractor &amp; demolition firm serving metro Detroit since 2000. This sheet plots its closest rivals inside a <strong>30-mile radius of Bloomfield Hills</strong>, sorted by how directly they compete for the same retail, restaurant &amp; grocery work.</p>
+    </div>
+    <div class="meta reveal" style="animation-delay:.12s">
+      <div class="cell"><div class="k">Subject</div><div class="v red">Raves Constr.</div></div>
+      <div class="cell"><div class="k">Study Radius</div><div class="v cyan">30 MI</div></div>
+      <div class="cell"><div class="k">Origin</div><div class="v">Bloomfield Hills</div></div>
+      <div class="cell"><div class="k">Competitors</div><div class="v" id="metaCount">09 Plotted</div></div>
+      <div class="cell"><div class="k">Sheet No.</div><div class="v">CL-001</div></div>
+      <div class="cell"><div class="k">Scale</div><div class="v">1″=10 MI</div></div>
+      <div class="cell full"><div class="k">Issued</div><div class="v">2026 · 06 · 06 — Rev A</div></div>
+    </div>
+  </header>
+
+  <!-- ============ 01 SUBJECT ============ -->
+  <section class="section">
+    <div class="pad">
+      <div class="sec-head reveal" style="animation-delay:.16s">
+        <span class="sec-no">01</span>
+        <span class="sec-title">Subject Firm</span>
+        <span class="sec-sub">The company being benchmarked against the local field.</span>
+      </div>
+
+      <div class="subject reveal" style="animation-delay:.2s">
+        <span class="tag">◆ Subject</span>
+        <h3>Raves Construction</h3>
+        <div class="sub">1704 E Highland Rd, Highland Twp, MI 48356 · (248) 887-0644 · ravesinc.com · est. 2000</div>
+        <div class="grid3">
+          <div class="b"><div class="k">Core Model</div><p>Self-performs construction <em>plus</em> demolition <em>plus</em> hauling — a one-stop shop for retail &amp; grocery clients.</p></div>
+          <div class="b"><div class="k">Client Niche</div><p>Supermarket chains, mom-and-pop grocery, restaurants &amp; general retail across metro Detroit.</p></div>
+          <div class="b"><div class="k">Footprint</div><p>50,000+ sq ft warehousing, full hauling fleet, in-house equipment mechanics &amp; equipment sales.</p></div>
+        </div>
+        <div class="chips">
+          <span class="chip hl">Design / Build</span>
+          <span class="chip hl">Demolition</span>
+          <span class="chip">Building Maintenance</span>
+          <span class="chip">Equipment Hauling</span>
+          <span class="chip">Warehousing</span>
+          <span class="chip">Minor Repair</span>
+          <span class="chip">Equipment Sales</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 02 RADIUS STUDY ============ -->
+  <section class="section">
+    <div class="pad">
+      <div class="sec-head reveal" style="animation-delay:.24s">
+        <span class="sec-no">02</span>
+        <span class="sec-title">Radius Study</span>
+        <span class="sec-sub">Straight-line position of each competitor from the Bloomfield Hills origin. Rings @ 10 / 20 / 30 mi.</span>
+      </div>
+
+      <div class="study">
+        <div class="plot-wrap reveal" id="plot-wrap" style="animation-delay:.28s"><!-- SVG injected --></div>
+
+        <!-- legend -->
+        <aside class="legend reveal" style="animation-delay:.34s">
+          <h4>Key</h4>
+          <div id="legend-rows"><!-- rows injected --></div>
+          <p class="leg-note">◆ Subject &nbsp;·&nbsp; ● General contractor / builder &nbsp;·&nbsp; ■ Demolition &amp; site work. Cyan = direct build-out rival, amber = grocery specialist, steel = demolition. Hover any pin for its label.</p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 03 SCHEDULE ============ -->
+  <section class="section">
+    <div class="pad">
+      <div class="sec-head reveal" style="animation-delay:.3s">
+        <span class="sec-no">03</span>
+        <span class="sec-title">Competitor Schedule</span>
+        <span class="sec-sub">Grouped by competitive overlap with the subject firm. Closest threats first.</span>
+      </div>
+
+      <div class="controls reveal" style="animation-delay:.33s">
+        <span class="ctl-label">Filter</span>
+        <button class="fbtn active" data-f="all">All</button>
+        <button class="fbtn active" data-f="1">Tier 1 · Build-Out</button>
+        <button class="fbtn active" data-f="2">Tier 2 · Grocery</button>
+        <button class="fbtn active" data-f="3">Tier 3 · Demo</button>
+      </div>
+
+      <div id="tiers"><!-- tiers injected --></div>
+    </div>
+  </section>
+
+  <!-- ============ NOTES + TITLE BLOCK ============ -->
+  <div class="footgrid">
+    <div class="notes reveal" style="animation-delay:.5s">
+      <h4>Drawing Notes</h4>
+      <ol>
+        <li>Distances are straight-line from Bloomfield Hills city center (42.58°N, 83.25°W); actual drive distances vary.</li>
+        <li>Two firms sit on the study boundary — Wagensomer (~27 mi E) and Merlo (~28 mi W).</li>
+        <li>The subject, Raves, lies ~18 mi NW of the origin and is itself inside the radius.</li>
+        <li>Pin shape encodes trade: ◆ subject · ● general contractor / builder · ■ demolition &amp; site work.</li>
+        <li>Also operating in-area but not plotted: Rae Excavating (Walled Lake), Detroit Dismantling.</li>
+        <li>Sources: company websites &amp; Google Places, compiled Jun 2026. Verify all figures before outreach or bidding.</li>
+      </ol>
+    </div>
+    <div class="rev reveal" style="animation-delay:.54s">
+      <h4>Revisions</h4>
+      <table>
+        <thead><tr><th>Rev</th><th>Description</th><th>Date</th><th>By</th></tr></thead>
+        <tbody>
+          <tr><td>A</td><td>Initial issue — 9 competitors</td><td>2026-06-06</td><td>CL</td></tr>
+          <tr><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      <div class="tblock">
+        <div class="trow"><div class="tc"><div class="tk">Project</div><div class="tv big">Raves Construction — Competitive Landscape</div></div></div>
+        <div class="trow c2">
+          <div class="tc"><div class="tk">Sheet Title</div><div class="tv">Market Position Plan</div></div>
+          <div class="tc"><div class="tk">Sheet No.</div><div class="tv">CL-001</div></div>
+        </div>
+        <div class="trow c3">
+          <div class="tc"><div class="tk">Scale</div><div class="tv">1″=10 MI</div></div>
+          <div class="tc"><div class="tk">Date</div><div class="tv">26.06.06</div></div>
+          <div class="tc"><div class="tk">Rev</div><div class="tv">A</div></div>
+        </div>
+        <div class="trow"><div class="firm">DRAFTED IN CLAUDE · MARKET INTELLIGENCE SERIES</div></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+/* ===========================================================================
+   COMPETITOR DATASET — single source of truth.
+   Add a competitor here and the radius plot, legend and schedule all update.
+   Coordinates: north_mi / east_mi are offsets from the Bloomfield Hills origin.
+   =========================================================================== */
+const DATA = [
+  { id:"R", name:"Raves Construction", tier:"subject", shape:"diamond", color:"red",
+    city:"Highland Twp, MI", phone:"(248) 887-0644", web:"ravesinc.com",
+    rating:null, rating_count:null, dist_mi:18, bearing:"NW", north_mi:4.21, east_mi:-17.74,
+    desc:"Subject firm — GC + demolition + hauling for grocery/retail." },
+
+  { id:1, name:"Metro General Contractors", tier:1, shape:"circle", color:"cyan",
+    city:"Wixom, MI", phone:"(248) 615-1111", web:"metrogeneralcontractorsinc.com",
+    rating:3.9, rating_count:11, dist_mi:16, bearing:"SW", north_mi:-5.76, east_mi:-15.41,
+    desc:"Design-build firm specializing in retail tenant build-out, restaurants & franchise builds — the single closest match to Raves' bread-and-butter." },
+
+  { id:2, name:"Schonsheck Inc", tier:1, shape:"circle", color:"cyan",
+    city:"Wixom, MI", phone:"(248) 669-8800", web:"schonsheck.com",
+    rating:5.0, rating_count:6, dist_mi:16, bearing:"SW", north_mi:-4.15, east_mi:-15.47,
+    desc:"Employee-owned design-build GC (38+ yrs) across retail, banking, healthcare, self-storage & industrial, plus pre-engineered metal buildings. Larger tier." },
+
+  { id:3, name:"Wagensomer Construction", tier:1, shape:"circle", color:"cyan",
+    city:"New Baltimore, MI", phone:"(313) 585-3166", web:"wagensomerconstruction.com",
+    rating:null, rating_count:null, dist_mi:27, bearing:"E", north_mi:7.49, east_mi:25.63, edge:true,
+    desc:"Ground-up franchise & strip-mall construction (built/remodeled Little Caesars) plus medical builds. Strong franchise/retail overlap." },
+
+  { id:4, name:"JLR Group", tier:1, shape:"circle", color:"cyan",
+    city:"Clarkston, MI", phone:"(248) 909-6183", web:"jlr-group.com",
+    rating:null, rating_count:null, dist_mi:13, bearing:"N", north_mi:9.60, east_mi:-8.79,
+    desc:"Commercial GC across Oakland / Macomb / Wayne that pitches minimal downtime — building around an operating business, same as a live grocery remodel." },
+
+  { id:5, name:"Sachse Construction", tier:2, shape:"circle", color:"amber",
+    city:"Detroit, MI", phone:"(313) 481-8200", web:"sachseconstruction.com",
+    rating:4.3, rating_count:39, dist_mi:19, bearing:"S", north_mi:-16.26, east_mi:9.50,
+    desc:"Large regional/national GC; built ground-up Whole Foods + three open-store remodels, plus extensive retail. Competes squarely on grocery, but at much bigger scale." },
+
+  { id:6, name:"Adamo Demolition", tier:3, shape:"square", color:"steel",
+    city:"Detroit, MI", phone:"(313) 892-7330", web:"adamogroup.com",
+    rating:3.4, rating_count:37, dist_mi:13, bearing:"S", north_mi:-10.51, east_mi:7.44,
+    desc:"One of the region's largest demolition contractors (since 1964) — total/selective demo, environmental & hauling. A bigger demo player than Raves." },
+
+  { id:7, name:"Homrich", tier:3, shape:"square", color:"steel",
+    city:"Detroit, MI", phone:"(313) 962-2589", web:"homrich.com",
+    rating:2.6, rating_count:9, dist_mi:19, bearing:"S", north_mi:-17.85, east_mi:5.51,
+    desc:"Full-service demolition since 1964 — total/selective demo, abatement, recycling & equipment hauling. Storage + transportation arms overlap Raves directly." },
+
+  { id:8, name:"Greater Metro Demolition", tier:3, shape:"square", color:"steel",
+    city:"Ortonville, MI", phone:"(248) 627-6314", web:null,
+    rating:null, rating_count:null, dist_mi:23, bearing:"N", north_mi:19.58, east_mi:-11.48,
+    desc:"Residential & commercial demolition, grading & construction across Wayne / Oakland / Macomb. Closest demo rival to the north." },
+
+  { id:9, name:"Merlo Construction", tier:3, shape:"square", color:"steel",
+    city:"Milford / Brighton, MI", phone:"(248) 714-5486", web:"merlomichigan.com",
+    rating:4.2, rating_count:51, dist_mi:28, bearing:"W", north_mi:-0.79, east_mi:-28.52, edge:true,
+    desc:"Family-run demo & excavating since 1991 — arguably closest to Raves in size & profile on the demo/site side, and right in its own backyard." }
+];
+
+const TIERS = [
+  { n:1, name:"Direct Build-Out Rivals", desc:"commercial GC — retail / restaurant / grocery build-outs & remodels" },
+  { n:2, name:"Grocery / Retail Specialist", desc:"heavy supermarket overlap — larger, national-scale builder",
+    note:"Few local firms match Raves' grocery niche at this scale. National grocery specialists (EDC, Hilbers) exist but fall outside the 30-mi study area — flagged for reference only." },
+  { n:3, name:"Demolition / Site & Equipment", desc:"overlap on the demolition + hauling line of business" }
+];
+
+/* ---- plot geometry (matches CLAUDE.md spec) ---- */
+const ORIGIN = 380, SCALE = 10; // px per mile, viewBox 760x760
+const HEX = { red:"#ff5a4d", cyan:"#5cc6f0", amber:"#ffcf5c", steel:"#aebfe0" };
+const VAR = { red:"redline", cyan:"cyan", amber:"amber", steel:"steel" };
+
+const r = n => Math.round(n * 100) / 100;
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const tierKey = d => d.tier === "subject" ? "subject" : d.tier;
+const pinPos = d => ({ x: r(ORIGIN + d.east_mi * SCALE), y: r(ORIGIN - d.north_mi * SCALE) });
+
+function pinSVG(d, i){
+  const { x, y } = pinPos(d);
+  const hex = HEX[d.color];
+  const delay = (0.5 + i * 0.06).toFixed(2);
+  let shape;
+  if (d.shape === "circle"){
+    shape = `<circle class="body" cx="${x}" cy="${y}" r="13" fill="${hex}"/>`;
+  } else if (d.shape === "square"){
+    shape = `<rect class="body" x="${r(x-13)}" y="${r(y-13)}" width="26" height="26" rx="2" fill="${hex}"/>`;
+  } else { // diamond (subject)
+    shape = `<rect class="body" x="${r(x-12)}" y="${r(y-12)}" width="24" height="24" rx="2" transform="rotate(45 ${x} ${y})" fill="${hex}"/>`;
+  }
+  const label = `${d.name} · ${d.city}`;
+  const boxW = Math.ceil(label.length * 6.4 + 14);
+  let boxX = x + 18;                                   // default: label to the right
+  if (boxX + boxW > 740) boxX = x - 18 - boxW;         // flip left near the east edge
+  boxX = Math.max(4, Math.min(boxX, 756 - boxW));      // clamp inside the viewBox
+  return `<g class="pin c-${d.color}" data-tier="${tierKey(d)}" style="animation-delay:${delay}s">
+    ${shape}
+    <text class="pinnum" x="${x}" y="${y}">${d.id}</text>
+    <rect class="tipbg" x="${r(boxX)}" y="${r(y-9)}" width="${boxW}" height="18" fill="#0a2a66" stroke="${hex}" stroke-width=".75"/>
+    <text class="tip" x="${r(boxX+6)}" y="${r(y+4)}">${esc(label)}</text>
+  </g>`;
+}
+
+function legendRow(d){
+  const inner = d.shape === "diamond" ? `<span>${d.id}</span>` : `${d.id}`;
+  const small = d.tier === "subject" ? "SUBJECT · Highland" : d.city;
+  return `<div class="leg-row" data-tier="${tierKey(d)}">
+    <span class="mk ${d.shape}" style="background:var(--${VAR[d.color]})">${inner}</span>
+    <span class="nm">${esc(d.name)} <small>${esc(small)}</small></span>
+    <span class="di">~${d.dist_mi} ${d.bearing}</span>
+  </div>`;
+}
+
+function cardHTML(d){
+  const rate = d.rating != null
+    ? `<span class="rate">★ ${d.rating.toFixed(1)} (${d.rating_count})</span>`
+    : `<span class="rate na">no public rating</span>`;
+  const tel = d.web ? esc(d.web) : "no public site";
+  return `<article class="card${d.edge ? " edge" : ""}">
+    <div class="row1">
+      <span class="badge ${d.shape}" style="background:var(--${VAR[d.color]})">${d.id}</span>
+      <div><h5>${esc(d.name)}</h5><div class="loc">${esc(d.city)} · ${esc(d.phone)}</div></div>
+    </div>
+    <div class="dimwrap"><span class="dim"><span class="tick"></span><span class="ln"></span><span class="val">${d.dist_mi} MI</span><span class="ln"></span><span class="tick"></span><span class="bear">${esc(d.bearing)}</span></span></div>
+    <p class="desc">${esc(d.desc)}</p>
+    <div class="foot"><span class="tel">${tel}</span>${rate}</div>
+  </article>`;
+}
+
+/* ---- render ---- */
+const SVG_BASE = `<svg class="plot" viewBox="0 0 760 760" role="img" aria-label="Radial plot of competitors within 30 miles of Bloomfield Hills">
+  <circle class="ring" cx="380" cy="380" r="100"/>
+  <circle class="ring" cx="380" cy="380" r="200"/>
+  <circle class="ring outer" cx="380" cy="380" r="300"/>
+  <line class="axis" x1="380" y1="64" x2="380" y2="696"/>
+  <line class="axis" x1="64" y1="380" x2="696" y2="380"/>
+  <text class="ringlabel" x="386" y="286">10 MI</text>
+  <text class="ringlabel" x="386" y="186">20 MI</text>
+  <text class="ringlabel" x="386" y="86">30 MI</text>
+  <polygon points="380,44 374,60 386,60" fill="#aebfe0" fill-opacity=".7"/>
+  <text class="compass" x="380" y="38" text-anchor="middle">N</text>
+  <text class="compass" x="708" y="384" text-anchor="middle">E</text>
+  <text class="compass" x="380" y="722" text-anchor="middle">S</text>
+  <text class="compass" x="52" y="384" text-anchor="middle">W</text>
+  <g>
+    <circle cx="380" cy="380" r="6" fill="none" stroke="#eef3ff" stroke-width="1.4"/>
+    <line x1="380" y1="368" x2="380" y2="392" stroke="#eef3ff" stroke-width="1.2"/>
+    <line x1="368" y1="380" x2="392" y2="380" stroke="#eef3ff" stroke-width="1.2"/>
+    <text class="origin-l" x="380" y="404" text-anchor="middle">BLOOMFIELD HILLS · ORIGIN</text>
+  </g>`;
+
+document.getElementById("plot-wrap").innerHTML = SVG_BASE + DATA.map(pinSVG).join("") + "</svg>";
+document.getElementById("legend-rows").innerHTML = DATA.map(legendRow).join("");
+document.getElementById("tiers").innerHTML = TIERS.map((t, ti) => {
+  const cards = DATA.filter(d => d.tier === t.n).map(cardHTML).join("");
+  const noteCard = t.note ? `<article class="card note"><p class="desc">${esc(t.note)}</p></article>` : "";
+  return `<div class="tier reveal" data-tier="${t.n}" style="animation-delay:${(0.36 + ti * 0.06).toFixed(2)}s">
+    <div class="tier-head">
+      <span class="tier-id t${t.n}">TIER 0${t.n}</span>
+      <span class="tier-name">${esc(t.name)}</span>
+      <span class="tier-desc">${esc(t.desc)}</span>
+    </div>
+    <div class="cards">${cards}${noteCard}</div>
+  </div>`;
+}).join("");
+
+const count = DATA.filter(d => d.tier !== "subject").length;
+document.getElementById("metaCount").textContent = String(count).padStart(2, "0") + " Plotted";
+
+/* ---- tier filters ---- */
+const active = new Set([1, 2, 3]);
+const btns = Array.from(document.querySelectorAll(".fbtn"));
+
+function applyFilter(){
+  document.querySelectorAll("#tiers .tier").forEach(el => {
+    el.style.display = active.has(+el.dataset.tier) ? "" : "none";
+  });
+  document.querySelectorAll(".pin, .leg-row").forEach(el => {
+    const t = el.dataset.tier;
+    if (t === "subject") return;            // subject always shown
+    el.classList.toggle("dim", !active.has(+t));
+  });
+  btns.forEach(b => {
+    b.classList.toggle("active", b.dataset.f === "all" ? active.size === 3 : active.has(+b.dataset.f));
+  });
+}
+
+btns.forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.f === "all"){
+    active.clear(); [1, 2, 3].forEach(n => active.add(n));
+  } else {
+    const n = +b.dataset.f;
+    active.has(n) ? active.delete(n) : active.add(n);
+  }
+  applyFilter();
+}));
+
+applyFilter();
+</script>
+</body>
+</html>
