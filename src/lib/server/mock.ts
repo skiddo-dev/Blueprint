@@ -9,6 +9,9 @@ const ASSIGNEES = [
   'Frank Crew', 'Bob', 'Dean', 'Vickie', 'Sarah',
 ]
 
+// Fake PM inboxes so the admin-only "flagged in" chip renders in mock mode.
+const MOCK_INBOXES = ['ben@raves.com', 'andrew@raves.com', 'kris@raves.com', 'mike@raves.com']
+
 const TEMPLATES: Array<[string, string, string]> = [
   ['Site Inspection Required', 'Requires immediate attention from site supervisor', 'Follow up with vendor on delivery date'],
   ['Equipment Delivery Scheduled', 'Pending approval from project manager', 'Schedule work within permit validity period'],
@@ -90,6 +93,7 @@ export function generateMockTasks(count = 35): Task[] {
       status: pick(KANBAN_STATUSES) as TaskStatus,
       exchange_id: `mock_exchange_${String(i).padStart(3, '0')}`,
       conversation_id: `mock_thread_${String(i).padStart(3, '0')}`,
+      source_mailbox: pick(MOCK_INBOXES),
       created_by: 'system',
       attachment_ids: [],
       confidence: flagged ? 0.4 : 0.9,
