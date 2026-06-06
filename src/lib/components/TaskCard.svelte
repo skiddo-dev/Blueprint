@@ -74,13 +74,6 @@
       : `✏️ ${task.created_by || 'Manual'}`
   )
 
-  // Compact "Jun 5" stamp for activity-timeline entries.
-  function fmtWhen(iso: string): string {
-    const d = new Date(iso)
-    return isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  }
-  // Newest activity first.
-  let timeline = $derived([...(task.timeline ?? [])].reverse())
   // Which PM inbox this was flagged in (admin-only chip); show the local part,
   // full address in the tooltip.
   let inbox = $derived(task.source_mailbox ? task.source_mailbox.split('@')[0] : '')
@@ -253,20 +246,6 @@
     </details>
   {/if}
 
-  <!-- Activity timeline — how this card evolved (created, replies, parsed docs) -->
-  {#if timeline.length}
-    <details class="activity-expand">
-      <summary>🕓 Activity ({timeline.length})</summary>
-      <div class="activity-list">
-        {#each timeline as entry}
-          <div class="activity-item">
-            <span class="ai-when">{fmtWhen(entry.at)}</span>
-            <span class="ai-text">{entry.text}{#if entry.from}<span class="ai-from"> · {entry.from}</span>{/if}</span>
-          </div>
-        {/each}
-      </div>
-    </details>
-  {/if}
 
   <!-- Delete -->
   <button class="delete-btn" onclick={() => onDelete(task._id)} title="Delete task">
@@ -395,35 +374,12 @@
 
   .email-expand summary,
   .notes-expand summary,
-  .att-expand summary,
-  .activity-expand summary {
+  .att-expand summary {
     font-size: 11px;
     color: var(--primary);
     padding: 4px 0;
   }
 
-  .activity-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-top: 4px;
-    border-left: 2px solid var(--border);
-    padding-left: 8px;
-  }
-  .activity-item {
-    display: flex;
-    gap: 6px;
-    font-size: 11px;
-    line-height: 1.4;
-  }
-  .ai-when {
-    color: var(--text-faint);
-    font-weight: 600;
-    flex-shrink: 0;
-    min-width: 38px;
-  }
-  .ai-text { color: var(--text-soft); }
-  .ai-from { color: var(--text-faint); }
   .email-body {
     font-size: 11px;
     color: var(--text-soft);
@@ -564,11 +520,10 @@
     textarea { min-height: 56px; }
 
     /* Roomier tap targets for the disclosure toggles (email / notes / quote /
-       attachments / activity). */
+       attachments). */
     .email-expand summary,
     .notes-expand summary,
     .att-expand summary,
-    .activity-expand summary,
     .quote-pop summary {
       padding-top: 8px;
       padding-bottom: 8px;
