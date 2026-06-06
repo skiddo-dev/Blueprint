@@ -72,3 +72,36 @@ jobs:
             --name "${{ secrets.CONTAINERAPP_NAME }}" \
             --resource-group "${{ secrets.RESOURCE_GROUP }}" \
             --image "${{ secrets.ACR_NAME }}.azurecr.io/${IMAGE_NAME}:${{ github.sha }}"
+
+      # Gate the deploy on the NEW revision actually coming up healthy. `az
+      # containerapp update` returns once the rollout is accepted, not once it's
+      # serving — so without this, a crash-on-boot image (a bad migration, the
+      # DEV_FAKE_AUTH guard, a missing env var) would leave CI green while prod
+      # kept serving the previous revision. Identify the revision running THIS
+      # image (by sha), wait for it to run, and confirm /readyz on the ingress.
+      - name: Health-gate the rollout
+        run: |
+          set -euo pipefail
+          APP="${{ secrets.CONTAINERAPP_NAME }}"
+          RG="${{ secrets.RESOURCE_GROUP }}"
+          IMG="${{ secrets.ACR_NAME }}.azurecr.io/${IMAGE_NAME}:${{ github.sha }}"
+          FQDN=$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+          echo "Gating on the revision running $IMG via https://$FQDN/readyz"
+          for i in $(seq 1 30); do
+            REV=$(az containerapp revision list -n "$APP" -g "$RG" \
+              --query "[?properties.template.containers[0].image=='$IMG'] | [0].name" -o tsv 2>/dev/null || true)
+            STATE=""
+            if [ -n "$REV" ]; then
+              STATE=$(az containerapp revision show -n "$APP" -g "$RG" --revision "$REV" \
+                --query properties.runningState -o tsv 2>/dev/null || true)
+            fi
+            CODE=$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 10 "https://$FQDN/readyz" 2>/dev/null || echo 000)
+            echo "attempt $i/30: revision=${REV:-<none>} state=${STATE:-?} /readyz=$CODE"
+            if { [ "$STATE" = "Running" ] || [ "$STATE" = "RunningAtMaxScale" ]; } && [ "$CODE" = "200" ]; then
+              echo "✅ new revision is healthy and serving"; exit 0
+            fi
+            if [ "$STATE" = "Failed" ]; then echo "::error::revision $REV failed to start"; exit 1; fi
+            sleep 10
+          done
+          echo "::error::new revision did not become healthy within ~5 min — deploy gate failed"
+          exit 1
