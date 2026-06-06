@@ -78,15 +78,29 @@
   let yearTo = $state(yearMax)
   let amtLo = $state(0)
   let amtHi = $state(amtCeil)
-  const filtersActive = $derived(yearFrom !== yearMin || yearTo !== yearMax || amtLo !== 0 || amtHi !== amtCeil)
-  function resetFilters() { yearFrom = yearMin; yearTo = yearMax; amtLo = 0; amtHi = amtCeil }
+  let monthFrom = $state(1)
+  let monthTo = $state(12)
+  let minSample = $state(5) // ≥N decided threshold for the win-rate charts
+  const filtersActive = $derived(
+    yearFrom !== yearMin || yearTo !== yearMax || amtLo !== 0 || amtHi !== amtCeil ||
+    monthFrom !== 1 || monthTo !== 12 || minSample !== 5,
+  )
+  function resetFilters() {
+    yearFrom = yearMin; yearTo = yearMax; amtLo = 0; amtHi = amtCeil
+    monthFrom = 1; monthTo = 12; minSample = 5
+  }
 
   const fq = $derived.by(() => {
     const ylo = Math.min(yearFrom, yearTo), yhi = Math.max(yearFrom, yearTo)
     const alo = Math.min(amtLo, amtHi), ahi = Math.max(amtLo, amtHi)
+    const mlo = Math.min(monthFrom, monthTo), mhi = Math.max(monthFrom, monthTo)
+    const allMonths = mlo === 1 && mhi === 12
     return genQuotes.filter(q => {
       const yr = q.year ?? 0, a = Math.abs(q.amount)
-      return yr >= ylo && yr <= yhi && a >= alo && a <= ahi
+      const mo = q.date_sent ? Number(q.date_sent.slice(5, 7)) : 0
+      // Keep no-date quotes only when the month window is wide open.
+      const monthOk = allMonths || (mo >= mlo && mo <= mhi)
+      return yr >= ylo && yr <= yhi && a >= alo && a <= ahi && monthOk
     })
   })
 
@@ -171,13 +185,13 @@
   const estWin = $derived(
     [...groupQuotes(fq, q => canonicalizeContact(q.point_of_contact)).entries()]
       .map(([name, rs]) => ({ name, ...winRateOf(rs) }))
-      .filter(e => e.decided >= 5)
+      .filter(e => e.decided >= minSample)
       .sort((a, b) => b.rate - a.rate),
   )
   const typeWin = $derived(
     [...groupQuotes(fq, q => canonicalizeWorkType(q.description)).entries()]
       .map(([name, rs]) => ({ name, ...winRateOf(rs) }))
-      .filter(e => e.decided >= 4)
+      .filter(e => e.decided >= minSample)
       .sort((a, b) => b.rate - a.rate),
   )
 
@@ -515,6 +529,15 @@
           <input type="range" min="0" max={amtCeil} step="5000" bind:value={amtLo} aria-label="Minimum deal size" />
           <input type="range" min="0" max={amtCeil} step="5000" bind:value={amtHi} aria-label="Maximum deal size" />
         </div>
+        <div class="filter-group">
+          <span class="filter-label">Months <strong>{MONTHS[Math.min(monthFrom, monthTo) - 1]}–{MONTHS[Math.max(monthFrom, monthTo) - 1]}</strong></span>
+          <input type="range" min="1" max="12" step="1" bind:value={monthFrom} aria-label="Month from" />
+          <input type="range" min="1" max="12" step="1" bind:value={monthTo} aria-label="Month to" />
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Min decided <span class="muted">(win-rate charts)</span> <strong>≥{minSample}</strong></span>
+          <input type="range" min="1" max="15" step="1" bind:value={minSample} aria-label="Minimum decided sample" />
+        </div>
         <div class="filter-meta">
           <span>{fq.length} of {totalQuotes} quotes</span>
           {#if filtersActive}<button class="chip" onclick={resetFilters}>Reset</button>{/if}
@@ -541,12 +564,12 @@
 
       <section class="charts-grid">
         <article class="chart-card">
-          <h3>🏆 Win Rate by Estimator <span class="muted">(≥5 decided)</span></h3>
+          <h3>🏆 Win Rate by Estimator <span class="muted">(≥{minSample} decided)</span></h3>
           <div class="canvas-wrap"><Chart type="bar" data={winByEstimatorData} options={winPctOpts} /></div>
         </article>
 
         <article class="chart-card">
-          <h3>🎯 Win Rate by Work Type <span class="muted">(≥4 decided)</span></h3>
+          <h3>🎯 Win Rate by Work Type <span class="muted">(≥{minSample} decided)</span></h3>
           <div class="canvas-wrap"><Chart type="bar" data={winByTypeData} options={winPctOpts} /></div>
         </article>
 
