@@ -6,6 +6,7 @@ import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 
 let client: MongoClient | null = null
 let db: Db | null = null
+let indexesEnsured = false
 
 // Dev escape hatch: serve generated tasks instead of hitting Mongo. Lets the
 // dashboard/board render with realistic data when no Atlas/seed is available.
@@ -21,6 +22,7 @@ export async function getDb(): Promise<Db> {
   client = new MongoClient(uri)
   await client.connect()
   db = client.db(dbName)
+  await ensureIndexes(db)
   return db
 }
 
@@ -28,6 +30,34 @@ export async function getDb(): Promise<Db> {
 // We use `any` on the collection to avoid the strict ObjectId constraint in the driver's types.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function col(d: Db, name: string) { return d.collection<any>(name) }
+
+// Create the indexes the app's hot queries depend on. Idempotent — createIndex is
+// a no-op when an equivalent index already exists — so it's safe to run on every
+// cold connect, and it keeps the index set version-controlled (SSOT) instead of
+// hand-applied per environment. Best-effort: a failure is logged, never fatal, so
+// a transient index issue can't take the whole DB layer down.
+//
+// Not indexed on purpose: tasks.assigned_to / created_by. getTasksForUser matches
+// them with a case-insensitive ($options:'i') anchored regex, which a plain btree
+// index can't serve; serving it would need a stored normalized-lowercase field
+// (a separate change). The collection is small, so the sort indexes above carry it.
+async function ensureIndexes(d: Db): Promise<void> {
+  if (indexesEnsured) return
+  try {
+    await Promise.all([
+      col(d, 'tasks').createIndex({ updated_at: -1 }),             // getTasksSignature — polled ~every 2s by every open client
+      col(d, 'tasks').createIndex({ created_at: -1 }),             // getTasks / getTasksForUser sort
+      col(d, 'attachments').createIndex({ task_id: 1 }),           // deleteTask cascade + per-task attachment lookups
+      col(d, 'quotes').createIndex({ created_at: -1 }),            // getQuotes sort
+      col(d, 'quotes').createIndex({ year: 1, quote_number: -1 }), // getNextQuoteNumber
+      col(d, 'prospects').createIndex({ distance_miles: 1 }),      // getProspects sort
+      col(d, 'users').createIndex({ role: 1, name: 1 }),           // getUsersByRole
+    ])
+    indexesEnsured = true
+  } catch (e) {
+    console.error('[db] ensureIndexes failed (non-fatal):', e)
+  }
+}
 
 // Canonical form for comparing a person's name across sources (Entra display
 // name vs. the "Assign to" dropdown vs. LLM-extracted text). Case- and
