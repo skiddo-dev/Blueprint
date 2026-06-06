@@ -127,19 +127,18 @@
     {/if}
   </div>
 
-  <!-- Description / email summary -->
-  {#if task.description}
-    <p class="desc">
-      {task.description.slice(0, 200)}{task.description.length > 200 ? '…' : ''}
-    </p>
-    {#if task.full_body}
-      <details class="email-expand">
-        <summary>📄 Full Email</summary>
-        {#if mounted}
-          <div class="email-body">{@html safeBody}</div>
-        {/if}
-      </details>
-    {/if}
+  <!-- Details: the LLM title is the headline, so the longer summary + raw email
+       are tucked behind one disclosure to keep the card face tight. -->
+  {#if task.description || task.full_body}
+    <details class="email-expand">
+      <summary>📄 Details</summary>
+      {#if task.description}
+        <p class="desc">{task.description}</p>
+      {/if}
+      {#if task.full_body && mounted}
+        <div class="email-body">{@html safeBody}</div>
+      {/if}
+    </details>
   {/if}
 
   <!-- Status + Assignee selects -->
