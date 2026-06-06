@@ -25,17 +25,18 @@ export async function getGraphToken(): Promise<string> {
   return data.access_token as string
 }
 
-export async function fetchRecentEmails(maxResults = 30) {
+// Fetch flagged messages from a SPECIFIC mailbox (app-only Graph perms let us
+// read any mailbox in the tenant). The caller — runEmailSync — loops every PM
+// inbox; this reads exactly one.
+export async function fetchRecentEmails(mailbox: string, maxResults = 30) {
+  if (!mailbox) throw new Error('fetchRecentEmails: mailbox is required')
   const maxAttachmentSize = parseInt(env.MAX_ATTACHMENT_SIZE_MB ?? '10') * 1024 * 1024
   const maxAttachmentsPerEmail = parseInt(env.MAX_ATTACHMENTS_PER_EMAIL ?? '5')
 
   const token = await getGraphToken()
   const headers = { Authorization: `Bearer ${token}` }
 
-  const base =
-    env.AZURE_CLIENT_SECRET && env.AZURE_USER_EMAIL
-      ? `https://graph.microsoft.com/v1.0/users/${env.AZURE_USER_EMAIL}`
-      : 'https://graph.microsoft.com/v1.0/me'
+  const base = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox)}`
 
   const params = new URLSearchParams({
     $top: String(maxResults),

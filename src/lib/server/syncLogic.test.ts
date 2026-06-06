@@ -5,6 +5,7 @@ import {
   buildNewTask,
   buildThreadPatch,
   buildAttachmentPatch,
+  resolveMailboxes,
   type SyncEmail,
 } from './syncLogic'
 import type { Task } from '$lib/types'
@@ -87,6 +88,51 @@ describe('buildNewTask', () => {
     const doc = buildNewTask(email(), parsed({ confidence: 0.2 }), [], 'admin')
     expect(doc.assigned_to).toBe('Unassigned')
     expect(doc.needs_review).toBe(true)
+  })
+  it('defaults to the inbox owner when the LLM has no assignee, and tags the source mailbox', () => {
+    const doc = buildNewTask(email(), parsed({ confidence: 0.9, assigned_to: null }), [], 'admin', {
+      mailbox: 'ben@raves.com',
+      defaultAssignee: 'Ben',
+    })
+    expect(doc.assigned_to).toBe('Ben')              // lands in Ben's My Work
+    expect(doc.source_mailbox).toBe('ben@raves.com')
+    expect(doc.needs_review).toBe(true)              // still flagged — owner is a fallback guess
+  })
+  it('keeps the LLM assignee over the inbox owner', () => {
+    const doc = buildNewTask(email(), parsed({ assigned_to: 'Kris' }), [], 'admin', {
+      mailbox: 'ben@raves.com',
+      defaultAssignee: 'Ben',
+    })
+    expect(doc.assigned_to).toBe('Kris')
+  })
+})
+
+describe('resolveMailboxes', () => {
+  const users = [
+    { _id: 'ben@raves.com', name: 'Ben', role: 'pm' },
+    { _id: 'andrew@raves.com', name: 'Andrew', role: 'pm' },
+    { _id: 'boss@raves.com', name: 'Boss', role: 'admin' },
+    { _id: 'viewer@raves.com', name: 'Vic', role: 'viewer' },
+  ]
+
+  it('derives PM mailboxes from provisioned pm-role users, with owner names', () => {
+    const out = resolveMailboxes({ users })
+    expect(out).toEqual([
+      { email: 'ben@raves.com', owner: 'Ben' },
+      { email: 'andrew@raves.com', owner: 'Andrew' },
+    ])
+  })
+
+  it('always includes the central mailbox and de-dupes', () => {
+    const out = resolveMailboxes({ users, central: 'Ben@Raves.com' })
+    // central first, lower-cased, and Ben is not repeated by the pm scan
+    expect(out.map(m => m.email)).toEqual(['ben@raves.com', 'andrew@raves.com'])
+  })
+
+  it('lets an explicit list override the role-based auto-discovery', () => {
+    const out = resolveMailboxes({ users, explicit: 'kris@raves.com, ANDREW@raves.com' })
+    expect(out.map(m => m.email)).toEqual(['kris@raves.com', 'andrew@raves.com'])
+    expect(out.find(m => m.email === 'andrew@raves.com')?.owner).toBe('Andrew') // owner still resolved
   })
 })
 

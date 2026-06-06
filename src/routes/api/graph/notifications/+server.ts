@@ -1,7 +1,7 @@
 import { env } from '$env/dynamic/private'
 import type { RequestHandler } from './$types'
 import { runEmailSync } from '$lib/server/emailSync'
-import { ensureGraphSubscription } from '$lib/server/graphSubscription'
+import { ensureGraphSubscriptions } from '$lib/server/graphSubscription'
 
 // Microsoft Graph change-notification webhook (public — see the allowlist in
 // hooks.server.ts). Two jobs:
@@ -41,7 +41,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
   // Ack immediately (Graph wants a fast 2xx); do the work in the background. The
   // sync's own debounce lease collapses a burst of notifications into one sweep.
   if (hasLifecycle) {
-    ensureGraphSubscription().catch(e => console.error('[graph-webhook] ensure:', e))
+    ensureGraphSubscriptions().catch(e => console.error('[graph-webhook] ensure:', e))
   }
   if (hasChange) {
     runEmailSync({ triggeredBy: 'Email push' }).catch(e => console.error('[graph-webhook] sync:', e))

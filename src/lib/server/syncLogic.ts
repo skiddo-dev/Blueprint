@@ -20,6 +20,43 @@ export interface SyncEmail {
   conversation_id?: string | null
 }
 
+/** A mailbox to scan, plus the display name of its owner (used as the default
+ *  assignee for emails that owner flagged when the LLM can't infer one). */
+export interface SyncMailbox {
+  email: string
+  owner: string
+}
+
+/** Resolve the set of mailboxes to scan for flagged email. Precedence:
+ *  an explicit PM_MAILBOXES list (comma-separated emails) if provided, otherwise
+ *  every provisioned user with the 'pm' role. The central AZURE_USER_EMAIL
+ *  mailbox, if set, is always included (preserves the original single-mailbox
+ *  behavior). De-duped, lower-cased; owner display name attached when known. */
+export function resolveMailboxes(opts: {
+  users: { _id: string; name: string; role: string }[]
+  explicit?: string | null
+  central?: string | null
+}): SyncMailbox[] {
+  const byEmail = new Map(opts.users.map(u => [u._id.toLowerCase(), u.name]))
+  const explicit = (opts.explicit ?? '')
+    .split(',')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean)
+  const pmEmails = explicit.length
+    ? explicit
+    : opts.users.filter(u => u.role === 'pm').map(u => u._id.toLowerCase())
+  const central = opts.central ? [opts.central.trim().toLowerCase()] : []
+
+  const seen = new Set<string>()
+  const out: SyncMailbox[] = []
+  for (const email of [...central, ...pmEmails]) {
+    if (!email || seen.has(email)) continue
+    seen.add(email)
+    out.push({ email, owner: byEmail.get(email) ?? '' })
+  }
+  return out
+}
+
 export type EmailAction = 'new' | 'duplicate' | 'update'
 
 /** Decide what a freshly-fetched email means for the board:
@@ -60,12 +97,17 @@ export function computeReview(parsed: ParsedEmail): { needs_review: boolean; rev
 }
 
 /** Build the task document for a brand-new email (shape mirrors the manual
- *  "New Task" path plus the AI trust signals + opening timeline entry). */
+ *  "New Task" path plus the AI trust signals + opening timeline entry).
+ *  `opts.defaultAssignee` (the owner of the inbox it was flagged in) is used when
+ *  the LLM couldn't infer an assignee, so the card lands in that PM's "My Work";
+ *  it's still review-flagged via computeReview since the LLM itself was unsure.
+ *  `opts.mailbox` records which inbox the email came from. */
 export function buildNewTask(
   email: SyncEmail,
   parsed: ParsedEmail,
   storeNumbers: string[],
   triggeredBy: string,
+  opts: { mailbox?: string; defaultAssignee?: string } = {},
 ): Record<string, unknown> {
   const now = new Date().toISOString()
   const review = computeReview(parsed)
@@ -73,6 +115,7 @@ export function buildNewTask(
   const timeline: TimelineEntry[] = [
     { at: now, kind: 'created', text: `Created from email — ${opening}`.slice(0, 180), from: email.sender_name },
   ]
+  const fallbackAssignee = opts.defaultAssignee?.trim() || 'Unassigned'
   return {
     title: email.subject,
     description: parsed.summary ?? '',
@@ -82,12 +125,13 @@ export function buildNewTask(
     quote_status: parsed.quote_status ?? (parsed.quote ? 'Draft' : null),
     po: parsed.po ?? null,
     store_numbers: storeNumbers,
-    assigned_to: parsed.assigned_to ?? 'Unassigned',
+    assigned_to: parsed.assigned_to ?? fallbackAssignee,
     notes: '',
     date: parsed.date,
     status: 'To Do',
     exchange_id: email.id,
     conversation_id: email.conversation_id ?? null,
+    source_mailbox: opts.mailbox,
     from: email.from,
     sender_name: email.sender_name,
     sender_email: email.sender_email,

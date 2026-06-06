@@ -2,16 +2,16 @@ import { sequence } from '@sveltejs/kit/hooks'
 import { handle as authHandle } from '$lib/auth'
 import { redirect, type Handle } from '@sveltejs/kit'
 import { env } from '$env/dynamic/private'
-import { ensureGraphSubscription } from '$lib/server/graphSubscription'
+import { ensureGraphSubscriptions } from '$lib/server/graphSubscription'
 import { runEmailSync } from '$lib/server/emailSync'
 
 // ── Background jobs ──────────────────────────────────────────────────────────
-// Keep the Microsoft Graph push subscription alive (renew before it expires) and
-// run a low-frequency safety-net sync so a missed webhook is never permanently
-// lost. Runs in the always-on server process (min 1 replica). No cross-replica
-// lock here: ensureGraphSubscription() is idempotent (creates only if missing,
-// renews only near expiry) and runEmailSync() holds its own debounce lease — so
-// the worst case across the 2 replicas is a harmless duplicate, not a conflict.
+// Keep the Microsoft Graph push subscriptions alive (one per PM mailbox, renewed
+// before expiry) and run a low-frequency safety-net sync so a missed webhook is
+// never permanently lost. Runs in the always-on server process (min 1 replica).
+// Both ensureGraphSubscriptions() and runEmailSync() hold their own distributed
+// leases, so across the (up to 2) replicas the worst case is a skipped tick, not
+// a conflict or duplicate subscriptions.
 // Skipped unless APP_BASE_URL is a public https origin — never runs in dev/build.
 let _bgStarted = false
 function startBackgroundJobs() {
@@ -23,7 +23,7 @@ function startBackgroundJobs() {
 
   const run = async (label: string) => {
     try {
-      await ensureGraphSubscription()
+      await ensureGraphSubscriptions()
       await runEmailSync({ triggeredBy: 'Email sync' })
     } catch (e) {
       console.error('[bg]', label, e)
