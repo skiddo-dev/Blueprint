@@ -6,6 +6,22 @@ import { dev } from '$app/environment'
 import { ensureGraphSubscriptions } from '$lib/server/graphSubscription'
 import { runEmailSync } from '$lib/server/emailSync'
 import { log } from '$lib/server/log'
+import { building } from '$app/environment'
+
+// ── Production safety guard ───────────────────────────────────────────────────
+// Refuse to boot a production build that still has the dev-only auth bypass
+// (DEV_FAKE_AUTH) enabled. Keyed on NODE_ENV=production (set by the Dockerfile),
+// so it never interferes with local `vite dev` / `vite preview`. Runs at module
+// load, so the server crashes on startup rather than ever serving with auth off.
+export function fakeAuthInProd(nodeEnv: string | undefined, fakeAuth: string | undefined): boolean {
+  return nodeEnv === 'production' && !!fakeAuth
+}
+if (!building && fakeAuthInProd(process.env.NODE_ENV, env.DEV_FAKE_AUTH)) {
+  throw new Error(
+    'Refusing to start: DEV_FAKE_AUTH is set with NODE_ENV=production. This dev-only ' +
+      'auth bypass must never run in production — unset DEV_FAKE_AUTH.',
+  )
+}
 
 // ── Background jobs ──────────────────────────────────────────────────────────
 // Keep the Microsoft Graph push subscriptions alive (one per PM mailbox, renewed
