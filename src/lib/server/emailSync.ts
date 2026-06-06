@@ -1,5 +1,5 @@
 import { env } from '$env/dynamic/private'
-import { getTasks, getUsers, insertTask, saveAttachment, patchTask, tryAcquireLease, releaseLease } from './db'
+import { getTasks, getUsers, insertTask, saveAttachment, patchTask, tryAcquireLease, releaseLease, normName } from './db'
 import { fetchRecentEmails, getGraphToken } from './email'
 import { parseEmailWithLLM } from './llm'
 import { extractText, parseAttachmentWithLLM } from './attachmentParse'
@@ -98,6 +98,8 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
     const dbUsers = await getUsers()
     const assignees = [...new Set([...SUPERVISORS, ...QUOTE_PEOPLE, ...dbUsers.map(u => u.name)])].filter(Boolean)
     const mailboxes = getSyncMailboxes(dbUsers)
+    // Resolve assignee display names → login emails for identity-based ownership.
+    const emailByName = new Map(dbUsers.map(u => [normName(u.name), String(u._id).toLowerCase()]))
 
     let newCount = 0
     let updatedCount = 0
@@ -135,6 +137,10 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
             },
           })
           const { set, timelineEntry } = buildThreadPatch(task, parsed, e)
+          // Keep identity in sync if the reply (re)assigned the task to a user.
+          if (typeof set.assigned_to === 'string') {
+            set.assignee_email = emailByName.get(normName(set.assigned_to)) ?? null
+          }
           await patchTask(task._id, set, timelineEntry)
           Object.assign(task, set) // reflect the patch on the running copy
           await processAttachments(task._id, e, headers, task)
@@ -150,9 +156,12 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
           ...extractStoreNumbers(e.subject),
           ...parsed.store_numbers,
         ])
+        const assigneeName = parsed.assigned_to ?? mb.owner
         const taskDoc = buildNewTask(e, parsed, storeNumbers, triggeredBy, {
           mailbox: mb.email,
           defaultAssignee: mb.owner,
+          ownerEmail: mb.email,                                  // the inbox owner owns synced cards
+          assigneeEmail: emailByName.get(normName(assigneeName)) ?? null,
         })
         const taskId = await insertTask(taskDoc)
         const created = { ...taskDoc, _id: taskId, id: taskId } as unknown as Task
