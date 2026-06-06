@@ -208,6 +208,54 @@
   for (const r of quoteRecs) sumInto(valueByType, r.type, r.value)
   const typeByValue = [...valueByType.entries()].sort((a, b) => b[1] - a[1])
 
+  // Estimator scorecards: volume, win rate, avg deal size, specialization, value
+  const estimatorScores = [...groupQuotes(q => canonicalizeContact(q.point_of_contact)).entries()]
+    .map(([name, rs]) => {
+      const { w, l, rate, decided } = winRateOf(rs)
+      const dec = rs.filter(q => q.status === 'won' || q.status === 'lost')
+      const avg = dec.length ? dec.reduce((s, q) => s + Math.abs(q.amount), 0) / dec.length : 0
+      const types = new Map<string, number>()
+      for (const q of rs) sumInto(types, canonicalizeWorkType(q.description), 1)
+      const topType = [...types.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
+      return { name, n: rs.length, w, l, decided, rate, avg, topType, value: rs.reduce((s, q) => s + q.amount, 0) }
+    })
+    .sort((a, b) => b.value - a.value)
+
+  // Account intelligence: per store, plus the repeat-vs-first-time win effect
+  const storeGroups = [...groupQuotes(q => (q.store_number || '').trim()).entries()]
+    .filter(([s]) => s && s.toUpperCase() !== 'N/A' && s !== 'Unknown')
+  const accounts = storeGroups
+    .map(([store, rs]) => {
+      const { rate, decided } = winRateOf(rs)
+      return { store, n: rs.length, value: rs.reduce((s, q) => s + q.amount, 0), rate, decided, last: rs.map(q => q.date_sent ?? '').sort().at(-1) ?? '' }
+    })
+    .sort((a, b) => b.value - a.value)
+  const firstTimeWin = winRateOf(storeGroups.filter(([, rs]) => rs.length === 1).flatMap(([, rs]) => rs))
+  const repeatWin = winRateOf(storeGroups.filter(([, rs]) => rs.length >= 3).flatMap(([, rs]) => rs))
+
+  // Value concentration (Pareto) by estimator — key-person risk
+  const totalEstValue = estimatorScores.reduce((s, e) => s + e.value, 0)
+  const paretoEst = estimatorScores.slice(0, 8)
+  let _cum = 0
+  const paretoCum = paretoEst.map(e => { _cum += e.value; return totalEstValue ? Math.round((_cum / totalEstValue) * 100) : 0 })
+
+  // Current-year full-year projection (seasonality run-rate from prior years)
+  const annualValue = (y: number) => genQuotes.filter(q => q.year === y).reduce((s, q) => s + q.amount, 0)
+  const curYear = years.at(-1) ?? new Date().getFullYear()
+  const curMonth = Math.max(0, ...genQuotes.filter(q => q.year === curYear && q.date_sent).map(q => Number(q.date_sent!.slice(5, 7))))
+  const priorShares = years.filter(y => y < curYear).map(y => {
+    const a = annualValue(y)
+    const upto = genQuotes.filter(q => q.year === y && q.date_sent && Number(q.date_sent.slice(5, 7)) <= curMonth).reduce((s, q) => s + q.amount, 0)
+    return a ? upto / a : 0
+  }).filter(x => x > 0)
+  const projectedFY = priorShares.length ? annualValue(curYear) / (priorShares.reduce((a, b) => a + b, 0) / priorShares.length) : null
+
+  // PO present but not marked Won → likely awarded, surfaced for one-click review
+  const poNeedsReview = genQuotes
+    .filter(q => (q.po || '').trim() && q.status !== 'won')
+    .sort((a, b) => (b.date_sent ?? '').localeCompare(a.date_sent ?? ''))
+    .slice(0, 50)
+
   // ── Chart datasets ────────────────────────────────────────────────────────
   const bar = (data: number[], colors: string[]) =>
     [{ data, backgroundColor: colors, borderRadius: 6, borderSkipped: false as const, maxBarThickness: 56 }]
@@ -266,6 +314,14 @@
       borderWidth: 2,
     }],
   } satisfies ChartData<'doughnut', number[], string>
+
+  const paretoData: ChartData<'bar' | 'line', (number | null)[], string> = {
+    labels: paretoEst.map(e => e.name),
+    datasets: [
+      { type: 'bar', label: 'Value', data: paretoEst.map(e => e.value), backgroundColor: '#6366f1', borderRadius: 4, order: 2 },
+      { type: 'line', label: 'Cumulative %', data: paretoCum, borderColor: '#f59e0b', backgroundColor: '#f59e0b', yAxisID: 'y1', tension: 0.3, borderWidth: 2, pointRadius: 3, order: 1 },
+    ],
+  }
 
   // ── Shared chart options ────────────────────────────────────────────────
   const moneyBarOpts = {
@@ -372,6 +428,26 @@
     },
   }
 
+  // Pareto: value bars (left) + cumulative-% line (right).
+  const paretoOpts: ChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', align: 'end', labels: { color: '#475569', font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true } },
+      tooltip: {
+        callbacks: {
+          label: (c: TooltipItem<'bar' | 'line'>) =>
+            c.dataset.label === 'Cumulative %' ? ` Cumulative: ${c.parsed.y}%` : ` ${money(Number(c.parsed.y) || 0)}`,
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: TICK, font: { size: 10 } } },
+      y: { beginAtZero: true, grid: { color: GRID }, ticks: { color: TICK, font: { size: 11 }, callback: v => moneyShort(Number(v)) } },
+      y1: { position: 'right', beginAtZero: true, max: 100, grid: { display: false }, ticks: { color: '#f59e0b', font: { size: 11 }, callback: v => `${v}%` } },
+    },
+  }
+
   const doughnutOpts = {
     responsive: true,
     maintainAspectRatio: false,
@@ -425,6 +501,10 @@
             <div class="metric-lbl">{m.label}</div>
           </div>
         {/each}
+        <div class="metric" style:border-top-color="#14b8a6">
+          <div class="metric-val">{projectedFY ? money(projectedFY) : '—'}</div>
+          <div class="metric-lbl">{curYear} Projected (FY)</div>
+        </div>
       </div>
 
       <hr style="margin: 22px 0 18px" />
@@ -457,6 +537,11 @@
           <div class="canvas-wrap tall"><Chart type="bar" data={yoyData} options={yoyOpts} /></div>
         </article>
 
+        <article class="chart-card span-all">
+          <h3>📊 Value Concentration by Estimator <span class="muted">(Pareto — cumulative %)</span></h3>
+          <div class="canvas-wrap tall"><Chart type="bar" data={paretoData} options={paretoOpts} /></div>
+        </article>
+
         <article class="chart-card">
           <h3>🏬 Top Stores by Value <span class="muted">(repeat accounts)</span></h3>
           <div class="canvas-wrap"><Chart type="bar" data={topStoresData} options={hMoneyBarOpts} /></div>
@@ -472,6 +557,77 @@
           <div class="canvas-wrap"><Chart type="bar" data={valueByTypeData} options={moneyBarOpts} /></div>
         </article>
       </section>
+
+      <!-- Estimator scorecards -->
+      <hr style="margin: 24px 0 16px" />
+      <h2 class="section-heading">🥇 Estimator Scorecards</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Estimator</th><th>Quotes</th><th>Win %</th><th>Avg Deal</th><th>Top Type</th><th>Value</th></tr></thead>
+          <tbody>
+            {#each estimatorScores as e}
+              <tr>
+                <td>{e.name}</td>
+                <td>{e.n}</td>
+                <td>{e.decided ? `${Math.round(e.rate)}% (${e.w}-${e.l})` : '—'}</td>
+                <td>{e.avg ? money(e.avg) : '—'}</td>
+                <td>{e.topType}</td>
+                <td>{money(e.value)}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Account intelligence -->
+      <hr style="margin: 24px 0 16px" />
+      <div class="tracker-head">
+        <h2 class="section-heading" style="margin: 0">🏬 Account Intelligence</h2>
+        <span class="muted-note" style="margin: 0">
+          Repeat accounts (3+ quotes) win {repeatWin.rate === null ? '—' : Math.round(repeatWin.rate)}% ·
+          first-time {firstTimeWin.rate === null ? '—' : Math.round(firstTimeWin.rate)}%
+        </span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Store</th><th>Quotes</th><th>Value</th><th>Win %</th><th>Last Quoted</th></tr></thead>
+          <tbody>
+            {#each accounts.slice(0, 15) as a}
+              <tr>
+                <td>#{a.store}</td>
+                <td>{a.n}</td>
+                <td>{money(a.value)}</td>
+                <td>{a.decided ? `${Math.round(a.rate)}%` : '—'}</td>
+                <td>{a.last || '—'}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+
+      {#if poNeedsReview.length}
+        <!-- PO-based data hygiene -->
+        <hr style="margin: 24px 0 16px" />
+        <h2 class="section-heading">🧾 Needs Review <span class="muted">(PO present, not marked Won)</span></h2>
+        {#if trackerError}<p class="error">❌ {trackerError}</p>{/if}
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Store</th><th>Work Type</th><th>Amount</th><th>PO</th><th></th></tr></thead>
+            <tbody>
+              {#each poNeedsReview as q (q._id)}
+                <tr>
+                  <td>{q.date_sent ?? '—'}</td>
+                  <td>{q.store_number || '—'}</td>
+                  <td>{q.description || '—'}</td>
+                  <td>{money(q.amount)}</td>
+                  <td>{q.po}</td>
+                  <td><button class="mark-won" disabled={savingId === q._id} onclick={() => setQuoteStatus(q._id, 'won')}>Mark Won</button></td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
 
       <!-- Quote tracker (win/loss toggle) -->
       <hr style="margin: 24px 0 16px" />
@@ -605,6 +761,9 @@
   .status-select.status-won { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
   .status-select.status-lost { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
   .status-select:disabled { opacity: 0.5; cursor: wait; }
+  .mark-won { font-size: 12px; padding: 3px 10px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #047857; border-radius: 6px; cursor: pointer; }
+  .mark-won:hover { background: #a7f3d0; }
+  .mark-won:disabled { opacity: 0.5; cursor: wait; }
 
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
