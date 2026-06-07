@@ -1,6 +1,7 @@
 <script lang="ts">
   import '../app.css'
   import { initTheme } from '$lib/theme.svelte'
+  import SearchPalette from '$lib/components/SearchPalette.svelte'
   import type { LayoutData } from './$types'
 
   let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props()
@@ -11,3 +12,8 @@
 </script>
 
 {@render children()}
+
+<!-- Global ⌘K search — only for signed-in users (absent on /login). -->
+{#if data.session?.user}
+  <SearchPalette />
+{/if}

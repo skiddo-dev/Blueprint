@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount, onDestroy, tick } from 'svelte'
+  import { page } from '$app/state'
   import KanbanColumn from './KanbanColumn.svelte'
   import NewTaskModal from './NewTaskModal.svelte'
   import type { Task, TaskStatus, AppSession } from '$lib/types'
@@ -75,6 +76,27 @@
     view = v
     try { localStorage.setItem('blueprint:boardView', v) } catch { /* ignore */ }
   }
+
+  // Deep-link from global search: `/?task=<id>` reveals + flashes that card. Show
+  // All Tasks, clear the store filter, switch to the card's column (mobile), then
+  // scroll it into view and pulse a highlight ring. Re-runs whenever the URL's
+  // `task` param changes (works even when already on the board).
+  $effect(() => {
+    const id = page.url.searchParams.get('task')
+    if (!id) return
+    setView('all')
+    storeFilter = null
+    for (const s of KANBAN_STATUSES) {
+      if (columns[s].some(t => t._id === id)) { activeStatus = s; break }
+    }
+    tick().then(() => {
+      const el = document.getElementById('task-' + id)
+      if (!el) return
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      el.classList.add('search-flash')
+      setTimeout(() => el.classList.remove('search-flash'), 2500)
+    })
+  })
   const viewMine = $derived(view === 'mine')
   const norm = (s?: string | null) => (s ?? '').trim().toLowerCase()
   const today = new Date().toISOString().slice(0, 10)

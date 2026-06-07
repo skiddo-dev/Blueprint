@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state'
   import ThemeToggle from './ThemeToggle.svelte'
+  import { openSearch } from '$lib/search.svelte'
   import type { Snippet } from 'svelte'
 
   // Shared navigation drawer used by every page (board, dashboard, quotes).
@@ -52,6 +53,11 @@
     </div>
     <button class="sidebar-close" onclick={() => (open = false)} aria-label="Close menu">✕</button>
   </div>
+
+  <button class="nav-search" type="button" onclick={() => { openSearch(); open = false }}>
+    <span>🔎 Search</span>
+    <kbd>⌘K</kbd>
+  </button>
 
   <form action="/auth/signout" method="POST">
     <button class="secondary full-w" type="submit">Log out</button>
@@ -139,6 +145,18 @@
 
   .full-w { width: 100%; justify-content: center; }
   hr { border: none; border-top: 1px solid var(--border-soft); margin: 4px 0; }
+
+  .nav-search {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%;
+    background: var(--bg); border: 1px solid var(--border); color: var(--text-muted);
+    border-radius: 7px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .nav-search:hover { border-color: var(--primary); color: var(--primary-text); }
+  .nav-search kbd {
+    font-family: inherit; font-size: 11px; color: var(--text-faint);
+    border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; background: var(--card-bg);
+  }
 
   .nav-links { display: flex; flex-direction: column; gap: 4px; }
   .nav-link {
