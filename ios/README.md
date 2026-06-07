@@ -4,19 +4,36 @@ A native SwiftUI client for Blueprint. It talks to the **existing** SvelteKit
 backend over its JSON API and reuses the existing Microsoft Entra (Auth.js)
 sign-in — **no backend or Azure changes are required.**
 
-> **Scope: build-and-run-first.** This is the MVP shell: sign in, view the
-> Kanban board, edit a task. App Store assets (icon, splash, submission) are
-> intentionally deferred — see [Deferred](#deferred-follow-ups).
+> **Scope: feature-complete client.** Sign in, work the board (create / edit /
+> comment / drag / delete), and use the admin sections (Dashboard, Quotes,
+> Prospects, Search). The only thing left for the App Store is the signed upload,
+> which needs an Apple Developer team — see [App Store submission](#app-store-submission).
 
 ## What it does
 
 - **Sign in** through the real web Entra flow shown in an embedded web view; the
-  resulting Auth.js session cookie is reused for API calls.
+  resulting Auth.js session cookie is reused for API calls. The signed-in user's
+  role (`GET /auth/session`) gates the admin-only tabs and actions.
 - **Board** — loads `GET /api/tasks` and groups cards into the six statuses
-  (`To Do → Cancelled`), with the same colors as the web app.
+  (`To Do → Cancelled`), with the same colors as the web app. Survives a cold
+  launch with no network from an on-disk cache (clearly marked *Offline*).
+- **Create a task** — the `+` button posts to `POST /api/tasks`.
 - **Edit a task** — tap a card to change status / assignee / date / notes; each
-  change is saved via `PATCH /api/tasks/{id}` (`{ field, value }`).
-- **Pull-to-refresh** and a manual refresh button. **Sign out** from the
+  change is saved via `PATCH /api/tasks/{id}` (`{ field, value }`). **Delete** a
+  task, or (admin) **Clear all**.
+- **Comments & @mentions** — post comments and replies on a card, react with
+  emoji; mentions are resolved server-side (`POST /api/tasks/{id}/comments`).
+- **Drag-and-drop** — drag a card between columns to change its status.
+- **Dashboard** *(admin)* — task counts by status and quote value/counts by
+  outcome (`GET /api/dashboard`).
+- **Quotes** *(admin)* — the tracked-quote log (`GET /api/quotes`); tap a quote
+  to set its outcome won / lost / open (`POST /api/quotes/{id}/status`).
+- **Prospects** *(admin)* — the warehouse-lead pipeline (`GET /api/prospects`);
+  tap to edit pipeline status / assignee / notes (`PATCH /api/prospects/{id}`).
+- **Search** — global search (`GET /api/search`), role-scoped server-side;
+  tapping a task result jumps to the Board and opens it.
+- **Sync email** *(admin)* — trigger a sync from the account menu (`POST /api/sync`).
+- **Pull-to-refresh** and manual refresh buttons. **Sign out** from the
   top-left menu.
 
 ## How it talks to the backend
@@ -106,21 +123,72 @@ the committed `Blueprint.xcodeproj`.
 
 ```
 Blueprint/
-  BlueprintApp.swift        @main entry; injects AppConfig + SessionStore
-  Models/                   BoardTask, TaskStatus, BlueprintConfig.generated (npm run gen:ios)
-  Networking/               AppConfig (base URL), APIClient (URLSession)
-  Auth/                     SessionStore, WebAuthView (cookie hand-off)
-  Views/                    Root, Login, Board, Column, TaskCard, TaskDetail
+  BlueprintApp.swift        @main entry; injects AppConfig + SessionStore + AppRouter
+  Models/                   BoardTask, TimelineEntry, TaskStatus, Quote, Prospect,
+                            DashboardSummary, SearchModels, BlueprintConfig.generated (npm run gen:ios)
+  Networking/               AppConfig (base URL), APIClient (URLSession), AppRouter (tabs/deep-links), BoardCache (offline)
+  Auth/                     SessionStore (auth + role), WebAuthView (cookie hand-off)
+  Views/                    Root, Main (TabView), Login, Board, Column, TaskCard, TaskDetail,
+                            NewTask, Comments, Dashboard, Quotes, Prospects, Search, Badges
   Assets.xcassets, Info.plist
 ```
 
-## Deferred (follow-ups)
+## Local verification (Simulator, no device/account)
 
-Not in this MVP — create-task, email sync, "clear all", dashboard/quotes,
-attachments, drag-to-reorder, offline cache, a native MSAL/token auth flow, and
-the remaining App Store submission assets (launch screen art, screenshots,
-archive & upload). A real 1024×1024 app icon **is** included
-(`Assets.xcassets/AppIcon.appiconset/AppIcon.png`).
+The app ships **DEBUG-only** launch arguments (compiled out of Release builds —
+verified: a Release build launched with `-FAKE_AUTH` still shows the login
+screen) so screens can be exercised against a mock dev server without the
+interactive Entra sign-in:
+
+```bash
+# 1. Mock backend with auto-auth (from the repo root):
+USE_MOCK_DATA=true DEV_FAKE_AUTH=true npm run dev   # serves :8501
+
+# 2. Build & install to a booted Simulator:
+cd ios && xcodegen generate
+xcodebuild -project Blueprint.xcodeproj -scheme Blueprint \
+  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
+xcrun simctl install booted "$(find ~/Library/Developer/Xcode/DerivedData/Blueprint-*/Build/Products/Debug-iphonesimulator -name Blueprint.app -maxdepth 1 | head -1)"
+
+# 3. Launch straight into a screen (admin session faked):
+xcrun simctl launch booted com.blueprint.app -FAKE_AUTH                 # board (tabbed)
+xcrun simctl launch booted com.blueprint.app -FAKE_AUTH -TAB dashboard  # a specific tab
+xcrun simctl launch booted com.blueprint.app -FAKE_AUTH -TAB search -QUERY inspection
+xcrun simctl launch booted com.blueprint.app -SCREEN detail             # one view + sample data
+```
+
+`-SCREEN` values: `detail`, `newtask`, `quote`, `prospect`. `-TAB` values:
+`dashboard`, `quotes`, `prospects`, `search`.
+
+## App Store submission
+
+Everything is in place except the **signed upload**, which requires an Apple
+Developer account:
+
+1. **Set your Team ID.** In [`project.yml`](project.yml) set
+   `DEVELOPMENT_TEAM` (and a unique `PRODUCT_BUNDLE_IDENTIFIER` if
+   `com.blueprint.app` is taken), then `xcodegen generate`.
+2. **Archive** (real device SDK):
+   ```bash
+   xcodebuild -project Blueprint.xcodeproj -scheme Blueprint \
+     -sdk iphoneos -configuration Release -archivePath build/Blueprint.xcarchive archive
+   ```
+3. **Upload** the archive via Xcode's Organizer (or `xcrun altool` /
+   `xcrun notarytool`) to App Store Connect → TestFlight.
+4. **Store listing** — add screenshots (the `simctl io booted screenshot` shots
+   from local verification work) and the privacy/description metadata in App
+   Store Connect.
+
+Already done for submission: a 1024×1024 app icon
+(`Assets.xcassets/AppIcon.appiconset/AppIcon.png`), a branded launch screen
+(`LaunchLogo` on `LaunchBackground`, wired in `Info.plist`), portrait-only, and
+`ITSAppUsesNonExemptEncryption=false` (standard HTTPS only — skips the
+export-compliance prompt).
+
+## Still deferred (non-blocking)
+
+Attachments (view/upload), a native MSAL/token auth flow (the web-cookie flow
+works today), the prospect map, and richer interactive dashboard charts.
 
 ## Notes
 

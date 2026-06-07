@@ -3,10 +3,17 @@ import SwiftUI
 struct BoardView: View {
     @Environment(AppConfig.self) private var config
     @Environment(SessionStore.self) private var session
+    @Environment(AppRouter.self) private var router
 
     @State private var tasks: [BoardTask] = []
     @State private var phase: Phase = .loading
     @State private var selected: BoardTask?
+    @State private var showNewTask = false
+    @State private var showClearConfirm = false
+    @State private var offline = false
+    @State private var syncing = false
+    @State private var syncMessage: String?
+    @State private var showSync = false
 
     private enum Phase: Equatable {
         case loading, loaded
@@ -21,13 +28,33 @@ struct BoardView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Menu {
-                            Button(role: .destructive) {
-                                session.signOut()
-                            } label: {
-                                Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                            if let name = session.displayName {
+                                Section(name) {
+                                    if session.isAdmin {
+                                        Button { Task { await sync() } } label: {
+                                            Label("Sync email", systemImage: "arrow.triangle.2.circlepath")
+                                        }
+                                        .disabled(syncing)
+                                        Button(role: .destructive) { showClearConfirm = true } label: {
+                                            Label("Clear all tasks", systemImage: "trash")
+                                        }
+                                    }
+                                    Button(role: .destructive) { session.signOut() } label: {
+                                        Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                                    }
+                                }
+                            } else {
+                                Button(role: .destructive) { session.signOut() } label: {
+                                    Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                                }
                             }
                         } label: {
                             Image(systemName: "person.crop.circle")
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showNewTask = true } label: {
+                            Image(systemName: "plus")
                         }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
@@ -41,10 +68,45 @@ struct BoardView: View {
                         if let i = tasks.firstIndex(where: { $0.id == updated.id }) {
                             tasks[i] = updated
                         }
+                    } onDelete: { removed in
+                        tasks.removeAll { $0.id == removed.id }
+                    }
+                }
+                .sheet(isPresented: $showNewTask) {
+                    NewTaskView { created in
+                        tasks.insert(created, at: 0)
+                    }
+                }
+                .confirmationDialog("Clear all tasks?", isPresented: $showClearConfirm, titleVisibility: .visible) {
+                    Button("Delete all tasks", role: .destructive) { Task { await clearAll() } }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This permanently deletes every task on the board. This cannot be undone.")
+                }
+                .alert("Email sync", isPresented: $showSync, presenting: syncMessage) { _ in
+                    Button("OK", role: .cancel) {}
+                } message: { Text($0) }
+                .safeAreaInset(edge: .top) {
+                    if offline {
+                        Label("Offline — showing the last saved board", systemImage: "wifi.slash")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(Color(hex: 0x64748B))
                     }
                 }
         }
         .task { await load() }
+        .onChange(of: router.pendingTaskID) { openPendingIfNeeded() }
+    }
+
+    /// If search asked to open a task, show it once it's in our loaded set.
+    private func openPendingIfNeeded() {
+        guard let pid = router.pendingTaskID,
+              let task = tasks.first(where: { $0.id == pid }) else { return }
+        selected = task
+        router.pendingTaskID = nil
     }
 
     @ViewBuilder
@@ -72,7 +134,8 @@ struct BoardView: View {
                             status: status,
                             tasks: tasks.filter { $0.status == status },
                             onSelect: { selected = $0 },
-                            onRefresh: { await load() }
+                            onRefresh: { await load() },
+                            onMove: { id, target in await move(taskId: id, to: target) }
                         )
                         .frame(width: 290, height: max(geo.size.height - 32, 200))
                     }
@@ -89,10 +152,81 @@ struct BoardView: View {
             phase = .failed("No backend URL configured.")
             return
         }
-        if phase != .loaded { phase = .loading }
-        do {
-            tasks = try await APIClient(baseURL: base).tasks()
+        // Instant cold-start: paint the cached board while the fresh fetch runs.
+        if tasks.isEmpty, let cached = BoardCache.load() {
+            tasks = cached
             phase = .loaded
+            offline = true
+        } else if phase != .loaded {
+            phase = .loading
+        }
+        do {
+            let fresh = try await APIClient(baseURL: base).tasks()
+            tasks = fresh
+            offline = false
+            phase = .loaded
+            BoardCache.save(fresh)
+            openPendingIfNeeded()
+            // Best-effort: learn the signed-in user's role so admin-only actions
+            // (Clear all / Sync) can be shown. Never blocks or fails the board load.
+            await session.loadUser(baseURL: base)
+        } catch APIClient.APIError.notAuthenticated {
+            session.signOut()
+        } catch {
+            // Keep showing whatever we have (cache) and flag it; only hard-fail
+            // when there's nothing to show.
+            if tasks.isEmpty {
+                phase = .failed(error.localizedDescription)
+            } else {
+                offline = true
+            }
+        }
+    }
+
+    /// Move a card to another column via drag-and-drop: optimistic locally, then
+    /// PATCH the status; revert on failure.
+    @MainActor
+    private func move(taskId: String, to status: TaskStatus) async {
+        guard let base = config.baseURL,
+              let i = tasks.firstIndex(where: { $0.id == taskId }),
+              tasks[i].status != status else { return }
+        let previous = tasks[i].status
+        tasks[i].status = status
+        do {
+            try await APIClient(baseURL: base).update(taskId: taskId, field: "status", value: status.rawValue)
+            BoardCache.save(tasks)
+        } catch APIClient.APIError.notAuthenticated {
+            session.signOut()
+        } catch {
+            if let j = tasks.firstIndex(where: { $0.id == taskId }) { tasks[j].status = previous }
+        }
+    }
+
+    /// Trigger an email sync (admin), then refresh the board to surface new cards.
+    @MainActor
+    private func sync() async {
+        guard let base = config.baseURL else { return }
+        syncing = true
+        do {
+            let result = try await APIClient(baseURL: base).syncEmail()
+            syncMessage = result.message
+            showSync = true
+            await load()
+        } catch APIClient.APIError.notAuthenticated {
+            session.signOut()
+        } catch {
+            syncMessage = error.localizedDescription
+            showSync = true
+        }
+        syncing = false
+    }
+
+    @MainActor
+    private func clearAll() async {
+        guard let base = config.baseURL else { return }
+        do {
+            try await APIClient(baseURL: base).clearAllTasks()
+            await load()
         } catch APIClient.APIError.notAuthenticated {
             session.signOut()
         } catch {

@@ -22,8 +22,21 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Export-compliance: the app uses only standard HTTPS (exempt encryption),
+	     so declare it here to skip the per-upload prompt on TestFlight/App Store. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- Branded launch screen: the RAVES wordmark centred on white, matching the
+	     app's light surfaces. -->
 	<key>UILaunchScreen</key>
-	<dict/>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchLogo</string>
+		<key>UIImageRespectsSafeAreaInsets</key>
+		<true/>
+	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

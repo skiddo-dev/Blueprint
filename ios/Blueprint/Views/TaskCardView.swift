@@ -21,12 +21,22 @@ struct TaskCardView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                HStack {
+                HStack(spacing: 8) {
                     if !task.assignedTo.isEmpty {
                         Label(task.assignedTo, systemImage: "person.fill")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                    }
+                    if task.commentCount > 0 {
+                        Label("\(task.commentCount)", systemImage: "text.bubble")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    if !task.attachmentIds.isEmpty {
+                        Label("\(task.attachmentIds.count)", systemImage: "paperclip")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 6)
                     StatusPill(status: task.status)
