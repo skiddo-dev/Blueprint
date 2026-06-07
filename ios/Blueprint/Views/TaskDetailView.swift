@@ -6,6 +6,7 @@ import SwiftUI
 struct TaskDetailView: View {
     let task: BoardTask
     let onSave: (BoardTask) -> Void
+    let onDelete: (BoardTask) -> Void
 
     @Environment(AppConfig.self) private var config
     @Environment(SessionStore.self) private var session
@@ -16,15 +17,25 @@ struct TaskDetailView: View {
     @State private var date: String
     @State private var notes: String
     @State private var saving = false
+    @State private var deleting = false
+    @State private var showDeleteConfirm = false
     @State private var errorMessage: String?
 
-    init(task: BoardTask, onSave: @escaping (BoardTask) -> Void) {
+    init(task: BoardTask,
+         onSave: @escaping (BoardTask) -> Void,
+         onDelete: @escaping (BoardTask) -> Void = { _ in }) {
         self.task = task
         self.onSave = onSave
+        self.onDelete = onDelete
         _status = State(initialValue: task.status)
         _assignee = State(initialValue: task.assignedTo)
         _date = State(initialValue: task.date ?? "")
         _notes = State(initialValue: task.notes ?? "")
+    }
+
+    /// Non-comment timeline entries (created / email / attachment), newest first.
+    private var activity: [TimelineEntry] {
+        task.timeline.filter { !$0.isComment }.reversed()
     }
 
     var body: some View {
@@ -57,11 +68,45 @@ struct TaskDetailView: View {
                     TextEditor(text: $notes).frame(minHeight: 110)
                 }
 
+                Section("Comments\(task.commentCount > 0 ? " (\(task.commentCount))" : "")") {
+                    CommentsView(taskId: task.id, comments: task.comments)
+                }
+
+                if !activity.isEmpty {
+                    Section("Activity") {
+                        ForEach(activity) { entry in
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(entry.text).font(.callout)
+                                    Text(CommentsView.relative(entry.at))
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: entry.kind.symbol).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+
                 if let errorMessage {
                     Section {
                         Text(errorMessage).font(.callout).foregroundStyle(.red)
                     }
                 }
+
+                Section {
+                    Button(role: .destructive) { showDeleteConfirm = true } label: {
+                        Label("Delete Task", systemImage: "trash")
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    .disabled(deleting)
+                }
+            }
+            .confirmationDialog("Delete this task?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+                Button("Delete Task", role: .destructive) { Task { await delete() } }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This permanently removes \"\(task.title)\".")
             }
             .navigationTitle("Edit Task")
             .navigationBarTitleDisplayMode(.inline)
@@ -73,9 +118,9 @@ struct TaskDetailView: View {
                     Button("Save") { Task { await save() } }.disabled(saving)
                 }
             }
-            .disabled(saving)
+            .disabled(saving || deleting)
             .overlay {
-                if saving {
+                if saving || deleting {
                     ProgressView().controlSize(.large)
                 }
             }
@@ -119,6 +164,28 @@ struct TaskDetailView: View {
             session.signOut()
         } catch {
             saving = false
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func delete() async {
+        guard let base = config.baseURL else {
+            errorMessage = "No backend URL configured."
+            return
+        }
+        deleting = true
+        errorMessage = nil
+        do {
+            try await APIClient(baseURL: base).deleteTask(id: task.id)
+            deleting = false
+            onDelete(task)
+            dismiss()
+        } catch APIClient.APIError.notAuthenticated {
+            deleting = false
+            session.signOut()
+        } catch {
+            deleting = false
             errorMessage = error.localizedDescription
         }
     }

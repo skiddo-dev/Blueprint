@@ -7,6 +7,11 @@ struct ColumnView: View {
     let tasks: [BoardTask]
     let onSelect: (BoardTask) -> Void
     let onRefresh: () async -> Void
+    /// Drag-and-drop: a card (carried as its id) was dropped on this column —
+    /// move it to `status`.
+    var onMove: (String, TaskStatus) async -> Void = { _, _ in }
+
+    @State private var isTargeted = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -20,6 +25,7 @@ struct ColumnView: View {
                             TaskCardView(task: task)
                                 .contentShape(Rectangle())
                                 .onTapGesture { onSelect(task) }
+                                .draggable(task.id)
                         }
                     }
                     .padding(.bottom, 8)
@@ -28,8 +34,18 @@ struct ColumnView: View {
             }
         }
         .padding(12)
-        .background(Color(hex: 0xF8FAFC), in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color(hex: 0xE2E8F0)))
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(isTargeted ? status.background : Color(hex: 0xF8FAFC),
+                    in: RoundedRectangle(cornerRadius: 18))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .strokeBorder(isTargeted ? status.accent : Color(hex: 0xE2E8F0),
+                              lineWidth: isTargeted ? 2 : 1)
+        )
+        .dropDestination(for: String.self) { ids, _ in
+            for id in ids { Task { await onMove(id, status) } }
+            return !ids.isEmpty
+        } isTargeted: { isTargeted = $0 }
     }
 
     private var header: some View {

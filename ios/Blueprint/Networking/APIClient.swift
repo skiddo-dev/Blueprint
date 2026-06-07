@@ -42,6 +42,156 @@ struct APIClient {
         try Self.check(response)
     }
 
+    /// POST /api/tasks — create a task. The server stamps identity/store-numbers
+    /// and returns the created document (201), which we decode straight back.
+    func createTask(_ body: NewTask) async throws -> BoardTask {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        return try JSONDecoder().decode(BoardTask.self, from: data)
+    }
+
+    /// DELETE /api/tasks/{id} — delete a single task (owner or admin).
+    func deleteTask(id: String) async throws {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks/\(id)"))
+        req.httpMethod = "DELETE"
+        let (_, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+    }
+
+    /// DELETE /api/tasks — admin-only "clear all". Non-admins get a 403, which
+    /// surfaces as `APIError.http(403)`.
+    func clearAllTasks() async throws {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks"))
+        req.httpMethod = "DELETE"
+        let (_, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+    }
+
+    /// POST /api/tasks/{id}/comments — post a comment (or a reply when
+    /// `parentId` is given). Mentions are resolved server-side; the created
+    /// `TimelineEntry` is returned so the UI can append it without a reload.
+    func addComment(taskId: String, text: String, parentId: String? = nil) async throws -> TimelineEntry {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks/\(taskId)/comments"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        var body: [String: Any] = ["text": text]
+        if let parentId { body["parent_id"] = parentId }
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        return try JSONDecoder().decode(CommentResponse.self, from: data).entry
+    }
+
+    /// POST /api/tasks/{id}/comments/{commentId}/react — toggle the caller's
+    /// emoji reaction. Returns the comment's new reactions map.
+    func toggleReaction(taskId: String, commentId: String, emoji: String) async throws -> [String: [String]] {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks/\(taskId)/comments/\(commentId)/react"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["emoji": emoji])
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        return try JSONDecoder().decode(ReactResponse.self, from: data).reactions
+    }
+
+    /// GET /auth/session — Auth.js session endpoint. Returns the signed-in user
+    /// (with the app's `role`/`displayName`, attached by the session callback in
+    /// `auth.ts`) or nil when there's no session. This route is public, so an
+    /// absent session is `{}` rather than a 401.
+    func session() async throws -> SessionUser? {
+        var req = URLRequest(url: baseURL.appendingPathComponent("auth/session"))
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        return (try? JSONDecoder().decode(SessionResponse.self, from: data))?.user
+    }
+
+    // MARK: - Sections (admin-only on the backend)
+
+    /// GET /api/quotes — the tracked-quote log.
+    func quotes() async throws -> [Quote] {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/quotes"))
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        return try JSONDecoder().decode([Quote].self, from: data)
+    }
+
+    /// POST /api/quotes/{id}/status — set a quote's outcome (won/lost/open).
+    func setQuoteStatus(id: String, status: String) async throws {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/quotes/\(id)/status"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["status": status])
+        let (_, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+    }
+
+    /// GET /api/prospects — the prospect pipeline (unwraps the `{ prospects }` shape).
+    func prospects() async throws -> [Prospect] {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/prospects"))
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        return try JSONDecoder().decode(ProspectsResponse.self, from: data).prospects
+    }
+
+    /// PATCH /api/prospects/{id} — edit a prospect's pipeline fields. Only
+    /// non-nil fields are sent (matches the endpoint's partial-patch contract).
+    func patchProspect(id: String, pipelineStatus: String? = nil,
+                       assignee: String? = nil, notes: String? = nil) async throws {
+        var body: [String: Any] = [:]
+        if let pipelineStatus { body["pipeline_status"] = pipelineStatus }
+        if let assignee { body["assignee"] = assignee }
+        if let notes { body["notes"] = notes }
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/prospects/\(id)"))
+        req.httpMethod = "PATCH"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let (_, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+    }
+
+    /// GET /api/dashboard — compact KPI summary.
+    func dashboard() async throws -> DashboardSummary {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/dashboard"))
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        return try JSONDecoder().decode(DashboardSummary.self, from: data)
+    }
+
+    /// GET /api/search?q= — global search, role-scoped server-side.
+    func search(_ query: String) async throws -> SearchResults {
+        var comps = URLComponents(url: baseURL.appendingPathComponent("api/search"),
+                                  resolvingAgainstBaseURL: false)
+        comps?.queryItems = [URLQueryItem(name: "q", value: query)]
+        guard let url = comps?.url else { throw APIError.invalidResponse }
+        var req = URLRequest(url: url)
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        return try JSONDecoder().decode(SearchResults.self, from: data)
+    }
+
+    /// POST /api/sync — trigger an email sync (admin-only). Returns the run's
+    /// summary (counts + a human message).
+    func syncEmail() async throws -> SyncResult {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/sync"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        return try JSONDecoder().decode(SyncResult.self, from: data)
+    }
+
     private static func check(_ response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         switch http.statusCode {
@@ -53,6 +203,55 @@ struct APIClient {
         default: throw APIError.http(http.statusCode)
         }
     }
+}
+
+/// Body for `POST /api/tasks`. Matches `newTaskSchema` in
+/// `src/lib/server/validation.ts` — only `title` is required; identity fields
+/// are stamped server-side and must never be sent. `nil` fields are omitted by
+/// `JSONEncoder` (no explicit nulls), which the schema accepts.
+struct NewTask: Encodable {
+    var title: String
+    var description: String? = nil
+    var status: String? = nil
+    var assigned_to: String? = nil
+    var date: String? = nil
+    var notes: String? = nil
+}
+
+/// `{ ok, entry }` from `POST .../comments`.
+private struct CommentResponse: Decodable { let entry: TimelineEntry }
+
+/// `{ ok, reactions }` from `POST .../react`.
+private struct ReactResponse: Decodable { let reactions: [String: [String]] }
+
+/// The signed-in user as returned by `GET /auth/session` (`session.user`).
+struct SessionUser: Decodable {
+    var email: String?
+    var name: String?
+    var displayName: String?
+    var role: String?
+
+    var isAdmin: Bool { role == "admin" }
+}
+
+private struct SessionResponse: Decodable { let user: SessionUser? }
+
+/// Result of `POST /api/sync` — mirrors `SyncResult` in `emailSync.ts`.
+struct SyncResult: Decodable {
+    var count: Int          // brand-new tasks created
+    var updated: Int?       // existing thread cards patched by a reply
+    var message: String
+    var skipped: Bool?
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        count = (try? c.decode(Int.self, forKey: .count)) ?? 0
+        updated = try? c.decode(Int.self, forKey: .updated)
+        message = (try? c.decode(String.self, forKey: .message)) ?? "Sync complete."
+        skipped = try? c.decode(Bool.self, forKey: .skipped)
+    }
+
+    enum CodingKeys: String, CodingKey { case count, updated, message, skipped }
 }
 
 /// Stops `URLSession` from auto-following the guard's 302 → /login redirect,
