@@ -5,7 +5,8 @@ import { PROSPECT_STATUSES } from '$lib/constants'
 import type { Prospect, ProspectStatus } from '$lib/types'
 
 // Admin-only: patch a prospect's user-managed pipeline fields (status / assignee
-// / notes). Property data itself comes from ATTOM and isn't editable here.
+// / notes). Property data itself comes from the live source (OSM + county GIS)
+// and isn't editable here.
 export const PATCH: RequestHandler = async ({ request, params, locals }) => {
   const session = await locals.auth()
   const user = session?.user as Record<string, unknown> | undefined

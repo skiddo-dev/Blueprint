@@ -80,16 +80,17 @@ export interface Quote {
   created_at: string
 }
 
-// Lead-pipeline stage for a prospect (user-managed; not from ATTOM).
+// Lead-pipeline stage for a prospect (user-managed; not from the data source).
 export type ProspectStatus = 'new' | 'contacted' | 'qualified' | 'dead'
 
 // A commercial-property prospect (target: warehouses in a size/radius window).
-// Pulled from the ATTOM Data API (or generated in dev/mock mode) and stored in
-// the `prospects` collection, keyed by ATTOM's stable attomId so re-pulls
-// upsert in place instead of duplicating. Surfaced on the admin Prospects page.
+// Pulled live from OpenStreetMap + Oakland County parcel GIS (or generated in
+// dev/mock mode) and stored in the `prospects` collection, keyed by a stable
+// source id so re-pulls upsert in place instead of duplicating. Surfaced on the
+// admin Prospects page.
 export interface Prospect {
-  _id: string                  // === attom_id (natural dedupe key)
-  attom_id: string
+  _id: string                  // === attom_id (natural dedupe key, e.g. "osm_way_123")
+  attom_id: string             // stable source id (named for storage back-compat)
   address: string              // one-line display address
   street?: string
   city?: string
@@ -100,19 +101,19 @@ export interface Prospect {
   building_sqft?: number       // gross building size — the 45k–75k filter target
   lot_acres?: number
   year_built?: number
-  property_type?: string       // ATTOM proptype (e.g. "WAREHOUSE")
-  property_use?: string        // ATTOM propsubtype / use label
+  property_type?: string       // OSM building tag (e.g. "WAREHOUSE")
+  property_use?: string        // MI property-class label / use label
   owner?: string
   assessed_value?: number
   market_value?: number
   last_sale_date?: string      // ISO YYYY-MM-DD
   last_sale_amount?: number
   distance_miles?: number      // from the search center (Bloomfield Hills)
-  // ── User-managed pipeline fields (preserved across ATTOM re-pulls) ──────────
+  // ── User-managed pipeline fields (preserved across source re-pulls) ─────────
   pipeline_status?: ProspectStatus  // defaults to 'new'
   assignee?: string                 // BD rep working the lead
   notes?: string
-  source: 'attom' | 'mock'
+  source: 'osm' | 'mock'
   created_at: string
   updated_at?: string
 }

@@ -2,7 +2,7 @@ import type { PageServerLoad, Actions } from './$types'
 import { fail } from '@sveltejs/kit'
 import { env } from '$env/dynamic/private'
 import { getProspects, upsertProspects } from '$lib/server/db'
-import { fetchProspects, hasAttomKey } from '$lib/server/attom'
+import { fetchProspects, hasLiveSource } from '$lib/server/prospects-source'
 import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 
 export const load: PageServerLoad = async () => {
@@ -11,7 +11,7 @@ export const load: PageServerLoad = async () => {
     prospects,
     center: PROSPECT_CENTER,
     defaults: PROSPECT_DEFAULTS,
-    live: hasAttomKey(), // false → results are mock (no ATTOM_API_KEY / USE_MOCK_DATA)
+    live: hasLiveSource(), // false → results are mock (USE_MOCK_DATA=true)
   }
 }
 
@@ -21,8 +21,9 @@ const clampInt = (v: FormDataEntryValue | null, def: number, lo: number, hi: num
 }
 
 export const actions: Actions = {
-  // Pull a fresh batch from ATTOM (or mock) and upsert into Mongo. The route is
-  // admin-gated in hooks.server.ts; we re-check here as defense in depth.
+  // Pull a fresh batch from the live hybrid source (OSM + county GIS), or the
+  // mock generator in demo mode, and upsert into Mongo. The route is admin-gated
+  // in hooks.server.ts; we re-check here as defense in depth.
   refresh: async ({ request, locals }) => {
     const session = await locals.auth()
     const role = (session?.user as Record<string, unknown> | undefined)?.role
@@ -51,7 +52,7 @@ export const actions: Actions = {
 
       return {
         ok: true,
-        live: hasAttomKey(),
+        live: hasLiveSource(),
         count: pulled.length,
         added: stats.added,
         updated: stats.updated,

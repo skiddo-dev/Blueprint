@@ -56,7 +56,7 @@ export const QUOTE_STATUS_META: Record<string, { color: string; bg: string; text
 
 // ── Prospecting (warehouse leads) ────────────────────────────────────────────
 // Search center for the Prospects page. Bloomfield Hills, MI (Oakland County) —
-// the geographic anchor for the warehouse pull. Lat/lng feed both the ATTOM
+// the geographic anchor for the warehouse pull. Lat/lng feed both the Overpass
 // radius query and the map's center marker + radius circle.
 export const PROSPECT_CENTER = { label: 'Bloomfield Hills, MI', lat: 42.5836, lng: -83.2455 }
 
