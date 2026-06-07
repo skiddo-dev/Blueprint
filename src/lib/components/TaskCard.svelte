@@ -234,7 +234,7 @@
   }
 </script>
 
-<div class="card" class:card-hidden={hidden} style:border-top="3px solid {meta.color}">
+<div class="card" id="task-{task._id}" class:card-hidden={hidden} style:border-top="3px solid {meta.color}">
   <!-- Drag handle — the ONLY element that initiates a drag, so the rest of the
        card (quote dropdown, selects, notes, links) stays tappable/scrollable. -->
   <div class="drag-hint" use:dragHandle aria-label="Drag to move this task">⠿⠿</div>

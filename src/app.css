@@ -172,6 +172,16 @@ details summary::-webkit-details-marker { display: none; }
 }
 :focus:not(:focus-visible) { outline: none; }
 
+/* Brief highlight ring when a global-search result deep-links to a card on the
+   board. Applied/removed from KanbanBoard; global so it can target the scoped
+   .card element. */
+@keyframes search-flash {
+  0%   { box-shadow: 0 0 0 3px var(--primary); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+.search-flash { animation: search-flash 2.4s ease-out; border-radius: 10px; }
+@media (prefers-reduced-motion: reduce) { .search-flash { animation: none; } }
+
 /* Layout shell */
 .app-layout {
   display: flex;
