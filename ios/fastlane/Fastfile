@@ -17,8 +17,10 @@
 
 default_platform(:ios)
 
-XCODEPROJ = "Blueprint.xcodeproj"   # produced by `xcodegen generate` from project.yml
-SCHEME    = "Blueprint"
+XCODEPROJ      = "Blueprint.xcodeproj"   # produced by `xcodegen generate` from project.yml
+SCHEME         = "Blueprint"
+APP_IDENTIFIER = "com.ravesinc.blueprint"
+TEAM_ID        = "M86QQRTURU"
 
 platform :ios do
   desc "Build a Release archive and upload it to TestFlight"
@@ -40,17 +42,37 @@ platform :ios do
     latest = (latest_testflight_build_number(api_key: api_key, initial_build_number: 0) rescue 0)
     increment_build_number(xcodeproj: XCODEPROJ, build_number: (latest + 1).to_s)
 
-    # 4. Archive + export a signed App Store .ipa (automatic signing, team from
-    #    project.yml / ExportOptions.plist).
-    # The committed ExportOptions.plist (method: app-store-connect, automatic
-    # signing, team M86QQRTURU) is authoritative for the export.
+    # 4. Provision App Store DISTRIBUTION signing via the API key. Distribution
+    #    certs + App Store provisioning profiles need NO registered devices —
+    #    unlike the development profile that automatic signing tries to create
+    #    during archive, which fails on a device-less team ("Your team has no
+    #    devices…"). cert/sigh create + install them.
+    cert(api_key: api_key)
+    sigh(api_key: api_key, app_identifier: APP_IDENTIFIER, platform: "ios")
+    profile_name = lane_context[SharedValues::SIGH_NAME] ||
+                   ENV["sigh_#{APP_IDENTIFIER}_appstore_profile-name"]
+    UI.user_error!("Could not resolve the App Store profile name from sigh") if profile_name.to_s.empty?
+    UI.message("Signing with App Store profile: #{profile_name}")
+
+    # 5. Archive + export a signed App Store .ipa with MANUAL distribution signing
+    #    (the cert + profile provisioned above). No devices required.
     build_app(
       project: XCODEPROJ,
       scheme: SCHEME,
       configuration: "Release",
-      export_options: "ExportOptions.plist",
       output_directory: "build",
       clean: true,
+      export_method: "app-store",
+      export_options: {
+        signingStyle: "manual",
+        teamID: TEAM_ID,
+        provisioningProfiles: { APP_IDENTIFIER => profile_name },
+        manageAppVersionAndBuildNumber: false,
+      },
+      xcargs: "CODE_SIGN_STYLE=Manual " \
+              "DEVELOPMENT_TEAM=#{TEAM_ID} " \
+              "CODE_SIGN_IDENTITY=\"Apple Distribution\" " \
+              "PROVISIONING_PROFILE_SPECIFIER=\"#{profile_name}\"",
     )
 
     # 5. Upload to TestFlight. Internal testers get it automatically once Apple
