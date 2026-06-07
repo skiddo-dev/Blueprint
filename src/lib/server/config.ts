@@ -21,3 +21,16 @@ export const REQUIRED_PROD_ENV = [
 export function missingProdEnv(read: (k: string) => string | undefined = (k) => env[k]): string[] {
   return REQUIRED_PROD_ENV.filter((k) => !(read(k) ?? '').trim())
 }
+
+/** Return `value`, but in production throw if it's missing/blank — so a config
+ *  module's dev convenience fallback (localhost Mongo, blank Entra creds, keyless
+ *  OpenAI) can never silently take effect in prod, even via a non-hooks entry
+ *  point. Belt-and-suspenders alongside the startup guard in hooks.server.ts. */
+export function requireInProd(
+  key: string,
+  value: string | undefined,
+  isProd = process.env.NODE_ENV === 'production',
+): string | undefined {
+  if (isProd && !value?.trim()) throw new Error(`${key} is required in production`)
+  return value
+}
