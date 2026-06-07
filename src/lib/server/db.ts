@@ -252,11 +252,14 @@ export async function getTask(taskId: string): Promise<Task | null> {
 export async function getTasksSignature(): Promise<string> {
   if (USE_MOCK) return 'mock'
   const d = await getDb()
-  const count = await col(d, 'tasks').countDocuments()
-  const latest = await col(d, 'tasks').findOne(
-    {},
-    { sort: { updated_at: -1 }, projection: { updated_at: 1 } },
-  )
+  // Polled ~every 2s by every open client, so keep it cheap. estimatedDocumentCount
+  // reads collection metadata (O(1)) instead of countDocuments' O(n) scan; it still
+  // changes on any insert/delete, and the max(updated_at) — served by the
+  // updated_at:-1 index — catches in-place edits. Run both in parallel.
+  const [count, latest] = await Promise.all([
+    col(d, 'tasks').estimatedDocumentCount(),
+    col(d, 'tasks').findOne({}, { sort: { updated_at: -1 }, projection: { updated_at: 1 } }),
+  ])
   return `${count}:${(latest?.updated_at as string) ?? ''}`
 }
 
