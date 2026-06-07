@@ -14,7 +14,7 @@ struct LoginView: View {
                 .font(.system(size: 56))
                 .foregroundStyle(Color(hex: 0x6366F1))
             VStack(spacing: 4) {
-                Text("Blueprint").font(.largeTitle.bold())
+                Text("Raves Blueprint").font(.largeTitle.bold())
                 Text("Email-to-Task Kanban").foregroundStyle(.secondary)
             }
 
