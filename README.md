@@ -77,8 +77,8 @@ request on `npm run check`, `npm test`, and a production `npm run build`.
 
 ## Access control (roles)
 
-- **admin** — full app: board, Sync Emails, Clear All, Dashboard/Quotes pages, and the User Access panel.
-- **pm** — board only: view/edit cards, no sync/clear/admin pages.
+- **admin** — full app: board, Sync Emails, Clear All, Dashboard/Quotes pages, and the User Access panel. See the [Administrator Guide](docs/admin-user-guide.md) ([PDF](docs/admin-user-guide.pdf)).
+- **pm** — board only: view/edit cards, no sync/clear/admin pages. See the [PM Guide](docs/pm-user-guide.md) ([PDF](docs/pm-user-guide.pdf)).
 
 `ADMIN_EMAILS` are always admin (so you can sign in and provision everyone else before the `users` collection exists). Add colleagues via the sidebar **👥 User Access** panel (roles stored in the MongoDB `users` collection). An authenticated user who isn't provisioned and isn't in `ADMIN_EMAILS` sees a "request access" screen.
 
