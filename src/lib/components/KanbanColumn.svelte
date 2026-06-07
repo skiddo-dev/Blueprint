@@ -16,6 +16,8 @@
     items = $bindable(),
     assignees,
     mentionCandidates = [],
+    currentUserName = '',
+    currentUserEmail = '',
     storeFilter = null,
     view = 'mine',
     myName = '',
@@ -26,11 +28,16 @@
     onDelete,
     onStoreFilter,
     onComment,
+    onEditComment,
+    onDeleteComment,
+    onReact,
   }: {
     status: TaskStatus
     items: Task[]
     assignees: string[]
     mentionCandidates?: string[]
+    currentUserName?: string
+    currentUserEmail?: string
     storeFilter?: string | null
     view?: 'mine' | 'all'
     myName?: string
@@ -40,7 +47,10 @@
     onFieldUpdate: (id: string, field: string, value: unknown) => void
     onDelete: (id: string) => void
     onStoreFilter?: (n: string) => void
-    onComment: (id: string, text: string) => void
+    onComment: (id: string, text: string, parentId?: string) => void
+    onEditComment: (id: string, commentId: string, text: string) => void
+    onDeleteComment: (id: string, commentId: string) => void
+    onReact: (id: string, commentId: string, emoji: string) => void
   } = $props()
 
   const meta = $derived(STATUS_META[status])
@@ -101,11 +111,16 @@
           {task}
           {assignees}
           {mentionCandidates}
+          {currentUserName}
+          {currentUserEmail}
           {isAdmin}
           {onFieldUpdate}
           {onDelete}
           {onStoreFilter}
           {onComment}
+          {onEditComment}
+          {onDeleteComment}
+          {onReact}
           activeStore={storeFilter}
           hidden={!matches(task)}
         />

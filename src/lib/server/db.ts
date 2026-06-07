@@ -287,6 +287,62 @@ export async function deleteTask(taskId: string): Promise<boolean> {
   return result.deletedCount > 0
 }
 
+// ── Comment edit / delete / react ────────────────────────────────────────────
+// Comments are `kind:'comment'` entries inside a task's `timeline` array, each
+// with a stable `id`. These address a single entry by that id (the positional
+// `$` operator) or remove it (and its replies) with `$pull`.
+const now = () => new Date().toISOString()
+
+/** Edit a comment's text + recomputed mentions in place. */
+export async function updateComment(
+  taskId: string,
+  commentId: string,
+  text: string,
+  mentions: string[],
+): Promise<boolean> {
+  const d = await getDb()
+  const res = await col(d, 'tasks').updateOne(
+    { _id: taskId, 'timeline.id': commentId },
+    {
+      $set: {
+        'timeline.$.text': text,
+        'timeline.$.mentions': mentions,
+        'timeline.$.edited_at': now(),
+        updated_at: now(),
+      },
+    },
+  )
+  return res.modifiedCount > 0
+}
+
+/** Delete a comment AND any replies to it (entries whose parent_id === commentId). */
+export async function deleteComment(taskId: string, commentId: string): Promise<boolean> {
+  const d = await getDb()
+  const res = await col(d, 'tasks').updateOne(
+    { _id: taskId },
+    {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      $pull: { timeline: { $or: [{ id: commentId }, { parent_id: commentId }] } } as any,
+      $set: { updated_at: now() },
+    },
+  )
+  return res.modifiedCount > 0
+}
+
+/** Replace a comment's whole reactions map (computed by the caller via toggleReactor). */
+export async function setCommentReactions(
+  taskId: string,
+  commentId: string,
+  reactions: Record<string, string[]>,
+): Promise<boolean> {
+  const d = await getDb()
+  const res = await col(d, 'tasks').updateOne(
+    { _id: taskId, 'timeline.id': commentId },
+    { $set: { 'timeline.$.reactions': reactions, updated_at: now() } },
+  )
+  return res.modifiedCount > 0
+}
+
 // ── Generated quotes ─────────────────────────────────────────────────────────
 // Quotes produced by the Quote Generator are stored in their own `quotes`
 // collection (kept separate from Kanban tasks so the board stays clean) and

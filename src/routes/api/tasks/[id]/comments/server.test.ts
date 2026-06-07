@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Stub the DB layer so the handler never touches Mongo. patchTask is the call we
-// assert on; getTask backs the ownership check in assertCanAccessTask.
+// assert on; getTask backs the ownership check + reply-parent validation.
 vi.mock('$lib/server/db', () => ({
   getTask: vi.fn(),
   getUsers: vi.fn(async () => [{ name: 'Ben' }, { name: 'Kris' }]),
@@ -41,12 +41,29 @@ describe('POST /api/tasks/[id]/comments', () => {
     expect(patchTask).not.toHaveBeenCalled()
   })
 
-  it('appends a comment entry with server-computed mentions', async () => {
-    const locals = sessionOf({ role: 'admin', displayName: 'Admin' })
+  it('appends a comment with an id, author_email, and server-computed mentions', async () => {
+    const locals = sessionOf({ role: 'admin', displayName: 'Admin', email: 'ADMIN@x.com' })
     const res = await POST(ev('t1', { text: 'hey @Ben please review' }, locals))
     expect(res.status).toBe(201)
     const { entry } = await res.json()
-    expect(entry).toMatchObject({ kind: 'comment', text: 'hey @Ben please review', author: 'Admin', mentions: ['Ben'] })
+    expect(entry).toMatchObject({ kind: 'comment', author: 'Admin', author_email: 'admin@x.com', mentions: ['Ben'] })
+    expect(entry.id).toBeTruthy()
     expect(patchTask).toHaveBeenCalledWith('t1', {}, expect.objectContaining({ kind: 'comment', mentions: ['Ben'] }))
+  })
+
+  it('stores a reply when parent_id points at a top-level comment', async () => {
+    vi.mocked(getTask).mockResolvedValue({ timeline: [{ kind: 'comment', id: 'c1' }] } as never)
+    const locals = sessionOf({ role: 'admin', displayName: 'Admin' })
+    const res = await POST(ev('t1', { text: 'replying', parent_id: 'c1' }, locals))
+    const { entry } = await res.json()
+    expect(entry).toMatchObject({ kind: 'comment', parent_id: 'c1' })
+    expect(patchTask).toHaveBeenCalledWith('t1', {}, expect.objectContaining({ parent_id: 'c1' }))
+  })
+
+  it('400 when parent_id does not match a top-level comment', async () => {
+    vi.mocked(getTask).mockResolvedValue({ timeline: [] } as never)
+    const locals = sessionOf({ role: 'admin', displayName: 'Admin' })
+    await expect(POST(ev('t1', { text: 'x', parent_id: 'nope' }, locals))).rejects.toMatchObject({ status: 400 })
+    expect(patchTask).not.toHaveBeenCalled()
   })
 })

@@ -11,6 +11,12 @@ export interface TimelineEntry {
   from?: string                                    // sender name, for email entries
   author?: string                                  // display name of the commenter (comment entries)
   mentions?: string[]                              // names @mentioned in a comment (for highlight + future notify)
+  // ── Comment-only fields (edit / delete / reply / react) ──────────────────
+  id?: string                                      // stable id for new comments — addresses one entry
+  author_email?: string                            // commenter's login email (authz for edit/delete)
+  parent_id?: string                               // set on a reply → the top-level comment's id
+  edited_at?: string                               // set when a comment is edited
+  reactions?: Record<string, string[]>             // emoji → reactor display names, e.g. { "👍": ["Ben"] }
 }
 
 export interface Task {
