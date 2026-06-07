@@ -79,6 +79,7 @@
   <div class="modal-body">
     <label>
       <span>Title *</span>
+      <!-- svelte-ignore a11y_autofocus -->
       <input
         type="text"
         bind:value={title}

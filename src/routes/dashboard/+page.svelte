@@ -11,9 +11,11 @@
   import { replaceState } from '$app/navigation'
 
   let { data }: { data: PageData } = $props()
+  // svelte-ignore state_referenced_locally
   const tasks: Task[] = data.tasks
 
   // Session comes from the root layout load; this route is admin-only.
+  // svelte-ignore state_referenced_locally
   const session = data.session as unknown as AppSession
   const user = { name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' }
 
@@ -104,14 +106,18 @@
   // $state so the win/loss toggle can update a row optimistically and have every
   // chart/metric/table react live — no full-page reload (mirrors the board's and
   // prospects' optimistic-persist pattern).
+  // svelte-ignore state_referenced_locally
   let genQuotes = $state<Quote[]>(data.quotes ?? [])
+  // svelte-ignore state_referenced_locally
   const totalQuotes = genQuotes.length
 
   // ── Interactive filters (sliders) ─────────────────────────────────────────
   // Every chart/metric below reacts to `fq`, the slider-filtered quote set.
+  // svelte-ignore state_referenced_locally
   const allYears = [...new Set(genQuotes.map(q => q.year).filter(Boolean))].sort((a, b) => a - b)
   const yearMin = allYears[0] ?? new Date().getFullYear()
   const yearMax = allYears.at(-1) ?? yearMin
+  // svelte-ignore state_referenced_locally
   const amtCeil = Math.max(10_000, Math.ceil(Math.max(0, ...genQuotes.map(q => Math.abs(q.amount))) / 10_000) * 10_000)
   // Initial filter values come from the URL → shareable/bookmarkable views.
   const sp = page.url.searchParams
@@ -337,6 +343,7 @@
   // Forecast + PO hygiene use the FULL log (independent of the view sliders).
   const annualValue = (y: number) => genQuotes.filter(q => q.year === y).reduce((s, q) => s + q.amount, 0)
   const curYear = allYears.at(-1) ?? new Date().getFullYear()
+  // svelte-ignore state_referenced_locally
   const curMonth = Math.max(0, ...genQuotes.filter(q => q.year === curYear && q.date_sent).map(q => Number(q.date_sent!.slice(5, 7))))
   const priorShares = allYears.filter(y => y < curYear).map(y => {
     const a = annualValue(y)

@@ -11,9 +11,11 @@ const config = {
     },
     // SvelteKit's built-in CSRF check runs before hooks and can't be exempted
     // per-route, which 403s Microsoft Graph's text/plain validation handshake.
-    // Disable it here and re-implement the same origin check in hooks.server.ts,
-    // exempting only the Graph webhook (which is verified by clientState instead).
-    csrf: { checkOrigin: false }
+    // trustedOrigins:['*'] disables the built-in origin check (the supported
+    // replacement for the deprecated checkOrigin:false); the same check is
+    // re-implemented in hooks.server.ts, exempting only the Graph webhook
+    // (verified by clientState instead).
+    csrf: { trustedOrigins: ['*'] }
   }
 }
 
