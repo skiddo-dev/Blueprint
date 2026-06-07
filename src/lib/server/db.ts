@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/private'
 import type { Task, User, Quote, Prospect, TimelineEntry } from '$lib/types'
 import { generateMockTasks, generateMockProspects } from './mock'
 import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
+import { requireInProd } from './config'
 
 let client: MongoClient | null = null
 let db: Db | null = null
@@ -26,7 +27,8 @@ export async function getDb(): Promise<Db> {
       // Read via $env/dynamic/private, NOT process.env: under Vite 8 SSR process.env
       // is unpopulated from .env, so MONGODB_URI fell back to localhost and the app
       // silently used a local mongo instead of Atlas. Same root cause as src/lib/auth.ts.
-      const uri = env.MONGODB_URI ?? env.MONGO_URI ?? 'mongodb://localhost:27017/'
+      // localhost is a DEV-only convenience; in production a missing URI throws.
+      const uri = requireInProd('MONGODB_URI', env.MONGODB_URI ?? env.MONGO_URI) ?? 'mongodb://localhost:27017/'
       const dbName = env.MONGODB_DB_NAME ?? env.MONGO_DB_NAME ?? 'blueprint'
       const c = new MongoClient(uri)
       await c.connect()

@@ -2,6 +2,7 @@ import { SvelteKitAuth } from '@auth/sveltekit'
 import MicrosoftEntraID from '@auth/sveltekit/providers/microsoft-entra-id'
 import { getDb } from '$lib/server/db'
 import { env } from '$env/dynamic/private'
+import { requireInProd } from '$lib/server/config'
 
 // Async config form so secrets are read at RUNTIME via $env/dynamic/private
 // (from the host environment / Azure App Settings), NOT inlined at build time.
@@ -10,12 +11,12 @@ import { env } from '$env/dynamic/private'
 export const { handle, signIn, signOut } = SvelteKitAuth(async () => ({
   providers: [
     MicrosoftEntraID({
-      clientId: env.AZURE_CLIENT_ID ?? '',
-      clientSecret: env.AZURE_CLIENT_SECRET ?? '',
-      issuer: `https://login.microsoftonline.com/${env.AZURE_TENANT_ID ?? ''}/v2.0`,
+      clientId: requireInProd('AZURE_CLIENT_ID', env.AZURE_CLIENT_ID) ?? '',
+      clientSecret: requireInProd('AZURE_CLIENT_SECRET', env.AZURE_CLIENT_SECRET) ?? '',
+      issuer: `https://login.microsoftonline.com/${requireInProd('AZURE_TENANT_ID', env.AZURE_TENANT_ID) ?? ''}/v2.0`,
     }),
   ],
-  secret: env.AUTH_SECRET,
+  secret: requireInProd('AUTH_SECRET', env.AUTH_SECRET),
   trustHost: true,
   callbacks: {
     async session({ session }) {

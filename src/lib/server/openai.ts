@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { env } from '$env/dynamic/private'
+import { requireInProd } from './config'
 
 // Single lazily-initialized OpenAI client shared by the email parser (llm.ts)
 // and the attachment parser (attachmentParse.ts). Lazy init avoids throwing
@@ -8,7 +9,7 @@ import { env } from '$env/dynamic/private'
 // parsing). See src/lib/server/db.ts for the same root cause.
 let _client: OpenAI | null = null
 export function getClient(): OpenAI {
-  if (!_client) _client = new OpenAI({ apiKey: env.OPENAI_API_KEY })
+  if (!_client) _client = new OpenAI({ apiKey: requireInProd('OPENAI_API_KEY', env.OPENAI_API_KEY) })
   return _client
 }
 
