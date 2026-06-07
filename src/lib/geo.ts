@@ -1,4 +1,4 @@
-// Pure geo math shared by the prospecting feature — the ATTOM client
+// Pure geo math shared by the prospecting feature — the OSM client
 // (distance-from-center), the mock generator (scatter points in a radius), and
 // the Prospects map. No DOM/Node deps so it runs on the server, the client, and
 // under Vitest. Distances are in statute miles to match how the UI talks about

@@ -104,8 +104,8 @@ export function generateMockTasks(count = 35): Task[] {
 }
 
 // ── Mock warehouse prospects ─────────────────────────────────────────────────
-// Used by the Prospects page when USE_MOCK_DATA=true or no ATTOM_API_KEY is set,
-// so the feature is fully demoable without a paid data subscription. Scatters
+// Used by the Prospects page when USE_MOCK_DATA=true, so the feature is fully
+// demoable offline without reaching the live OSM / county-GIS sources. Scatters
 // realistic warehouse listings inside the requested radius/size window around
 // the search center, with metro-Detroit city/owner flavor.
 

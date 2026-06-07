@@ -294,7 +294,7 @@
     <h1 class="page-title">🏭 Warehouse Prospects</h1>
     <p class="page-sub">
       Warehouse properties within {radiusMiles} mi of {center.label} · Admin only
-      {#if !data.live}<span class="badge mock">Demo data — set ATTOM_API_KEY for live results</span>{/if}
+      {#if !data.live}<span class="badge mock">Demo data — set USE_MOCK_DATA=false for live results</span>{/if}
     </p>
     <hr style="margin: 12px 0 18px" />
   {/snippet}

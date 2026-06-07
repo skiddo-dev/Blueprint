@@ -418,9 +418,10 @@ export async function updateQuoteStatus(
 }
 
 // ── Warehouse prospects ──────────────────────────────────────────────────────
-// Commercial-property leads pulled from ATTOM, stored in the `prospects`
-// collection keyed by attom_id so a re-pull upserts in place. USE_MOCK_DATA
-// serves generated prospects so the page works without Atlas/a paid key.
+// Commercial-property leads pulled live from OpenStreetMap + county parcel GIS,
+// stored in the `prospects` collection keyed by the source id so a re-pull
+// upserts in place. USE_MOCK_DATA serves generated prospects so the page works
+// without Atlas/network access.
 
 export async function getProspects(): Promise<Prospect[]> {
   if (USE_MOCK) {
@@ -437,10 +438,10 @@ export async function getProspects(): Promise<Prospect[]> {
   return rows.map(r => ({ pipeline_status: 'new', ...r, _id: String(r._id) })) as Prospect[]
 }
 
-/** Upsert a batch of prospects by attom_id. Returns how many were new vs.
+/** Upsert a batch of prospects by source id. Returns how many were new vs.
  *  refreshed so the UI can report "X added, Y updated". User-managed pipeline
  *  fields (status / assignee / notes) are written ONLY on first insert, so a
- *  later ATTOM re-pull refreshes the property data without wiping a rep's work. */
+ *  later re-pull refreshes the property data without wiping a rep's work. */
 export async function upsertProspects(
   prospects: Prospect[],
 ): Promise<{ added: number; updated: number }> {
@@ -449,12 +450,12 @@ export async function upsertProspects(
   const now = new Date().toISOString()
   const ops = prospects.map(p => {
     // Strip identity + user-managed fields from $set so re-pulls never clobber them.
-    const { _id, created_at, pipeline_status, assignee, notes, ...attomFields } = p
+    const { _id, created_at, pipeline_status, assignee, notes, ...sourceFields } = p
     return {
       updateOne: {
         filter: { _id: p.attom_id },
         update: {
-          $set: { ...attomFields, updated_at: now },
+          $set: { ...sourceFields, updated_at: now },
           $setOnInsert: {
             _id: p.attom_id,
             created_at: created_at ?? now,
