@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { POST as syncPOST } from './sync/+server'
 import { GET as usersGET, POST as usersPOST, DELETE as usersDELETE } from './users/+server'
+import { GET as reqGET, POST as reqPOST } from './users/requests/+server'
 import { POST as quoteGenPOST } from './quotes/generate/+server'
 import { POST as quoteStatusPOST } from './quotes/[id]/status/+server'
 import { PATCH as prospectPATCH } from './prospects/[id]/+server'
 import { GET as tasksGET, DELETE as tasksDELETE } from './tasks/+server'
 import { GET as exportGET } from './tasks/export/+server'
+import { POST as importPOST } from './tasks/import/+server'
 import { GET as signatureGET } from './tasks/signature/+server'
 import { PATCH as taskPATCH, DELETE as taskDELETE } from './tasks/[id]/+server'
 
@@ -33,11 +35,14 @@ const adminOnly: { name: string; h: Handler }[] = [
   { name: 'GET /api/users', h: usersGET },
   { name: 'POST /api/users', h: usersPOST },
   { name: 'DELETE /api/users', h: usersDELETE },
+  { name: 'GET /api/users/requests', h: reqGET },
+  { name: 'POST /api/users/requests', h: reqPOST },
   { name: 'POST /api/quotes/generate', h: quoteGenPOST },
   { name: 'POST /api/quotes/[id]/status', h: quoteStatusPOST },
   { name: 'PATCH /api/prospects/[id]', h: prospectPATCH },
   { name: 'DELETE /api/tasks', h: tasksDELETE },
   { name: 'GET /api/tasks/export', h: exportGET },
+  { name: 'POST /api/tasks/import', h: importPOST },
 ]
 
 // Auth-required endpoints (any provisioned role); we assert only the anon → 401

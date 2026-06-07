@@ -17,6 +17,8 @@ Turns flagged vendor emails, permits, and site alerts into actionable Kanban tas
 - Drag-and-drop Kanban board (drag from the `⠿` grip; columns: To Do → Cancelled)
 - **Sync Emails** — pulls flagged messages from a shared mailbox, parses date / assignee / quote / summary with OpenAI, and creates tasks (with attachments stored in MongoDB)
 - Per-card editing (status, assignee, date, quote, notes) with ~2s live refresh
+- **Self-serve access requests** — an un-provisioned user can request access from the sign-in gate; admins approve/dismiss from the User Access panel (which also shows each user's last-active + weekly-active count).
+- **CSV import** (admin) — bulk-create tasks from a CSV whose columns mirror the task export, so an export round-trips.
 - PDF quote generation and a Dashboard (admin)
 - **Prospects** (admin) — pulls warehouse properties (45,000–75,000 sq ft within 30 mi of Bloomfield Hills, MI) from the **ATTOM Data API** into a lead pipeline: sortable table, status-colored Leaflet map, analytics charts (size / city / decade / distance / pipeline), live filters + search, CSV export, per-prospect status/assignee/notes, a detail modal (Google Maps + county-record links), and one-click **Add to Kanban board**. Falls back to realistic mock data when no `ATTOM_API_KEY` is set, so the page works in dev/demo.
 - Entra SSO with roles (admin / pm)

@@ -11,6 +11,12 @@
     <h1>Blueprint</h1>
     <p class="sub">Grocery Construction Task Management</p>
 
+    <ul class="value-bullets">
+      <li>📥 Flagged vendor emails become Kanban tasks automatically</li>
+      <li>🗂️ Track every project, quote, and prospect in one board</li>
+      <li>🔍 Find any task, quote, or prospect instantly with ⌘K search</li>
+    </ul>
+
     {#if data.error}
       <p class="error" role="alert">{data.error}</p>
     {/if}
@@ -46,7 +52,21 @@
   }
   .logo { font-size: 48px; margin-bottom: 8px; }
   h1 { font-size: 24px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
-  .sub { font-size: 13px; color: var(--text-faint); margin-bottom: 28px; }
+  .sub { font-size: 13px; color: var(--text-faint); margin-bottom: 20px; }
+  .value-bullets {
+    list-style: none;
+    margin: 0 0 24px;
+    padding: 0;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .value-bullets li {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
   .error {
     background: #fef2f2;
     border: 1px solid #fecaca;
