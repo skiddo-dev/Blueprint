@@ -41,11 +41,14 @@ App Store Connect → **Users and Access → Integrations → App Store Connect 
 A key avoids Apple-ID 2FA and works unattended. (Alternative: sign in with your
 Apple ID — set `FASTLANE_APPLE_ID` in the Appfile and you'll be prompted for 2FA.)
 
-## 3. Confirm signing
+## 3. Signing (handled by the lane)
 
-The project uses **automatic** signing with team `M86QQRTURU`. The first archive
-will create the distribution certificate + provisioning profile automatically as
-long as you're signed into that team in **Xcode → Settings → Accounts**.
+Nothing to do here — the `beta` lane provisions **App Store distribution** signing
+itself, using your API key: `cert` creates/installs the distribution certificate
+and `sigh` creates/installs the `com.ravesinc.blueprint AppStore` provisioning
+profile, then it builds with **manual** signing. App Store certs/profiles need no
+registered devices (which is why automatic signing's *development* profile — it
+requires a device — can't be used on a device-less team).
 
 ## 4–6. Build + upload (one command)
 
