@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private'
 import { getTasks, getUsers, insertTask, saveAttachment, patchTask, tryAcquireLease, releaseLease, normName } from './db'
-import { fetchRecentEmails, getGraphToken } from './email'
+import { fetchRecentEmails, getGraphToken, GraphAuthError } from './email'
 import { parseEmailWithLLM } from './llm'
 import { extractText, parseAttachmentWithLLM } from './attachmentParse'
 import { classifyEmail, buildNewTask, buildThreadPatch, buildAttachmentPatch, resolveMailboxes } from './syncLogic'
@@ -34,6 +34,7 @@ export interface SyncResult {
   updated?: number       // existing thread cards patched by a reply
   message: string
   skipped?: boolean
+  authError?: boolean    // Microsoft sign-in failed (expired secret / revoked consent)
 }
 
 // Download, store, and READ each attachment, merging any PO/amount/store numbers
@@ -90,7 +91,25 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
     // card within a single sweep (works across mailboxes too: the same thread
     // flagged by two PMs lands on one card).
     const existing = await getTasks()
-    const token = await getGraphToken()
+    let token: string
+    try {
+      token = await getGraphToken()
+    } catch (e) {
+      // A failed client-credentials grant is a config problem (expired secret /
+      // revoked consent) that blocks EVERY mailbox — surface it as an actionable
+      // message instead of throwing a bare 500 that reads as "Internal error".
+      if (e instanceof GraphAuthError) {
+        console.error('[email-sync] Graph auth failed:', e.message)
+        return {
+          count: 0,
+          authError: true,
+          message:
+            '🔒 Email sync couldn’t sign in to Microsoft 365 — the app credentials may have expired ' +
+            'or admin consent was revoked. An admin needs to renew the Azure client secret / re-grant consent.',
+        }
+      }
+      throw e
+    }
     const headers = { Authorization: `Bearer ${token}` }
 
     // Constrain the LLM's assigned_to to people who actually exist (matching the

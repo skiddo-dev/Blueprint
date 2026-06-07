@@ -8,6 +8,17 @@ import { env } from '$env/dynamic/private'
 const FETCH_TIMEOUT_MS = parseInt(env.GRAPH_FETCH_TIMEOUT_MS ?? '20000')
 const MAX_SYNC_MESSAGES = parseInt(env.MAX_SYNC_MESSAGES ?? '200')
 
+/** Thrown when the app-only client-credentials grant is rejected by Microsoft —
+ *  i.e. a CREDENTIALS/CONSENT problem (expired AZURE_CLIENT_SECRET, wrong tenant,
+ *  revoked admin consent), not a transient glitch. Distinguished from generic Graph
+ *  errors so the sync layer can surface an actionable message instead of a bare 500. */
+export class GraphAuthError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'GraphAuthError'
+  }
+}
+
 /** fetch() that aborts after FETCH_TIMEOUT_MS so a hung Graph call can't stall
  *  the whole sync — the run holds a 5-min lease, so without a timeout one wedged
  *  request would block every mailbox queued behind it. */
@@ -36,7 +47,7 @@ export async function getGraphToken(): Promise<string> {
   })
   const data = await res.json()
   if (!data.access_token) {
-    throw new Error(`Graph auth failed: ${data.error_description ?? data.error}`)
+    throw new GraphAuthError(`Graph auth failed: ${data.error_description ?? data.error}`)
   }
   return data.access_token as string
 }
