@@ -69,8 +69,8 @@ sign-in — **no backend or Azure changes are required.**
 
 2. **Pick a destination & signing.** Choose an iPhone **Simulator** to run with
    no signing. To run on a **physical device**, select your team under
-   *Signing & Capabilities* (and change `PRODUCT_BUNDLE_IDENTIFIER` from
-   `com.blueprint.app` if it collides).
+   *Signing & Capabilities* (the bundle id `com.ravesinc.blueprint` is set in
+   `project.yml`; change it there if it ever collides).
 
 3. **Run** (⌘R). In the app:
    - Enter the **Backend URL** (defaults to `http://localhost:8501` for the
@@ -151,10 +151,10 @@ xcodebuild -project Blueprint.xcodeproj -scheme Blueprint \
 xcrun simctl install booted "$(find ~/Library/Developer/Xcode/DerivedData/Blueprint-*/Build/Products/Debug-iphonesimulator -name Blueprint.app -maxdepth 1 | head -1)"
 
 # 3. Launch straight into a screen (admin session faked):
-xcrun simctl launch booted com.blueprint.app -FAKE_AUTH                 # board (tabbed)
-xcrun simctl launch booted com.blueprint.app -FAKE_AUTH -TAB dashboard  # a specific tab
-xcrun simctl launch booted com.blueprint.app -FAKE_AUTH -TAB search -QUERY inspection
-xcrun simctl launch booted com.blueprint.app -SCREEN detail             # one view + sample data
+xcrun simctl launch booted com.ravesinc.blueprint -FAKE_AUTH                 # board (tabbed)
+xcrun simctl launch booted com.ravesinc.blueprint -FAKE_AUTH -TAB dashboard  # a specific tab
+xcrun simctl launch booted com.ravesinc.blueprint -FAKE_AUTH -TAB search -QUERY inspection
+xcrun simctl launch booted com.ravesinc.blueprint -SCREEN detail             # one view + sample data
 ```
 
 `-SCREEN` values: `detail`, `newtask`, `quote`, `prospect`. `-TAB` values:
@@ -162,12 +162,17 @@ xcrun simctl launch booted com.blueprint.app -SCREEN detail             # one vi
 
 ## App Store submission
 
-Everything is in place except the **signed upload**, which requires an Apple
-Developer account:
+Everything is in place except the **signed upload**, which requires the RAVES
+Apple Developer account. **The fastest path is the [`fastlane`](fastlane/)
+pipeline — see [`TESTFLIGHT.md`](TESTFLIGHT.md)** for the full checklist
+(create the app record + an App Store Connect API key, then
+`bundle exec fastlane beta` archives, signs, and uploads in one command).
+
+The manual equivalent, if you'd rather not use fastlane:
 
 1. **Set your Team ID.** In [`project.yml`](project.yml) set
    `DEVELOPMENT_TEAM` (and a unique `PRODUCT_BUNDLE_IDENTIFIER` if
-   `com.blueprint.app` is taken), then `xcodegen generate`.
+   `com.ravesinc.blueprint` is taken), then `xcodegen generate`.
 2. **Archive** (real device SDK):
    ```bash
    xcodebuild -project Blueprint.xcodeproj -scheme Blueprint \

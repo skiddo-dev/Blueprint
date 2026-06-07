@@ -1,0 +1,65 @@
+# fastlane — TestFlight pipeline for the Blueprint iOS app.
+#
+# This automates the "signed upload" that's the only thing left for the App
+# Store (see ../README.md → App Store submission). It can't run unattended here:
+# it needs a Mac signed into the RAVES Apple Developer account and an App Store
+# Connect API key. Full walkthrough in ../TESTFLIGHT.md.
+#
+# One-time prereqs:
+#   brew install xcodegen
+#   bundle install                      # installs fastlane (see ../Gemfile)
+#   - App record created in App Store Connect for com.ravesinc.blueprint
+#   - App Store Connect API key (.p8) downloaded
+#
+# Then, from the ios/ directory:
+#   ASC_KEY_ID=XXXX ASC_ISSUER_ID=yyyy ASC_KEY_PATH=/path/AuthKey_XXXX.p8 \
+#     bundle exec fastlane beta
+
+default_platform(:ios)
+
+XCODEPROJ = "Blueprint.xcodeproj"   # produced by `xcodegen generate` from project.yml
+SCHEME    = "Blueprint"
+
+platform :ios do
+  desc "Build a Release archive and upload it to TestFlight"
+  lane :beta do
+    # 1. Regenerate the project from project.yml so the build is reproducible
+    #    (the same xcodegen flow used for local verification).
+    sh("cd .. && xcodegen generate")
+
+    # 2. Authenticate with an App Store Connect API key — no Apple ID / 2FA, and
+    #    it works in CI. (Set ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_PATH.)
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: ENV.fetch("ASC_KEY_PATH"),
+    )
+
+    # 3. Bump the build number past the latest one already on TestFlight so each
+    #    upload is unique (App Store Connect rejects duplicates).
+    latest = (latest_testflight_build_number(api_key: api_key, initial_build_number: 0) rescue 0)
+    increment_build_number(xcodeproj: XCODEPROJ, build_number: (latest + 1).to_s)
+
+    # 4. Archive + export a signed App Store .ipa (automatic signing, team from
+    #    project.yml / ExportOptions.plist).
+    # The committed ExportOptions.plist (method: app-store-connect, automatic
+    # signing, team M86QQRTURU) is authoritative for the export.
+    build_app(
+      project: XCODEPROJ,
+      scheme: SCHEME,
+      configuration: "Release",
+      export_options: "ExportOptions.plist",
+      output_directory: "build",
+      clean: true,
+    )
+
+    # 5. Upload to TestFlight. Internal testers get it automatically once Apple
+    #    finishes processing; external distribution is left off (enable in App
+    #    Store Connect when you're ready).
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+    )
+  end
+end

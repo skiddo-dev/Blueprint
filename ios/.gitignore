@@ -6,5 +6,11 @@ build/
 DerivedData/
 .DS_Store
 
+# Signing secrets — never commit App Store Connect API keys or profiles.
+*.p8
+AuthKey_*.p8
+*.mobileprovision
+*.p12
+
 # If you regenerate the project with XcodeGen, the committed .xcodeproj is the
 # generated artifact — keep it tracked. (Do not ignore Blueprint.xcodeproj.)
