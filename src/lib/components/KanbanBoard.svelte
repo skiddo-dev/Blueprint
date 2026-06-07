@@ -368,6 +368,35 @@
   </div>
 </div>
 
+{#if syncMessage}
+  <div class="sync-toast">{syncMessage}</div>
+{/if}
+
+{#if total === 0}
+  <!-- First-run / fully-empty board: explain where cards come from instead of
+       showing six empty columns, and point to the first actions + the guide. -->
+  <div class="board-empty">
+    <div class="be-icon" aria-hidden="true">🗂️</div>
+    <h2>No tasks yet</h2>
+    <p>Flagged vendor emails sync in automatically and land here as cards — or add the first one yourself.</p>
+    <div class="be-actions">
+      <button class="primary" onclick={() => { showNewTask = true }}>✏️ New Task</button>
+      {#if role === 'admin'}
+        <button class="secondary" onclick={syncEmails} disabled={syncing}>
+          {syncing ? '⏳ Refreshing…' : '🔄 Refresh now'}
+        </button>
+      {/if}
+    </div>
+    <a
+      class="be-help"
+      href={role === 'admin' ? '/guides/admin-user-guide.pdf' : '/guides/pm-user-guide.pdf'}
+      target="_blank"
+      rel="noopener"
+    >
+      📖 Read the {role === 'admin' ? 'admin' : 'PM'} guide
+    </a>
+  </div>
+{:else}
 <div class="view-toggle" role="group" aria-label="Board view">
   <button class="vt-btn" class:active={view === 'mine'} aria-pressed={view === 'mine'} onclick={() => setView('mine')}>
     🙋 My Work
@@ -377,10 +406,6 @@
     📋 All Tasks
   </button>
 </div>
-
-{#if syncMessage}
-  <div class="sync-toast">{syncMessage}</div>
-{/if}
 
 <!-- Mobile-only top bar: a menu button (opens the sidebar drawer) + a column
      switcher. Phones stack the board to one column at a time (a 6-column
@@ -452,6 +477,7 @@
     </div>
   {/each}
 </div>
+{/if}
 
 <style>
   .board-toolbar {
@@ -532,6 +558,23 @@
     padding: 0 2px;
     text-decoration: underline;
   }
+
+  /* First-run empty board (no tasks at all). */
+  .board-empty {
+    text-align: center;
+    max-width: 460px;
+    margin: 8vh auto 0;
+    padding: 32px 24px;
+    background: var(--card-bg);
+    border: 1px dashed var(--border);
+    border-radius: 16px;
+  }
+  .be-icon { font-size: 40px; margin-bottom: 8px; }
+  .board-empty h2 { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 8px; }
+  .board-empty p { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin: 0 0 18px; }
+  .be-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .be-help { font-size: 13px; font-weight: 600; color: var(--primary-dark); text-decoration: none; }
+  .be-help:hover { text-decoration: underline; }
 
   .sync-toast {
     background: #d1fae5;

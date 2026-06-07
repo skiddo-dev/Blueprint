@@ -543,17 +543,83 @@ export async function getUserEmailByName(name: string): Promise<string | null> {
 
 export async function upsertUser(email: string, role: string, name: string): Promise<void> {
   const d = await getDb()
+  const now = new Date().toISOString()
   await col(d, 'users').updateOne(
     { _id: email.toLowerCase() },
-    { $set: { role, name, updated_at: new Date().toISOString() } },
+    { $set: { role, name, updated_at: now }, $setOnInsert: { firstSeenAt: now } },
     { upsert: true },
   )
+}
+
+// In-process throttle so we record activity at most once per user per window —
+// keeps lastActiveAt off the hot path (one write per ~5 min, not per request).
+// Per-replica, so the worst case across replicas is a couple of extra writes.
+const _activityWindowMs = 5 * 60_000
+const _activityTouchedAt = new Map<string, number>()
+
+/** Best-effort "user was here" stamp on the users doc, used by the admin usage
+ *  view. Throttled in-memory; only updates an already-provisioned user; never
+ *  throws (activity tracking must never break a page load). */
+export async function touchUserActivity(email: string): Promise<void> {
+  const e = email.toLowerCase()
+  const nowMs = Date.now()
+  if (nowMs - (_activityTouchedAt.get(e) ?? 0) < _activityWindowMs) return
+  _activityTouchedAt.set(e, nowMs)
+  try {
+    const d = await getDb()
+    await col(d, 'users').updateOne({ _id: e }, { $set: { lastActiveAt: new Date(nowMs).toISOString() } })
+  } catch { /* best-effort */ }
 }
 
 export async function deleteUser(email: string): Promise<boolean> {
   const d = await getDb()
   const result = await col(d, 'users').deleteOne({ _id: email.toLowerCase() })
   return result.deletedCount > 0
+}
+
+// ── Self-serve access requests ────────────────────────────────────────────────
+// A signed-in user who isn't provisioned can request access from the
+// "Access Pending" screen. Stored in `accessRequests`, keyed by email so a
+// re-request just refreshes the existing pending row (no duplicates).
+export interface AccessRequest {
+  email: string
+  name: string
+  note: string
+  requested_at: string
+}
+
+export async function createAccessRequest(email: string, name: string, note = ''): Promise<void> {
+  const d = await getDb()
+  await col(d, 'accessRequests').updateOne(
+    { _id: email.toLowerCase() },
+    {
+      $set: { name, note, status: 'pending', requested_at: new Date().toISOString() },
+      $setOnInsert: { _id: email.toLowerCase() },
+    },
+    { upsert: true },
+  )
+}
+
+export async function listPendingAccessRequests(): Promise<AccessRequest[]> {
+  const d = await getDb()
+  const rows = await col(d, 'accessRequests').find({ status: 'pending' }).sort({ requested_at: 1 }).toArray()
+  return rows.map(r => ({
+    email: String(r._id),
+    name: (r.name as string) ?? '',
+    note: (r.note as string) ?? '',
+    requested_at: (r.requested_at as string) ?? '',
+  }))
+}
+
+/** Mark a request approved/denied. Approval itself (provisioning the user) is the
+ *  caller's job — this only records the outcome so it leaves the pending list. */
+export async function resolveAccessRequest(email: string, status: 'approved' | 'denied'): Promise<boolean> {
+  const d = await getDb()
+  const res = await col(d, 'accessRequests').updateOne(
+    { _id: email.toLowerCase() },
+    { $set: { status, resolved_at: new Date().toISOString() } },
+  )
+  return res.matchedCount > 0
 }
 
 // ── App metadata + distributed leases ────────────────────────────────────────

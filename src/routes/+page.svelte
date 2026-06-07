@@ -11,7 +11,8 @@
   // svelte-ignore state_referenced_locally
   const session = data.session as unknown as AppSession
 
-  let users = $state<{ _id: string; name: string; role: string }[]>([])
+  let users = $state<{ _id: string; name: string; role: string; lastActiveAt?: string }[]>([])
+  let accessRequests = $state<{ email: string; name: string; note: string; requested_at: string }[]>([])
   let viewAsUser = $state<string | null>(null)
   // Seeded from server data, then owned/mutated locally (drag-drop, optimistic edits).
   // svelte-ignore state_referenced_locally
@@ -26,13 +27,20 @@
     if (r.ok) users = await r.json()
   }
 
+  // Pending access requests (admins only; the endpoint 403s for PMs, leaving the
+  // list empty so the panel never renders).
+  async function loadRequests() {
+    const r = await fetch('/api/users/requests')
+    if (r.ok) accessRequests = await r.json()
+  }
+
   async function loadTasks() {
     const url = viewAsUser ? `/api/tasks?user=${encodeURIComponent(viewAsUser)}` : '/api/tasks'
     const r = await fetch(url)
     if (r.ok) boardTasks = await r.json()
   }
 
-  onMount(loadUsers)
+  onMount(() => { loadUsers(); loadRequests() })
 
   async function handleAddUser(email: string, role: string, name: string) {
     await fetch('/api/users', {
@@ -46,6 +54,24 @@
   async function handleDeleteUser(email: string) {
     await fetch(`/api/users?email=${encodeURIComponent(email)}`, { method: 'DELETE' })
     await loadUsers()
+  }
+
+  async function handleApproveRequest(email: string, name: string) {
+    await fetch('/api/users/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, action: 'approve', role: 'pm', name }),
+    })
+    await Promise.all([loadUsers(), loadRequests()])
+  }
+
+  async function handleDismissRequest(email: string) {
+    await fetch('/api/users/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, action: 'deny' }),
+    })
+    await loadRequests()
   }
 
   async function handleClearAll() {
@@ -69,10 +95,14 @@
     {session}
     tasks={boardTasks}
     {users}
+    {accessRequests}
     {viewAsUser}
     onViewChange={handleViewChange}
     onAddUser={handleAddUser}
     onDeleteUser={handleDeleteUser}
+    onApproveRequest={handleApproveRequest}
+    onDismissRequest={handleDismissRequest}
+    onImported={loadTasks}
     onClearAll={handleClearAll}
   />
   <main class="main-content">

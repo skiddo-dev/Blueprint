@@ -54,6 +54,8 @@ export interface User {
   _id: string
   name: string
   role: 'admin' | 'pm' | 'viewer'
+  firstSeenAt?: string   // when the user was first provisioned
+  lastActiveAt?: string  // last page load (throttled to ~5 min) — drives the admin usage view
   updated_at?: string
 }
 

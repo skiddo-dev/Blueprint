@@ -59,6 +59,16 @@
     <kbd>⌘K</kbd>
   </button>
 
+  <a
+    class="nav-help"
+    href={user.role === 'admin' ? '/guides/admin-user-guide.pdf' : '/guides/pm-user-guide.pdf'}
+    target="_blank"
+    rel="noopener"
+    onclick={() => (open = false)}
+  >
+    📖 Help &amp; Guide
+  </a>
+
   <form action="/auth/signout" method="POST">
     <button class="secondary full-w" type="submit">Log out</button>
   </form>
@@ -153,6 +163,21 @@
     border-radius: 7px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
   }
   .nav-search:hover { border-color: var(--primary); color: var(--primary-text); }
+
+  .nav-help {
+    display: block;
+    text-align: center;
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 7px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .nav-help:hover { border-color: var(--primary); color: var(--primary-text); }
   .nav-search kbd {
     font-family: inherit; font-size: 11px; color: var(--text-faint);
     border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; background: var(--card-bg);
