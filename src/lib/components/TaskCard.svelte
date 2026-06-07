@@ -2,18 +2,24 @@
   import { onMount } from 'svelte'
   import { dragHandle } from 'svelte-dnd-action'
   import DOMPurify from 'dompurify'
-  import type { Task } from '$lib/types'
+  import type { Task, TimelineEntry } from '$lib/types'
   import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, QUOTE_STATUS_META, STATUS_META } from '$lib/constants'
   import { extractStoreNumbers } from '$lib/storeNumbers'
+  import { REACTION_EMOJIS } from '$lib/reactions'
 
   let {
     task,
     assignees,
     mentionCandidates = [],
+    currentUserName = '',
+    currentUserEmail = '',
     onFieldUpdate,
     onDelete,
     onStoreFilter,
     onComment,
+    onEditComment,
+    onDeleteComment,
+    onReact,
     activeStore = null,
     hidden = false,
     isAdmin = false,
@@ -21,10 +27,15 @@
     task: Task
     assignees: string[]
     mentionCandidates?: string[]
+    currentUserName?: string
+    currentUserEmail?: string
     onFieldUpdate: (id: string, field: string, value: unknown) => void
     onDelete: (id: string) => void
     onStoreFilter?: (n: string) => void
-    onComment?: (id: string, text: string) => void
+    onComment?: (id: string, text: string, parentId?: string) => void
+    onEditComment?: (id: string, commentId: string, text: string) => void
+    onDeleteComment?: (id: string, commentId: string) => void
+    onReact?: (id: string, commentId: string, emoji: string) => void
     activeStore?: string | null
     hidden?: boolean
     isAdmin?: boolean
@@ -84,7 +95,17 @@
   let inbox = $derived(task.source_mailbox ? task.source_mailbox.split('@')[0] : '')
 
   // ── Comments + @mentions ──────────────────────────────────────────────────
-  let comments = $derived((task.timeline ?? []).filter(e => e.kind === 'comment'))
+  let allComments = $derived((task.timeline ?? []).filter(e => e.kind === 'comment'))
+  let topComments = $derived(allComments.filter(c => !c.parent_id))
+  const repliesTo = (id?: string) => allComments.filter(c => !!c.parent_id && c.parent_id === id)
+
+  const myEmail = $derived((currentUserEmail ?? '').toLowerCase())
+  // Edit/delete are allowed for your own comment (matched on login email) or any admin.
+  function canModify(c: TimelineEntry): boolean {
+    return isAdmin || (!!c.author_email && !!myEmail && c.author_email.toLowerCase() === myEmail)
+  }
+  const iReacted = (c: TimelineEntry, emoji: string) =>
+    (c.reactions?.[emoji] ?? []).includes(currentUserName)
 
   const firstWord = (s: string) => s.trim().split(/\s+/)[0] ?? ''
 
@@ -181,6 +202,35 @@
     const hrs = Math.floor(mins / 60)
     if (hrs < 24) return `${hrs}h ago`
     return `${Math.floor(hrs / 24)}d ago`
+  }
+
+  // ── Replies / edit / reactions ────────────────────────────────────────────
+  let replyTo = $state<string | null>(null)
+  let replyText = $state('')
+  let editingId = $state<string | null>(null)
+  let editText = $state('')
+  let reactPickerFor = $state<string | null>(null)
+
+  function startReply(id: string) { replyTo = id; replyText = ''; editingId = null }
+  function submitReply(parentId: string) {
+    const t = replyText.trim()
+    if (!t || !onComment) return
+    onComment(task._id, t, parentId)
+    replyText = ''
+    replyTo = null
+  }
+
+  function startEdit(c: TimelineEntry) { if (!c.id) return; editingId = c.id; editText = c.text; replyTo = null }
+  function submitEdit(commentId: string) {
+    const t = editText.trim()
+    if (!t || !onEditComment) return
+    onEditComment(task._id, commentId, t)
+    editingId = null
+  }
+
+  function react(commentId: string, emoji: string) {
+    onReact?.(task._id, commentId, emoji)
+    reactPickerFor = null
   }
 </script>
 
@@ -352,19 +402,77 @@
 
   <!-- Comments + @mentions -->
   {#if onComment}
-    <details class="comments-expand">
-      <summary>💬 Comments{comments.length ? ` (${comments.length})` : ''}</summary>
-      <div class="comments">
-        {#each comments as c}
-          <div class="comment">
-            <div class="comment-head">
-              <span class="comment-author">{c.author ?? 'Someone'}</span>
-              <span class="comment-time">{ago(c.at)}</span>
-            </div>
-            <div class="comment-text">{#each segments(c.text) as seg}{#if seg.mention}<span class="mention">{seg.text}</span>{:else}{seg.text}{/if}{/each}</div>
+    {#snippet commentView(c: TimelineEntry, isReply: boolean)}
+      <div class="comment" class:reply={isReply}>
+        <div class="comment-head">
+          <span class="comment-author">{c.author ?? 'Someone'}</span>
+          <span class="comment-time">{ago(c.at)}{c.edited_at ? ' · edited' : ''}</span>
+          {#if c.id && canModify(c)}
+            <span class="cmt-actions">
+              <button class="cmt-act" onclick={() => startEdit(c)} aria-label="Edit comment" title="Edit">✏️</button>
+              <button class="cmt-act" onclick={() => onDeleteComment?.(task._id, c.id!)} aria-label="Delete comment" title="Delete">✕</button>
+            </span>
+          {/if}
+        </div>
+
+        {#if editingId === c.id}
+          <textarea class="edit-area" bind:value={editText} rows="2"></textarea>
+          <div class="cmt-edit-actions">
+            <button class="comment-post" onclick={() => submitEdit(c.id!)} disabled={!editText.trim()}>Save</button>
+            <button class="cmt-cancel" onclick={() => (editingId = null)}>Cancel</button>
           </div>
+        {:else}
+          <div class="comment-text">{#each segments(c.text) as seg}{#if seg.mention}<span class="mention">{seg.text}</span>{:else}{seg.text}{/if}{/each}</div>
+        {/if}
+
+        <div class="reaction-row">
+          {#each Object.entries(c.reactions ?? {}) as [emoji, names]}
+            {#if names.length}
+              <button
+                class="reaction-chip"
+                class:mine={iReacted(c, emoji)}
+                onclick={() => c.id && react(c.id, emoji)}
+                title={names.join(', ')}
+              >{emoji} {names.length}</button>
+            {/if}
+          {/each}
+          {#if c.id && onReact}
+            <button class="react-add" onclick={() => (reactPickerFor = reactPickerFor === c.id ? null : (c.id ?? null))} aria-label="Add reaction" title="React">＋</button>
+            {#if reactPickerFor === c.id}
+              <span class="react-pop">
+                {#each REACTION_EMOJIS as emoji}
+                  <button class="react-opt" onclick={() => react(c.id!, emoji)}>{emoji}</button>
+                {/each}
+              </span>
+            {/if}
+          {/if}
+          {#if !isReply && c.id}
+            <button class="reply-btn" onclick={() => startReply(c.id!)}>Reply</button>
+          {/if}
+        </div>
+
+        {#if !isReply && replyTo === c.id}
+          <div class="reply-compose">
+            <textarea bind:value={replyText} rows="2" placeholder="Reply… @ to mention"></textarea>
+            <div class="cmt-edit-actions">
+              <button class="comment-post" onclick={() => submitReply(c.id!)} disabled={!replyText.trim()}>Reply</button>
+              <button class="cmt-cancel" onclick={() => (replyTo = null)}>Cancel</button>
+            </div>
+          </div>
+        {/if}
+      </div>
+    {/snippet}
+
+    <details class="comments-expand">
+      <summary>💬 Comments{allComments.length ? ` (${allComments.length})` : ''}</summary>
+      <div class="comments">
+        {#each topComments as c (c.id ?? c.at)}
+          {@render commentView(c, false)}
+          {#each repliesTo(c.id) as r (r.id ?? r.at)}
+            {@render commentView(r, true)}
+          {/each}
         {/each}
-        {#if !comments.length}
+        {#if !allComments.length}
           <div class="comment-empty">No comments yet — start the thread.</div>
         {/if}
 
@@ -666,6 +774,49 @@
     font-weight: 600;
   }
   .comment-empty { font-size: 11px; color: var(--text-faint); }
+
+  /* A reply sits indented under its parent. */
+  .comment.reply { margin-left: 16px; border-left: 2px solid var(--border); }
+
+  /* Edit / delete controls — pushed to the right of the head, shown subtly. */
+  .cmt-actions { margin-left: auto; display: inline-flex; gap: 2px; }
+  .cmt-act {
+    background: transparent; border: none; cursor: pointer;
+    font-size: 11px; line-height: 1; padding: 2px 4px; border-radius: 4px;
+    color: var(--text-faint); min-height: 0;
+  }
+  .cmt-act:hover { color: var(--primary-text); background: var(--primary-bg); }
+
+  .edit-area { margin-top: 2px; }
+  .cmt-edit-actions { display: flex; gap: 6px; margin-top: 6px; }
+  .cmt-cancel {
+    background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+    border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; min-height: 0; cursor: pointer;
+  }
+  .cmt-cancel:hover { background: var(--bg); }
+
+  /* Reaction chips + the add-bar. */
+  .reaction-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 5px; }
+  .reaction-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--bg); border: 1px solid var(--border); color: var(--text-soft);
+    border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; min-height: 0; cursor: pointer;
+  }
+  .reaction-chip.mine { background: var(--chip-bg); border-color: var(--primary); color: var(--primary-text); }
+  .react-add {
+    background: transparent; border: 1px dashed var(--border); color: var(--text-faint);
+    border-radius: 999px; width: 20px; height: 20px; line-height: 1; font-size: 12px; padding: 0; min-height: 0; cursor: pointer;
+  }
+  .react-add:hover { color: var(--primary-text); border-color: var(--primary); }
+  .react-pop {
+    display: inline-flex; gap: 2px; padding: 2px 4px;
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 999px;
+  }
+  .react-opt { background: transparent; border: none; font-size: 14px; line-height: 1; padding: 2px; min-height: 0; cursor: pointer; border-radius: 4px; }
+  .react-opt:hover { background: var(--primary-bg); }
+  .reply-btn { background: transparent; border: none; color: var(--primary); font-size: 11px; font-weight: 600; padding: 2px 4px; min-height: 0; cursor: pointer; }
+  .reply-btn:hover { text-decoration: underline; }
+  .reply-compose { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 
   .comment-compose { position: relative; display: flex; flex-direction: column; gap: 6px; }
   .comment-post {

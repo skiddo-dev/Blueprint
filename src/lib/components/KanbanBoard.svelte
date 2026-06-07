@@ -6,6 +6,7 @@
   import { KANBAN_STATUSES, STATUS_META, SUPERVISORS } from '$lib/constants'
   import { extractStoreNumbers } from '$lib/storeNumbers'
   import { parseMentions } from '$lib/mentions'
+  import { toggleReactor } from '$lib/reactions'
 
   let {
     initialTasks,
@@ -217,25 +218,59 @@
     return false
   }
 
-  // ── Comment (optimistic) ────────────────────────────────────────────────
-  // Append the comment to the card's timeline locally, then POST. The server
-  // recomputes mentions authoritatively; the 2s poll reconciles to it.
-  async function handleComment(id: string, text: string) {
+  // ── Comments (optimistic) ───────────────────────────────────────────────
+  // Each handler mutates the card's timeline locally, then calls the server; the
+  // server is authoritative (mentions, reactions) and the 2s poll reconciles.
+  const myEmail = $derived((session.user.email ?? '').toLowerCase())
+  const jsonReq = (url: string, method: string, body?: unknown) =>
+    fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+
+  async function handleComment(id: string, text: string, parentId?: string) {
     const body = text.trim()
     if (!body) return
     const entry = {
+      id: crypto.randomUUID(),
       at: new Date().toISOString(),
       kind: 'comment' as const,
       text: body,
       author: userName,
+      author_email: myEmail,
       mentions: parseMentions(body, mentionCandidates),
+      reactions: {},
+      ...(parentId ? { parent_id: parentId } : {}),
     }
     patchLocal(id, t => ({ ...t, timeline: [...(t.timeline ?? []), entry] }))
-    await persist(fetch(`/api/tasks/${id}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: body }),
+    await persist(jsonReq(`/api/tasks/${id}/comments`, 'POST', { text: body, parent_id: parentId }))
+  }
+
+  async function handleEditComment(id: string, commentId: string, text: string) {
+    const body = text.trim()
+    if (!body) return
+    patchLocal(id, t => ({
+      ...t,
+      timeline: (t.timeline ?? []).map(e =>
+        e.id === commentId
+          ? { ...e, text: body, edited_at: new Date().toISOString(), mentions: parseMentions(body, mentionCandidates) }
+          : e),
     }))
+    await persist(jsonReq(`/api/tasks/${id}/comments/${commentId}`, 'PATCH', { text: body }))
+  }
+
+  async function handleDeleteComment(id: string, commentId: string) {
+    patchLocal(id, t => ({
+      ...t,
+      timeline: (t.timeline ?? []).filter(e => e.id !== commentId && e.parent_id !== commentId),
+    }))
+    await persist(jsonReq(`/api/tasks/${id}/comments/${commentId}`, 'DELETE'))
+  }
+
+  async function handleReact(id: string, commentId: string, emoji: string) {
+    patchLocal(id, t => ({
+      ...t,
+      timeline: (t.timeline ?? []).map(e =>
+        e.id === commentId ? { ...e, reactions: toggleReactor(e.reactions, emoji, userName) } : e),
+    }))
+    await persist(jsonReq(`/api/tasks/${id}/comments/${commentId}/react`, 'POST', { emoji }))
   }
 
   // ── Delete ────────────────────────────────────────────────────────────
@@ -376,6 +411,8 @@
         bind:items={columns[status]}
         {assignees}
         {mentionCandidates}
+        currentUserName={userName}
+        currentUserEmail={myEmail}
         {storeFilter}
         {view}
         myName={userName}
@@ -386,6 +423,9 @@
         onDelete={handleDelete}
         onStoreFilter={setStoreFilter}
         onComment={handleComment}
+        onEditComment={handleEditComment}
+        onDeleteComment={handleDeleteComment}
+        onReact={handleReact}
       />
     </div>
   {/each}
