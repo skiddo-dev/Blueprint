@@ -1,0 +1,12 @@
+# fastlane Appfile — identifiers for the Blueprint TestFlight upload.
+#
+# app_identifier + team_id already match what the Xcode project builds with
+# (see ../project.yml). Auth is best done with an App Store Connect API key
+# (see the Fastfile / TESTFLIGHT.md) — with a key you do NOT need apple_id.
+
+app_identifier("com.ravesinc.blueprint")   # PRODUCT_BUNDLE_IDENTIFIER
+team_id("M86QQRTURU")                       # Apple Developer team (= DEVELOPMENT_TEAM in project.yml)
+
+# Only needed if you authenticate with your Apple ID instead of an API key:
+apple_id(ENV["FASTLANE_APPLE_ID"])         # e.g. "you@ravesinc.com"
+itc_team_id(ENV["FASTLANE_ITC_TEAM_ID"])   # App Store Connect team id (only if you belong to several)

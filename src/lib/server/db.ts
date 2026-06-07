@@ -1,7 +1,7 @@
 import { MongoClient, type Db } from 'mongodb'
 import { env } from '$env/dynamic/private'
 import type { Task, User, Quote, Prospect, TimelineEntry } from '$lib/types'
-import { generateMockTasks, generateMockProspects } from './mock'
+import { generateMockTasks, generateMockProspects, generateMockQuotes } from './mock'
 import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 import { requireInProd } from './config'
 
@@ -379,7 +379,7 @@ export async function insertQuote(quote: Record<string, unknown>): Promise<strin
 }
 
 export async function getQuotes(): Promise<Quote[]> {
-  if (USE_MOCK) return []
+  if (USE_MOCK) return generateMockQuotes()
   const d = await getDb()
   const quotes = await col(d, 'quotes').find().sort({ created_at: -1 }).toArray()
   return quotes.map(q => ({ ...q, _id: String(q._id) })) as Quote[]

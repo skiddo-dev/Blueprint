@@ -1,0 +1,8 @@
+source "https://rubygems.org"
+
+# fastlane drives the TestFlight upload (see fastlane/Fastfile + TESTFLIGHT.md).
+# Pinned loosely; run `bundle update fastlane` to refresh.
+gem "fastlane"
+
+# Lets fastlane edit the Xcode project (build-number bump).
+gem "xcodeproj"

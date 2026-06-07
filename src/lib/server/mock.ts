@@ -1,7 +1,7 @@
 // Dev-only mock task generator. Enabled by USE_MOCK_DATA=true so the app
 // (dashboard, board) renders without a populated MongoDB.
-import type { Task, TaskStatus, Prospect, TimelineEntry, ProspectStatus } from '$lib/types'
-import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, PROSPECT_CENTER } from '$lib/constants'
+import type { Task, TaskStatus, Prospect, Quote, TimelineEntry, ProspectStatus } from '$lib/types'
+import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, QUOTE_WORK_TYPES, PROSPECT_CENTER } from '$lib/constants'
 import { milesBetween, destinationPoint } from '$lib/geo'
 
 const ASSIGNEES = [
@@ -101,6 +101,37 @@ export function generateMockTasks(count = 35): Task[] {
     })
   }
   return tasks
+}
+
+// ── Mock tracked quotes ──────────────────────────────────────────────────────
+// Backs USE_MOCK_DATA for the quotes log + dashboard quote analytics, so the
+// win/loss metrics and the Quotes page render with realistic numbers offline.
+// Status spread is weighted (more open, a healthy win share) so the dashboard
+// charts look representative.
+const QUOTE_OUTCOMES: Array<'won' | 'lost' | 'open'> = [
+  'won', 'won', 'won', 'lost', 'lost', 'open', 'open', 'open', 'open',
+]
+
+export function generateMockQuotes(count = 28): Quote[] {
+  const quotes: Quote[] = []
+  for (let i = 1; i <= count; i++) {
+    const ageDays = randInt(540)
+    const sent = new Date(Date.now() - ageDays * DAY_MS)
+    quotes.push({
+      _id: `mock_quote_${String(i).padStart(2, '0')}`,
+      quote_number: i,
+      year: sent.getFullYear(),
+      store_number: String(1000 + randInt(8000)),
+      point_of_contact: pick(QUOTE_PEOPLE),
+      description: pick(QUOTE_WORK_TYPES),
+      amount: 2500 + randInt(88_000),
+      date_sent: sent.toISOString().slice(0, 10),
+      status: pick(QUOTE_OUTCOMES),
+      source: 'imported',
+      created_at: sent.toISOString(),
+    })
+  }
+  return quotes
 }
 
 // ── Mock warehouse prospects ─────────────────────────────────────────────────
