@@ -2,6 +2,7 @@
 // aggregations, and CSV export. No DOM/Node/$lib-server deps so it runs on the
 // client, the server, and under Vitest.
 import type { Prospect, ProspectStatus } from './types'
+import { csvCell } from './sanitize'
 
 export interface ProspectFilters {
   search: string
@@ -117,12 +118,6 @@ const CSV_COLUMNS: Array<[string, (p: Prospect) => unknown]> = [
   ['Longitude', p => p.longitude],
   ['ATTOM ID', p => p.attom_id],
 ]
-
-const csvCell = (v: unknown): string => {
-  if (v == null) return ''
-  const s = String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
 
 /** Render prospects as a CSV string (header + one row each). */
 export function toCSV(list: Prospect[]): string {
