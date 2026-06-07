@@ -4,6 +4,7 @@
   import type { Task, AppSession, Quote } from '$lib/types'
   import { extractStoreNumbers } from '$lib/storeNumbers'
   import { canonicalizeContact, canonicalizeWorkType } from '$lib/quoteCanonical'
+  import { csvCell } from '$lib/sanitize'
   import Chart from '$lib/components/Chart.svelte'
   import PageShell from '$lib/components/PageShell.svelte'
   import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
@@ -59,10 +60,6 @@
   }
 
   // Export the currently-filtered quotes as CSV (matches the active sliders/selects).
-  function csvCell(v: unknown): string {
-    const s = String(v ?? '')
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-  }
   function exportCsv() {
     const header = ['Quote #', 'Year', 'Store', 'Point of Contact', 'Work Type', 'Amount', 'Date Sent', 'Status', 'PO']
     const rows = fq.map(q => [

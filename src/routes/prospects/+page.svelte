@@ -11,6 +11,7 @@
   } from '$lib/prospects'
   import PageShell from '$lib/components/PageShell.svelte'
   import Chart from '$lib/components/Chart.svelte'
+  import { escapeHtml } from '$lib/sanitize'
   import type { ChartData, ChartOptions } from 'chart.js'
 
   let { data, form }: { data: PageData; form: ActionData } = $props()
@@ -263,9 +264,9 @@
       })
         .addTo(markerLayer)
         .bindPopup(
-          `<strong>${p.address}</strong><br>${sqft(p.building_sqft)}` +
+          `<strong>${escapeHtml(p.address)}</strong><br>${sqft(p.building_sqft)}` +
             `${p.year_built ? ` · built ${p.year_built}` : ''}` +
-            `${p.owner ? `<br>${p.owner}` : ''}` +
+            `${p.owner ? `<br>${escapeHtml(p.owner)}` : ''}` +
             `${p.distance_miles != null ? `<br>${miles(p.distance_miles)} from center` : ''}`,
         )
       m.on('click', () => (modalId = p._id))

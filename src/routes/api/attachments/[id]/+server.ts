@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { getAttachment } from '$lib/server/db'
 import { assertCanAccessTask } from '$lib/server/authz'
+import { contentDisposition } from '$lib/sanitize'
 
 export const GET: RequestHandler = async ({ params, locals }) => {
   const att = await getAttachment(params.id)
@@ -15,7 +16,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
   return new Response(new Uint8Array(att.data as Buffer), {
     headers: {
       'Content-Type': (att.content_type as string) ?? 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${att.filename}"`,
+      'Content-Disposition': contentDisposition(String(att.filename ?? 'attachment')),
     },
   })
 }

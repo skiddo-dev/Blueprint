@@ -4,6 +4,7 @@ import { generateQuotePdf } from '$lib/server/pdf'
 import type { QuoteData } from '$lib/server/pdf'
 import { insertQuote, getNextQuoteNumber } from '$lib/server/db'
 import { canonicalizeContact, canonicalizeWorkType } from '$lib/quoteCanonical'
+import { contentDisposition } from '$lib/sanitize'
 
 // Payload from the Quote Generator form: log fields (store #, point of contact,
 // work type, amount, …) plus the customer-facing proposal fields.
@@ -77,7 +78,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   return new Response(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Proposal_${pdfData.customer.replace(/\s+/g, '_')}_${dateSent}.pdf"`,
+      'Content-Disposition': contentDisposition(`Proposal_${pdfData.customer.replace(/\s+/g, '_')}_${dateSent}.pdf`),
     },
   })
 }

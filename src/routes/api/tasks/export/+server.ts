@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { getTasks } from '$lib/server/db'
+import { csvCell } from '$lib/sanitize'
 
 export const GET: RequestHandler = async ({ locals }) => {
   const session = await locals.auth()
@@ -17,8 +18,8 @@ export const GET: RequestHandler = async ({ locals }) => {
   for (const t of tasks) {
     const row = cols.map(c => {
       const raw = (t as unknown as Record<string, unknown>)[c]
-      const v = Array.isArray(raw) ? raw.join(' ') : String(raw ?? '')
-      return `"${v.replace(/"/g, '""')}"`
+      const v = Array.isArray(raw) ? raw.join(' ') : raw
+      return csvCell(v)
     })
     rows.push(row.join(','))
   }
