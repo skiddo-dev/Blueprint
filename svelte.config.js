@@ -5,7 +5,10 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
 const config = {
   preprocess: vitePreprocess(),
   kit: {
-    adapter: adapter({ out: 'build' }),
+    // precompress: ship .br/.gz alongside static assets + the JS bundle so the
+    // node server serves them with content-encoding without compressing per request.
+    // (Dynamic API JSON still relies on the ingress for compression.)
+    adapter: adapter({ out: 'build', precompress: true }),
     alias: {
       $lib: 'src/lib'
     },
