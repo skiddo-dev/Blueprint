@@ -7,20 +7,24 @@ Turns flagged vendor emails, permits, and site alerts into actionable Kanban tas
 - **SvelteKit 2 + Svelte 5** (runes), `@sveltejs/adapter-node`
 - **Auth.js** (`@auth/sveltekit`) with **Microsoft Entra ID** sign-in
 - **MongoDB** (Atlas) for tasks, users, and attachments
-- **Microsoft Graph** for email sync + **OpenAI** for parsing
+- **Microsoft Graph** for email sync (manual + real-time webhook push) + **OpenAI** for parsing
 - **pdfkit** for quote PDFs, **DOMPurify** for safe email-HTML rendering
 - Ships as a **Docker** image to **Azure Container Apps**
 - Native **iOS** app (SwiftUI) in [`ios/`](ios/)
 
 ## Features
 
-- Drag-and-drop Kanban board (drag from the `⠿` grip; columns: To Do → Cancelled)
-- **Sync Emails** — pulls flagged messages from a shared mailbox, parses date / assignee / quote / summary with OpenAI, and creates tasks (with attachments stored in MongoDB)
+- Drag-and-drop Kanban board (drag from the `⠿` grip; columns: To Do → In Progress → Review → Done → On Hold → Cancelled)
+- **Sync Emails** — pulls flagged messages from each PM's inbox (and a shared mailbox), parses date / assignee / quote / summary with OpenAI, and creates tasks. Runs on demand, or **in real time via Microsoft Graph webhooks** when a public `APP_BASE_URL` is configured. Only mail flagged on/after a cutoff date is synced (`EMAIL_SYNC_CUTOFF`).
 - Per-card editing (status, assignee, date, quote, notes) with ~2s live refresh
+- **Comments** — threaded card comments with `@mentions` and emoji reactions
+- **Attachments** — upload, list, and delete files on a card; email attachments are imported automatically (both stored in MongoDB)
+- **Global search** — ⌘K command palette across tasks, quotes, and prospects; task results deep-link to the board
+- **Light / Dark / System theme**
 - **Self-serve access requests** — an un-provisioned user can request access from the sign-in gate; admins approve/dismiss from the User Access panel (which also shows each user's last-active + weekly-active count).
 - **CSV import** (admin) — bulk-create tasks from a CSV whose columns mirror the task export, so an export round-trips.
 - PDF quote generation and a Dashboard (admin)
-- **Prospects** (admin) — pulls warehouse properties (45,000–75,000 sq ft within 30 mi of Bloomfield Hills, MI) from the **ATTOM Data API** into a lead pipeline: sortable table, status-colored Leaflet map, analytics charts (size / city / decade / distance / pipeline), live filters + search, CSV export, per-prospect status/assignee/notes, a detail modal (Google Maps + county-record links), and one-click **Add to Kanban board**. Falls back to realistic mock data when no `ATTOM_API_KEY` is set, so the page works in dev/demo.
+- **Prospects** (admin) — a warehouse lead pipeline near Bloomfield Hills, MI built from **free, key-less public data**: OpenStreetMap (Overpass) for warehouse locations + footprint-derived size, and **Oakland County parcel GIS** for assessed value / class. Sortable table, status-colored Leaflet map, analytics charts (size / city / decade / distance / pipeline), live filters + search, CSV export, per-prospect status/assignee/notes, a detail modal (Google Maps + county-record links), and one-click **Add to Kanban board**. Set `USE_MOCK_DATA=true` to serve generated demo data offline.
 - Entra SSO with roles (admin / pm)
 
 ## Local development
@@ -35,18 +39,34 @@ npm run dev               # http://localhost:8501  (PORT is configurable)
 
 ### `.env`
 
+See [`.env.example`](.env.example) for the full, annotated list. The essentials:
+
 ```dotenv
-AUTH_SECRET=              # session secret — generate with: openssl rand -base64 32
-AZURE_CLIENT_ID=          # Entra app (client) ID
-AZURE_CLIENT_SECRET=      # Entra client secret
-AZURE_TENANT_ID=          # Entra directory (tenant) ID
-AZURE_USER_EMAIL=         # shared mailbox to sync flagged emails from
-ADMIN_EMAILS=             # comma-separated; these addresses are always admin
-MONGODB_URI=              # mongodb+srv://...
-OPENAI_API_KEY=           # sk-...
-ATTOM_API_KEY=            # ATTOM Data API key for the Prospects page (optional — mock data without it)
-# optional: MONGODB_DB_NAME (default "blueprint"), MAX_ATTACHMENT_SIZE_MB, MAX_ATTACHMENTS_PER_EMAIL,
-#           ATTOM_API_BASE, ATTOM_PROPERTY_TYPE (default "WAREHOUSE")
+# Auth.js + Microsoft Graph (Entra). The AZURE_* names are accepted as fallbacks.
+AUTH_MICROSOFT_ENTRA_ID_ID=         # Entra app (client) ID
+AUTH_MICROSOFT_ENTRA_ID_SECRET=     # Entra client secret
+AUTH_MICROSOFT_ENTRA_ID_TENANT_ID=  # Entra directory (tenant) ID
+AUTH_SECRET=                        # session secret — generate with: openssl rand -base64 32
+
+AZURE_USER_EMAIL=        # shared mailbox to scan for flagged emails
+# PM_MAILBOXES=          # comma-separated; overrides the default (every 'pm' user's inbox)
+
+ADMIN_EMAILS=            # comma-separated; these addresses are always admin
+MONGODB_URI=            # mongodb://...  or  mongodb+srv://...
+# MONGO_DB_NAME=blueprint
+
+OPENAI_API_KEY=          # sk-...
+# OPENAI_MODEL=gpt-4o-mini          # model for email→task extraction
+
+# Real-time email sync via Graph webhooks (optional; needs a public https origin):
+# APP_BASE_URL=https://your-app.example.com
+# GRAPH_WEBHOOK_SECRET=long-random-string
+
+# Prospects runs on free public data live; set this to serve demo data instead:
+# USE_MOCK_DATA=true
+
+# Optional tuning: MAX_ATTACHMENT_SIZE_MB, MAX_ATTACHMENTS_PER_EMAIL,
+#   GRAPH_FETCH_TIMEOUT_MS, MAX_SYNC_MESSAGES, EMAIL_SYNC_CUTOFF
 ```
 
 All secrets are read at **runtime** via `$env/*/private` (never baked into the build).
@@ -61,10 +81,10 @@ npm run check     # svelte-check typecheck
 
 Tests run through SvelteKit's Vite plugin, so `$lib` and `$env/*` resolve and
 server-only modules (`$lib/server/*`) are importable. The OpenAI SDK is mocked,
-so the suite makes no network calls and needs no real keys. Current coverage
-focuses on the pure logic with the highest blast radius — store-number
-extraction, name normalization, and the email parser's field-mapping plus its
-never-block-a-sync fallback.
+so the suite makes no network calls and needs no real keys. Coverage spans the
+high-blast-radius logic — email parsing / field-mapping and its never-block-a-sync
+fallback, the sync cutoff + backfill, mailbox resolution, and the comments,
+attachments, CSV-import, and search API routes.
 
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) gates every pull
 request on `npm run check`, `npm test`, and a production `npm run build`.
@@ -75,7 +95,8 @@ request on `npm run check`, `npm test`, and a production `npm run build`.
    - `http://localhost:8501/auth/callback/microsoft-entra-id` (dev)
    - `https://<your-prod-domain>/auth/callback/microsoft-entra-id` (prod)
 2. **Certificates & secrets** → new client secret → `AZURE_CLIENT_SECRET`.
-3. **API permissions → Microsoft Graph → Application → `Mail.Read`** → grant admin consent. Email sync uses the app-only (`client_credentials`) flow to read `AZURE_USER_EMAIL`'s flagged messages. (You can scope this to just that mailbox with an [Application Access Policy](https://learn.microsoft.com/graph/auth-limit-mailbox-access).)
+3. **API permissions → Microsoft Graph → Application → `Mail.Read`** → grant admin consent. Email sync uses the app-only (`client_credentials`) flow to read flagged messages. (You can scope it with an [Application Access Policy](https://learn.microsoft.com/graph/auth-limit-mailbox-access) — make sure that scope covers every mailbox you sync: `AZURE_USER_EMAIL` plus each PM inbox in `PM_MAILBOXES`.)
+4. **Real-time sync (optional):** set a public `APP_BASE_URL` and a `GRAPH_WEBHOOK_SECRET`, and the app subscribes to the mailbox so flagged emails become tasks immediately (no manual **Sync Emails** click). Graph can't call back to `localhost`, so this is skipped in dev.
 
 ## Access control (roles)
 
@@ -88,7 +109,7 @@ request on `npm run check`, `npm test`, and a production `npm run build`.
 
 ```bash
 npm run build     # adapter-node output in build/
-node build        # run the production server (defaults to PORT 8501)
+node build        # run the production server (listens on PORT, default 3000)
 ```
 
 Production runs as the Docker image in [`Dockerfile`](Dockerfile) on **Azure Container Apps**. Set the runtime env vars (above) as **Azure App Settings**, register the prod redirect URI, and — since the app sits behind the HTTPS ingress — set `ORIGIN=https://<your-prod-domain>` so SvelteKit's CSRF/origin check passes.
