@@ -134,6 +134,16 @@
   let topComments = $derived(allComments.filter(c => !c.parent_id))
   const repliesTo = (id?: string) => allComments.filter(c => !!c.parent_id && c.parent_id === id)
 
+  // ── Footer tool bar (accordion) ─────────────────────────────────────────────
+  // The Email / Note / Attachments / Comments disclosures collapse into a single
+  // horizontal chip row; tapping a chip opens its panel below and closes the
+  // others (one at a time), so a collapsed card stays short.
+  type Panel = 'email' | 'notes' | 'attachments' | 'comments'
+  let openPanel = $state<Panel | null>(null)
+  const togglePanel = (p: Panel) => { openPanel = openPanel === p ? null : p }
+  let hasNote = $derived(!!notesValue.trim())
+  let showAttachChip = $derived(!!onUploadAttachment || attachments.length > 0)
+
   const myEmail = $derived((currentUserEmail ?? '').toLowerCase())
   // Edit/delete are allowed for your own comment (matched on login email) or any admin.
   function canModify(c: TimelineEntry): boolean {
@@ -310,20 +320,12 @@
     {/if}
   </div>
 
-  <!-- LLM summary shown by default (at-a-glance context); the raw email is one
-       tap away behind the disclosure. -->
+  <!-- LLM summary shown by default (at-a-glance context); the full email is one
+       tap away behind the 📄 Email chip in the footer tool bar below. -->
   {#if task.description}
     <p class="desc">
       {task.description.slice(0, 200)}{task.description.length > 200 ? '…' : ''}
     </p>
-  {/if}
-  {#if task.full_body}
-    <details class="email-expand">
-      <summary>📄 Full Email</summary>
-      {#if mounted}
-        <div class="email-body">{@html safeBody}</div>
-      {/if}
-    </details>
   {/if}
   <!-- Status + Assignee selects -->
   <div class="row-2">
@@ -400,33 +402,46 @@
     {/if}
   </div>
 
-  <!-- Notes -->
-  {#if task.notes}
-    <textarea
-      bind:value={notesValue}
-      rows="2"
-      placeholder="Add notes…"
-      oninput={() => { notesDirty = true }}
-      onblur={saveNotes}
-    ></textarea>
-  {:else}
-    <details class="notes-expand">
-      <summary>📝 Add note</summary>
+  <!-- Footer tool bar — Email / Note / Attachments / Comments collapse into one
+       chip row; the active chip's panel expands below (accordion, one at a time)
+       so a collapsed card stays short. -->
+  <div class="card-tools">
+    {#if task.full_body}
+      <button type="button" class="tool-chip" class:active={openPanel === 'email'} aria-expanded={openPanel === 'email'} onclick={() => togglePanel('email')}>📄 Email</button>
+    {/if}
+    <button type="button" class="tool-chip" class:active={openPanel === 'notes'} aria-expanded={openPanel === 'notes'} onclick={() => togglePanel('notes')}>
+      📝 Note{#if hasNote}<span class="tool-dot" title="Has a note"></span>{/if}
+    </button>
+    {#if showAttachChip}
+      <button type="button" class="tool-chip" class:active={openPanel === 'attachments'} aria-expanded={openPanel === 'attachments'} onclick={() => togglePanel('attachments')}>📎{#if attachments.length}&nbsp;{attachments.length}{/if}</button>
+    {/if}
+    {#if onComment}
+      <button type="button" class="tool-chip" class:active={openPanel === 'comments'} aria-expanded={openPanel === 'comments'} onclick={() => togglePanel('comments')}>💬{#if allComments.length}&nbsp;{allComments.length}{/if}</button>
+    {/if}
+  </div>
+
+  {#if openPanel === 'email' && task.full_body}
+    <div class="tool-panel">
+      {#if mounted}<div class="email-body">{@html safeBody}</div>{/if}
+    </div>
+  {/if}
+  {#if openPanel === 'notes'}
+    <div class="tool-panel">
       <textarea
-        rows="2"
-        placeholder="Type a note…"
-        oninput={(e) => { notesDirty = true; notesValue = e.currentTarget.value }}
+        bind:value={notesValue}
+        rows="3"
+        placeholder="Add a note…"
+        oninput={() => { notesDirty = true }}
         onblur={saveNotes}
       ></textarea>
-    </details>
+    </div>
   {/if}
 
-  <!-- Attachments — list + upload (the section also shows when empty so files can
-       be added; on the read-only paths neither handler is passed, so it only
-       appears when there's something to download). -->
-  {#if onUploadAttachment || attachments.length}
-    <details class="att-expand">
-      <summary>📎 Attachments{attachments.length ? ` (${attachments.length})` : ''}</summary>
+  <!-- Attachments panel (opened from the 📎 chip). The chip only shows when there
+       are files or an uploader; the panel additionally guards on the open chip so
+       just the active section renders. -->
+  {#if openPanel === 'attachments' && (onUploadAttachment || attachments.length)}
+    <div class="tool-panel">
       <div class="att-list">
         {#each attachments as att (att.id)}
           <div class="att-row">
@@ -463,7 +478,7 @@
           {uploading ? '⏳ Uploading…' : '➕ Add file'}
         </label>
       {/if}
-    </details>
+    </div>
   {/if}
 
   <!-- Comments + @mentions -->
@@ -529,8 +544,8 @@
       </div>
     {/snippet}
 
-    <details class="comments-expand">
-      <summary>💬 Comments{allComments.length ? ` (${allComments.length})` : ''}</summary>
+    {#if openPanel === 'comments'}
+      <div class="tool-panel">
       <div class="comments">
         {#each topComments as c (c.id ?? c.at)}
           {@render commentView(c, false)}
@@ -561,7 +576,8 @@
           <button class="comment-post" onclick={postComment} disabled={!commentText.trim()}>Post</button>
         </div>
       </div>
-    </details>
+      </div>
+    {/if}
   {/if}
 
 
@@ -694,14 +710,47 @@
     line-height: 1.45;
   }
 
-  .email-expand summary,
-  .notes-expand summary,
-  .att-expand summary,
-  .comments-expand summary {
-    font-size: 11px;
-    color: var(--primary);
-    padding: 4px 0;
+  /* Footer tool bar: Email / Note / Attachments / Comments as one horizontal chip
+     row (accordion). Replaces the four stacked full-width disclosure links so a
+     collapsed card stays compact. */
+  .card-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+    margin-bottom: 6px;
   }
+  .tool-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-soft);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    min-height: 0;
+    cursor: pointer;
+  }
+  .tool-chip:hover { border-color: var(--primary); color: var(--primary-text); }
+  .tool-chip.active {
+    background: var(--chip-bg);
+    border-color: var(--primary);
+    color: var(--primary-text);
+  }
+  /* Small filled dot on the Note chip when a note already exists. */
+  .tool-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+  /* The expanded panel for whichever chip is active. Bottom room clears the
+     absolutely-positioned ✕ delete button when a panel (esp. comments) is open. */
+  .tool-panel { margin-top: 2px; margin-bottom: 22px; }
 
   .email-body {
     font-size: 11px;
@@ -838,9 +887,6 @@
   .att-add.busy { opacity: 0.6; cursor: default; }
 
   /* ── Comments + @mentions ────────────────────────────────────────────── */
-  /* Extra bottom room so the absolutely-positioned ✕ delete button clears the
-     left-aligned Post button when the thread is expanded. */
-  .comments-expand { margin-bottom: 20px; }
   .comments {
     display: flex;
     flex-direction: column;
@@ -1004,12 +1050,8 @@
     input[type="date"]::-webkit-date-and-time-value { font-size: 16px; }
     textarea { min-height: 56px; }
 
-    /* Roomier tap targets for the disclosure toggles (email / notes / quote /
-       attachments). */
-    .email-expand summary,
-    .notes-expand summary,
-    .att-expand summary,
-    .comments-expand summary,
+    /* Roomier tap targets on touch: the footer chips and the quote disclosure. */
+    .tool-chip { padding: 7px 12px; font-size: 12px; }
     .quote-pop summary {
       padding-top: 8px;
       padding-bottom: 8px;
