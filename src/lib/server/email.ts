@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private'
+import { EMAIL_SYNC_CUTOFF_DEFAULT } from './syncLogic'
 
 // Read config via $env/dynamic/private, NOT process.env: under Vite 8 SSR,
 // process.env is not populated from .env, so client_secret would be empty and
@@ -65,10 +66,15 @@ export async function fetchRecentEmails(mailbox: string, pageSize = 30) {
 
   const base = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox)}`
 
+  // Only flagged mail received on/after the cutoff (the flag-time proxy — see
+  // syncLogic). Pushing the date into the Graph $filter means old mail (and its
+  // per-message attachment GETs) is never fetched. Normalize to UTC `Z`, the form
+  // Graph's OData parser accepts regardless of the configured offset.
+  const cutoffIso = new Date(env.EMAIL_SYNC_CUTOFF ?? EMAIL_SYNC_CUTOFF_DEFAULT).toISOString()
   const params = new URLSearchParams({
     $top: String(pageSize),
     $select: 'id,conversationId,subject,from,receivedDateTime,bodyPreview,body',
-    $filter: "flag/flagStatus eq 'flagged'",
+    $filter: `flag/flagStatus eq 'flagged' and receivedDateTime ge ${cutoffIso}`,
   })
 
   // Page through flagged mail via @odata.nextLink (a mailbox can hold more than
@@ -143,4 +149,23 @@ export async function fetchRecentEmails(mailbox: string, pageSize = 30) {
   }
 
   return emails
+}
+
+/** Look up one message's receivedDateTime by id — used by the cutoff backfill to
+ *  date a card whose source email predates the email_date field. Returns null when
+ *  the message can't be read (deleted/moved/404), so the backfill leaves cards it
+ *  can't verify untouched. Caller passes a token so a batch reuses one grant. */
+export async function fetchMessageReceivedDate(
+  mailbox: string,
+  messageId: string,
+  token: string,
+): Promise<string | null> {
+  if (!mailbox || !messageId) return null
+  const base = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox)}`
+  const res = await graphFetch(`${base}/messages/${encodeURIComponent(messageId)}?$select=receivedDateTime`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) return null
+  const data = await res.json()
+  return (data.receivedDateTime as string) ?? null
 }

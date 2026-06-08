@@ -37,6 +37,7 @@ export interface Task {
   status: TaskStatus
   exchange_id?: string
   conversation_id?: string     // Graph thread id — replies match back to this card
+  email_date?: string          // source email's receivedDateTime (flag-time proxy; drives the sync cutoff)
   source_mailbox?: string      // which PM inbox this flagged email was synced from
   from?: string
   sender_name?: string

@@ -24,6 +24,34 @@ export interface SyncMailbox {
   owner: string
 }
 
+// ── Flag-time cutoff ──────────────────────────────────────────────────────────
+// We only sync emails flagged AFTER this instant, and the cutoff backfill removes
+// cards created from emails flagged on/before it. Microsoft Graph carries no
+// reliable "date flagged" for a plain flag (flag.startDateTime/dueDateTime are
+// null unless a reminder was set), so we use the message's receivedDateTime as
+// the flag-time proxy throughout. Default is the start of 2026-06-08 US/Eastern
+// (the client is Michigan-based); override with EMAIL_SYNC_CUTOFF.
+export const EMAIL_SYNC_CUTOFF_DEFAULT = '2026-06-08T00:00:00-04:00'
+
+/** True when an email's date is on/after the cutoff — i.e. it's IN scope for sync.
+ *  Empty/unparseable dates return false (kept out of sync, the conservative call). */
+export function flaggedOnOrAfterCutoff(dateIso: string | null | undefined, cutoffIso: string): boolean {
+  const t = Date.parse(dateIso ?? '')
+  const c = Date.parse(cutoffIso)
+  if (Number.isNaN(t) || Number.isNaN(c)) return false
+  return t >= c
+}
+
+/** True when an email's date is strictly before the cutoff — i.e. it's removable
+ *  by the backfill. Empty/unparseable dates return false so we never delete a card
+ *  whose date we couldn't determine. */
+export function flaggedBeforeCutoff(dateIso: string | null | undefined, cutoffIso: string): boolean {
+  const t = Date.parse(dateIso ?? '')
+  const c = Date.parse(cutoffIso)
+  if (Number.isNaN(t) || Number.isNaN(c)) return false
+  return t < c
+}
+
 /** Resolve the set of mailboxes to scan for flagged email. Precedence:
  *  an explicit PM_MAILBOXES list (comma-separated emails) if provided, otherwise
  *  every provisioned user with the 'pm' role. The central AZURE_USER_EMAIL
@@ -114,6 +142,7 @@ export function buildNewTask(
     status: 'To Do',
     exchange_id: email.id,
     conversation_id: email.conversation_id ?? null,
+    email_date: email.date,          // receivedDateTime — the flag-time proxy (pins this card's cutoff date)
     source_mailbox: opts.mailbox,
     from: email.from,
     sender_name: email.sender_name,

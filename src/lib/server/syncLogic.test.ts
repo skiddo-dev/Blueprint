@@ -5,6 +5,8 @@ import {
   buildThreadPatch,
   buildAttachmentPatch,
   resolveMailboxes,
+  flaggedOnOrAfterCutoff,
+  flaggedBeforeCutoff,
   type SyncEmail,
 } from './syncLogic'
 import type { Task } from '$lib/types'
@@ -86,6 +88,33 @@ describe('buildNewTask', () => {
   it('falls back to the email subject when the LLM gives no title', () => {
     const doc = buildNewTask(email({ subject: 'D-412 cooler' }), parsed({ title: '' }), [], 'admin')
     expect(doc.title).toBe('D-412 cooler')
+  })
+  it('pins the source email date (receivedDateTime) for the cutoff', () => {
+    const doc = buildNewTask(email({ date: '2026-06-09T14:00:00Z' }), parsed(), [], 'admin')
+    expect(doc.email_date).toBe('2026-06-09T14:00:00Z')
+  })
+})
+
+describe('flag cutoff helpers', () => {
+  const cutoff = '2026-06-08T00:00:00-04:00' // EMAIL_SYNC_CUTOFF_DEFAULT
+
+  it('keeps mail on/after the cutoff in scope for sync', () => {
+    expect(flaggedOnOrAfterCutoff('2026-06-08T12:00:00Z', cutoff)).toBe(true)
+    expect(flaggedOnOrAfterCutoff('2026-06-08T04:00:00Z', cutoff)).toBe(true) // exactly the cutoff instant
+    expect(flaggedOnOrAfterCutoff('2026-06-07T23:59:59Z', cutoff)).toBe(false)
+  })
+
+  it('marks only strictly-earlier mail as removable by the backfill', () => {
+    expect(flaggedBeforeCutoff('2026-06-07T23:59:59Z', cutoff)).toBe(true)
+    expect(flaggedBeforeCutoff('2026-06-08T04:00:00Z', cutoff)).toBe(false) // the cutoff instant is kept
+    expect(flaggedBeforeCutoff('2026-06-09T00:00:00Z', cutoff)).toBe(false)
+  })
+
+  it('treats empty/unparseable dates as out-of-sync and not-removable (both false)', () => {
+    for (const bad of ['', '   ', 'not-a-date', null, undefined]) {
+      expect(flaggedOnOrAfterCutoff(bad, cutoff)).toBe(false) // don't sync what we can't date
+      expect(flaggedBeforeCutoff(bad, cutoff)).toBe(false)    // don't delete what we can't date
+    }
   })
 })
 

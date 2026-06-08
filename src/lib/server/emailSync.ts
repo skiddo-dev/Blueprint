@@ -3,7 +3,7 @@ import { getTasks, getUsers, insertTask, saveAttachment, patchTask, tryAcquireLe
 import { fetchRecentEmails, getGraphToken, GraphAuthError } from './email'
 import { parseEmailWithLLM } from './llm'
 import { extractText, parseAttachmentWithLLM } from './attachmentParse'
-import { classifyEmail, buildNewTask, buildThreadPatch, buildAttachmentPatch, resolveMailboxes } from './syncLogic'
+import { classifyEmail, buildNewTask, buildThreadPatch, buildAttachmentPatch, resolveMailboxes, flaggedOnOrAfterCutoff, EMAIL_SYNC_CUTOFF_DEFAULT } from './syncLogic'
 import type { SyncEmail, SyncMailbox } from './syncLogic'
 import type { Task, User } from '$lib/types'
 import { SUPERVISORS, QUOTE_PEOPLE } from '$lib/constants'
@@ -119,6 +119,9 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
     const mailboxes = getSyncMailboxes(dbUsers)
     // Resolve assignee display names → login emails for identity-based ownership.
     const emailByName = new Map(dbUsers.map(u => [normName(u.name), String(u._id).toLowerCase()]))
+    // Cutoff: ignore anything flagged on/before it (Graph already filters by this,
+    // but guard here too in case the OData filter is ever bypassed).
+    const cutoff = env.EMAIL_SYNC_CUTOFF ?? EMAIL_SYNC_CUTOFF_DEFAULT
 
     let newCount = 0
     let updatedCount = 0
@@ -140,6 +143,7 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
       // of a thread creates the card before its replies try to patch it.
       for (const email of [...emails].reverse()) {
         const e = email as SyncEmail & { attachments?: unknown[] }
+        if (!flaggedOnOrAfterCutoff(e.date, cutoff)) continue // flagged on/before the cutoff — out of scope
         const { action, task } = classifyEmail(e, existing)
         if (action === 'duplicate') continue
 
