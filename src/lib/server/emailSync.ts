@@ -61,6 +61,7 @@ async function processAttachments(
         content,
         att.size,
         att.content_type ?? 'application/octet-stream',
+        'email', // email-sourced → subject to the 30-day retention purge
       )
 
       const text = await extractText(att.filename, att.content_type, content)
