@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { dragHandle } from 'svelte-dnd-action'
   import DOMPurify from 'dompurify'
-  import type { Task, TimelineEntry } from '$lib/types'
+  import type { Task, TimelineEntry, Attachment } from '$lib/types'
   import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, QUOTE_STATUS_META, STATUS_META } from '$lib/constants'
   import { extractStoreNumbers } from '$lib/storeNumbers'
   import { REACTION_EMOJIS } from '$lib/reactions'
@@ -20,6 +20,8 @@
     onEditComment,
     onDeleteComment,
     onReact,
+    onUploadAttachment,
+    onDeleteAttachment,
     activeStore = null,
     hidden = false,
     isAdmin = false,
@@ -36,6 +38,8 @@
     onEditComment?: (id: string, commentId: string, text: string) => void
     onDeleteComment?: (id: string, commentId: string) => void
     onReact?: (id: string, commentId: string, emoji: string) => void
+    onUploadAttachment?: (id: string, file: File) => Promise<void> | void
+    onDeleteAttachment?: (id: string, attId: string) => void
     activeStore?: string | null
     hidden?: boolean
     isAdmin?: boolean
@@ -93,6 +97,37 @@
   // Which PM inbox this was flagged in (admin-only chip); show the local part,
   // full address in the tooltip.
   let inbox = $derived(task.source_mailbox ? task.source_mailbox.split('@')[0] : '')
+
+  // ── Attachments ───────────────────────────────────────────────────────────
+  // Prefer the metadata list (has filename + size); fall back to the legacy
+  // id-only array for tasks created before metadata was stored, where the id is
+  // all we can show.
+  let attachments = $derived<Attachment[]>(
+    task.attachments?.length
+      ? task.attachments
+      : (task.attachment_ids ?? []).map(id => ({ id, filename: id, size: 0, content_type: '' })),
+  )
+
+  function fmtSize(n: number): string {
+    if (!n) return ''
+    if (n < 1024) return `${n} B`
+    if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
+    return `${(n / 1024 / 1024).toFixed(1)} MB`
+  }
+
+  let uploading = $state(false)
+  async function onFilePicked(e: Event & { currentTarget: HTMLInputElement }) {
+    const input = e.currentTarget
+    const files = Array.from(input.files ?? [])
+    input.value = '' // let the same file be re-picked after a failed upload
+    if (!files.length || !onUploadAttachment) return
+    uploading = true
+    try {
+      for (const f of files) await onUploadAttachment(task._id, f)
+    } finally {
+      uploading = false
+    }
+  }
 
   // ── Comments + @mentions ──────────────────────────────────────────────────
   let allComments = $derived((task.timeline ?? []).filter(e => e.kind === 'comment'))
@@ -386,17 +421,48 @@
     </details>
   {/if}
 
-  <!-- Attachments -->
-  {#if task.attachment_ids?.length}
+  <!-- Attachments — list + upload (the section also shows when empty so files can
+       be added; on the read-only paths neither handler is passed, so it only
+       appears when there's something to download). -->
+  {#if onUploadAttachment || attachments.length}
     <details class="att-expand">
-      <summary>📎 {task.attachment_ids.length} attachment(s)</summary>
+      <summary>📎 Attachments{attachments.length ? ` (${attachments.length})` : ''}</summary>
       <div class="att-list">
-        {#each task.attachment_ids as attId}
-          <a href="/api/attachments/{attId}" class="att-link" download>
-            ⬇️ {attId.slice(0, 20)}…
-          </a>
+        {#each attachments as att (att.id)}
+          <div class="att-row">
+            {#if att.purged}
+              <!-- Bytes tossed after the 30-day retention window; the record stays. -->
+              <span class="att-link att-expired" title="{att.filename} — file removed after 30 days; details kept on the card">
+                📎 {att.filename}
+              </span>
+              <span class="att-tag">expired</span>
+            {:else}
+              <a href="/api/attachments/{att.id}" class="att-link" download title={att.filename}>
+                ⬇️ {att.filename}
+              </a>
+              {#if att.size}<span class="att-size">{fmtSize(att.size)}</span>{/if}
+            {/if}
+            {#if onDeleteAttachment}
+              <button
+                type="button"
+                class="att-del"
+                onclick={() => onDeleteAttachment?.(task._id, att.id)}
+                aria-label="Remove attachment"
+                title="Remove"
+              >✕</button>
+            {/if}
+          </div>
         {/each}
+        {#if !attachments.length}
+          <div class="att-empty">No files yet.</div>
+        {/if}
       </div>
+      {#if onUploadAttachment}
+        <label class="att-add" class:busy={uploading}>
+          <input type="file" multiple onchange={onFilePicked} disabled={uploading} hidden />
+          {uploading ? '⏳ Uploading…' : '➕ Add file'}
+        </label>
+      {/if}
     </details>
   {/if}
 
@@ -727,13 +793,49 @@
   }
 
   .att-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+  .att-row { display: flex; align-items: center; gap: 6px; }
   .att-link {
     font-size: 11px;
     color: var(--primary-text);
     text-decoration: none;
     padding: 3px 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .att-link:hover { text-decoration: underline; }
+  /* Purged email attachment: the record remains, the file is gone — not a link. */
+  .att-expired { color: var(--text-faint); cursor: default; }
+  .att-expired:hover { text-decoration: none; }
+  .att-tag {
+    font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--text-faint); background: var(--chip-bg); border: 1px solid var(--border);
+    padding: 1px 5px; border-radius: 999px; flex-shrink: 0;
+  }
+  .att-size { font-size: 10px; color: var(--text-faint); flex-shrink: 0; }
+  .att-empty { font-size: 11px; color: var(--text-faint); }
+  .att-del {
+    background: transparent; border: none; cursor: pointer;
+    font-size: 11px; line-height: 1; padding: 2px 4px; border-radius: 4px;
+    color: var(--text-faint); min-height: 0; flex-shrink: 0;
+  }
+  .att-del:hover { color: #ef4444; background: #fee2e2; }
+  .att-add {
+    display: inline-block;
+    margin-top: 6px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--primary);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .att-add:hover { border-color: var(--primary); background: var(--primary-bg); }
+  .att-add.busy { opacity: 0.6; cursor: default; }
 
   /* ── Comments + @mentions ────────────────────────────────────────────── */
   /* Extra bottom room so the absolutely-positioned ✕ delete button clears the

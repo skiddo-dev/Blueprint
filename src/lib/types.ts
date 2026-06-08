@@ -45,10 +45,24 @@ export interface Task {
   created_by: string
   created_by_email?: string     // stable owner identity (login email); ownership is keyed on this
   assignee_email?: string       // assignee's login email when they're a provisioned app user
-  attachment_ids: string[]
+  attachment_ids: string[]     // attachment _ids (legacy; mirrors attachments[].id)
+  attachments?: Attachment[]   // uploaded-file metadata for display (filename/size)
   timeline?: TimelineEntry[]   // activity log (created / replies / parsed attachments)
   created_at: string
   updated_at?: string
+}
+
+// A file stored against a task — uploaded from the card or downloaded during an
+// email sync. The blob lives in the `attachments` collection keyed by `id`; this
+// is the lightweight metadata the card needs to list + label it without fetching
+// every blob. The bytes are served by GET /api/attachments/[id].
+export interface Attachment {
+  id: string             // attachment _id (also the /api/attachments/[id] path)
+  filename: string
+  size: number           // bytes
+  content_type: string
+  source?: 'email' | 'upload'  // how it arrived — only 'email' files are auto-purged by retention
+  purged?: boolean       // true once the bytes were stripped under the 30-day retention policy
 }
 
 export interface User {

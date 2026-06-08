@@ -10,6 +10,8 @@ import { GET as exportGET } from './tasks/export/+server'
 import { POST as importPOST } from './tasks/import/+server'
 import { GET as signatureGET } from './tasks/signature/+server'
 import { PATCH as taskPATCH, DELETE as taskDELETE } from './tasks/[id]/+server'
+import { POST as attachPOST } from './tasks/[id]/attachments/+server'
+import { DELETE as attachDELETE } from './tasks/[id]/attachments/[attId]/+server'
 
 // Every handler below checks auth (and role) BEFORE touching the DB, so these
 // assertions exercise only the guard path — no mocks required. This is the
@@ -52,6 +54,8 @@ const authOnly: { name: string; h: Handler }[] = [
   { name: 'GET /api/tasks/signature', h: signatureGET },
   { name: 'PATCH /api/tasks/[id]', h: taskPATCH },
   { name: 'DELETE /api/tasks/[id]', h: taskDELETE },
+  { name: 'POST /api/tasks/[id]/attachments', h: attachPOST },
+  { name: 'DELETE /api/tasks/[id]/attachments/[attId]', h: attachDELETE },
 ]
 
 describe('endpoint authorization sweep', () => {

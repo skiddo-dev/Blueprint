@@ -32,6 +32,8 @@
     onEditComment,
     onDeleteComment,
     onReact,
+    onUploadAttachment,
+    onDeleteAttachment,
   }: {
     status: TaskStatus
     items: Task[]
@@ -52,6 +54,8 @@
     onEditComment: (id: string, commentId: string, text: string) => void
     onDeleteComment: (id: string, commentId: string) => void
     onReact: (id: string, commentId: string, emoji: string) => void
+    onUploadAttachment: (id: string, file: File) => Promise<void> | void
+    onDeleteAttachment: (id: string, attId: string) => void
   } = $props()
 
   const meta = $derived(STATUS_META[status])
@@ -124,6 +128,8 @@
           {onEditComment}
           {onDeleteComment}
           {onReact}
+          {onUploadAttachment}
+          {onDeleteAttachment}
           activeStore={storeFilter}
           hidden={!matches(task)}
         />
