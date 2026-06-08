@@ -5,6 +5,7 @@ import { env } from '$env/dynamic/private'
 import { dev } from '$app/environment'
 import { ensureGraphSubscriptions } from '$lib/server/graphSubscription'
 import { runEmailSync } from '$lib/server/emailSync'
+import { purgeExpiredAttachmentData, getMeta, setMeta, tryAcquireLease, releaseLease } from '$lib/server/db'
 import { log } from '$lib/server/log'
 import { building } from '$app/environment'
 import { missingProdEnv } from '$lib/server/config'
@@ -127,6 +128,29 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
 // leases, so across the (up to 2) replicas the worst case is a skipped tick, not
 // a conflict or duplicate subscriptions.
 // Skipped unless APP_BASE_URL is a public https origin — never runs in dev/build.
+// ── Email-attachment retention ───────────────────────────────────────────────
+// Task details are kept in perpetuity; the raw bytes of EMAIL attachments are
+// stripped after the retention window (default 30 days; ATTACHMENT_RETENTION_DAYS
+// overrides). Folded into the background loop but self-throttled to ~once a day
+// via a `meta` stamp and guarded by a distributed lease, so the 10-min tick and
+// the (up to 2) replicas don't re-sweep. Manual uploads are never auto-purged.
+const RETENTION_DAYS = Math.max(1, parseInt(env.ATTACHMENT_RETENTION_DAYS ?? '30', 10) || 30)
+const RETENTION_INTERVAL_MS = 23 * 60 * 60_000
+
+async function runRetention(): Promise<void> {
+  const meta = await getMeta('attachment_retention')
+  const lastRunAt = meta?.lastRunAt ? Date.parse(String(meta.lastRunAt)) : 0
+  if (Date.now() - lastRunAt < RETENTION_INTERVAL_MS) return // swept recently
+  if (!(await tryAcquireLease('attachment_retention', 60_000))) return // another replica is sweeping
+  try {
+    const purged = await purgeExpiredAttachmentData(RETENTION_DAYS)
+    if (purged) log.info('attachment retention swept', { purged, retentionDays: RETENTION_DAYS })
+    await setMeta('attachment_retention', { lastRunAt: new Date().toISOString() })
+  } finally {
+    await releaseLease('attachment_retention')
+  }
+}
+
 let _bgStarted = false
 function startBackgroundJobs() {
   if (_bgStarted) return
@@ -139,6 +163,7 @@ function startBackgroundJobs() {
     try {
       await ensureGraphSubscriptions()
       await runEmailSync({ triggeredBy: 'Email sync' })
+      await runRetention()
     } catch (e) {
       log.error('background job failed', { label, error: e instanceof Error ? e.message : String(e) })
     }

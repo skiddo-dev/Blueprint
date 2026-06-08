@@ -51,4 +51,11 @@ describe('GET /api/attachments/[id] — ownership (IDOR guard)', () => {
     ;(getAttachment as any).mockResolvedValue(null)
     await expect(GET(ev({ role: 'admin' }))).rejects.toMatchObject({ status: 404 })
   })
+
+  it('410s a purged attachment — bytes stripped by retention, metadata kept', async () => {
+    // The record survives (filename/type), but `data` is gone after the 30-day window.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(getAttachment as any).mockResolvedValue({ _id: 'a1', task_id: 't1', content_type: 'text/plain', filename: 'f.txt' })
+    await expect(GET(ev({ role: 'admin' }))).rejects.toMatchObject({ status: 410 })
+  })
 })

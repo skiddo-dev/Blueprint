@@ -309,6 +309,41 @@
     await persist(jsonReq(`/api/tasks/${id}/comments/${commentId}/react`, 'POST', { emoji }))
   }
 
+  // ── Attachments ─────────────────────────────────────────────────────────
+  // Upload posts multipart/form-data; the server returns the stored metadata,
+  // which we splice into the card so the new file shows without waiting for the
+  // 2s poll. A failure is surfaced via the same offline toast as other writes
+  // (custom here rather than persist(): we need the parsed response to patch).
+  async function handleUploadAttachment(id: string, file: File) {
+    const fd = new FormData()
+    fd.append('file', file)
+    try {
+      const r = await fetch(`/api/tasks/${id}/attachments`, { method: 'POST', body: fd })
+      if (!r.ok) throw new Error(`upload ${r.status}`)
+      const { attachment } = await r.json()
+      patchLocal(id, t => ({
+        ...t,
+        attachment_ids: [...(t.attachment_ids ?? []), attachment.id],
+        attachments: [...(t.attachments ?? []), attachment],
+      }))
+      online = true
+    } catch {
+      online = false
+      saveToast = '⚠️ Couldn’t upload that file — check your connection and try again.'
+      clearTimeout(saveToastTimer)
+      saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
+    }
+  }
+
+  async function handleDeleteAttachment(id: string, attId: string) {
+    patchLocal(id, t => ({
+      ...t,
+      attachment_ids: (t.attachment_ids ?? []).filter(a => a !== attId),
+      attachments: (t.attachments ?? []).filter(a => a.id !== attId),
+    }))
+    await persist(fetch(`/api/tasks/${id}/attachments/${attId}`, { method: 'DELETE' }))
+  }
+
   // ── Delete ────────────────────────────────────────────────────────────
   async function handleDelete(id: string) {
     for (const s of KANBAN_STATUSES) {
@@ -487,6 +522,8 @@
         onEditComment={handleEditComment}
         onDeleteComment={handleDeleteComment}
         onReact={handleReact}
+        onUploadAttachment={handleUploadAttachment}
+        onDeleteAttachment={handleDeleteAttachment}
       />
     </div>
   {/each}

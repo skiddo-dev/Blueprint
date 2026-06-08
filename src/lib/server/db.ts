@@ -1,6 +1,6 @@
 import { MongoClient, type Db } from 'mongodb'
 import { env } from '$env/dynamic/private'
-import type { Task, User, Quote, Prospect, TimelineEntry } from '$lib/types'
+import type { Task, User, Quote, Prospect, TimelineEntry, Attachment } from '$lib/types'
 import { generateMockTasks, generateMockProspects, generateMockQuotes } from './mock'
 import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 import { requireInProd } from './config'
@@ -80,6 +80,7 @@ async function ensureIndexes(d: Db): Promise<void> {
       col(d, 'tasks').createIndex({ created_by_email: 1 }),        // getTasksForUser (My Work) — identity match
       col(d, 'tasks').createIndex({ assignee_email: 1 }),          // getTasksForUser (My Work) — identity match
       col(d, 'attachments').createIndex({ task_id: 1 }),           // deleteTask cascade + per-task attachment lookups
+      col(d, 'attachments').createIndex({ source: 1, created_at: 1 }), // retention sweep — find expired email attachments cheaply
       col(d, 'quotes').createIndex({ created_at: -1 }),            // getQuotes sort
       col(d, 'quotes').createIndex({ year: 1, quote_number: -1 }), // legacy quote-number lookup
       col(d, 'quotes').createIndex(                                // unique per-year number — defense in depth atop the atomic counter
@@ -104,7 +105,69 @@ interface Migration { id: string; up: (d: Db) => Promise<void> }
 const MIGRATIONS: Migration[] = [
   { id: '0001-backfill-task-owner-emails', up: backfillTaskOwnerEmails },
   { id: '0002-seed-quote-counters', up: seedQuoteCounters },
+  { id: '0003-stamp-attachment-retention', up: stampAttachmentRetention },
 ]
+
+// 0003: prepare existing attachments for the retention policy. (a) Date + tag
+// every legacy attachment doc that predates retention — manual upload is brand
+// new, so anything already stored arrived by email; created_at (the retention
+// clock) is taken from the owning task's created_at, the best proxy for when the
+// email landed, falling back to now. (b) Rebuild each task's `attachments`
+// manifest from its attachment docs so existing cards list files (and reflect
+// purge state) — without loading a single blob. Idempotent: (a) only fills docs
+// missing created_at; (b) rebuilds the manifest from current data each run.
+async function stampAttachmentRetention(d: Db): Promise<void> {
+  // (a) Backfill created_at + source on undated attachments.
+  const tasks = await col(d, 'tasks').find({}, { projection: { _id: 1, created_at: 1 } }).toArray()
+  const taskCreatedAt = new Map<string, string>()
+  for (const t of tasks) taskCreatedAt.set(String(t._id), (t.created_at as string) ?? '')
+  const now = new Date().toISOString()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const attOps: any[] = []
+  const undated = col(d, 'attachments').find(
+    { created_at: { $exists: false } },
+    { projection: { _id: 1, task_id: 1 } },
+  )
+  for await (const a of undated) {
+    attOps.push({
+      updateOne: {
+        filter: { _id: a._id },
+        update: { $set: { created_at: taskCreatedAt.get(String(a.task_id)) || now, source: 'email' } },
+      },
+    })
+  }
+  if (attOps.length) await col(d, 'attachments').bulkWrite(attOps, { ordered: false })
+
+  // (b) Rebuild the per-task `attachments` manifest — metadata only (no `data`
+  // projected), plus a cheap id-only pass for which blobs are already stripped.
+  const metas = await col(d, 'attachments')
+    .find({}, { projection: { _id: 1, task_id: 1, filename: 1, size: 1, content_type: 1, source: 1 } })
+    .toArray()
+  const purgedRows = await col(d, 'attachments')
+    .find({ data: { $exists: false } }, { projection: { _id: 1 } })
+    .toArray()
+  const purged = new Set(purgedRows.map((r) => String(r._id)))
+  const byTask = new Map<string, Attachment[]>()
+  for (const a of metas) {
+    const t = String(a.task_id)
+    const list = byTask.get(t) ?? []
+    list.push({
+      id: String(a._id),
+      filename: (a.filename as string) ?? 'attachment',
+      size: Number(a.size ?? 0),
+      content_type: (a.content_type as string) ?? 'application/octet-stream',
+      source: (a.source as 'email' | 'upload') ?? 'email',
+      purged: purged.has(String(a._id)),
+    })
+    byTask.set(t, list)
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const taskOps: any[] = []
+  for (const [taskId, list] of byTask) {
+    taskOps.push({ updateOne: { filter: { _id: taskId }, update: { $set: { attachments: list } } } })
+  }
+  if (taskOps.length) await col(d, 'tasks').bulkWrite(taskOps, { ordered: false })
+}
 
 // 0002: seed the per-year quote-number counters from the highest existing
 // quote_number, so getNextQuoteNumber's atomic increment continues the sequence
@@ -206,6 +269,7 @@ function normalizeTask(t: Record<string, unknown>): Task {
     _id: id,
     id,
     attachment_ids: ((t.attachment_ids as string[]) ?? []).map(String),
+    attachments: (t.attachments as Attachment[]) ?? [],
   } as Task
 }
 
@@ -496,7 +560,11 @@ export async function saveAttachment(
   content: Buffer,
   size: number,
   contentType: string,
-): Promise<string> {
+  // Origin drives retention: 'email' files are auto-purged after the window;
+  // 'upload' files (a user deliberately attached) are kept like task details.
+  // Defaults to 'upload' so a forgotten arg fails safe (over-retain, never delete).
+  source: 'email' | 'upload' = 'upload',
+): Promise<Attachment> {
   const d = await getDb()
   const attId = crypto.randomUUID()
   await col(d, 'attachments').insertOne({
@@ -505,16 +573,105 @@ export async function saveAttachment(
     filename,
     size,
     content_type: contentType,
+    source,
+    created_at: new Date().toISOString(),  // retention clock
     data: content,
   })
+  const meta: Attachment = { id: attId, filename, size, content_type: contentType, source, purged: false }
+  // Push the id (legacy array still read by older docs) AND the display metadata
+  // (filename/size/source) so the card can label the file — and later mark it
+  // expired — without fetching the blob.
+  await col(d, 'tasks').updateOne(
+    { _id: taskId },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    { $push: { attachment_ids: attId, attachments: meta } as any, $set: { updated_at: new Date().toISOString() } },
+  )
+  return meta
+}
+
+// ── Attachment retention ──────────────────────────────────────────────────────
+// Policy: task details are kept in perpetuity, but the raw bytes of an EMAIL
+// attachment are tossed after a retention window (default 30 days). We strip only
+// the `data` Buffer and keep the metadata row (filename/size/type) so the card
+// still lists the file as a named, "expired" record. Manually-uploaded files
+// (source:'upload') are never auto-purged. Returns how many files were purged.
+// Idempotent + safe: only docs that still have `data` re-match, and the
+// created_at range filter skips any un-dated legacy doc (type bracketing) until
+// migration 0003 stamps it.
+/** ISO cutoff: an attachment stored before this is past the retention window.
+ *  Pure + exported so the day-count math is unit-tested. */
+export function retentionCutoff(retentionDays: number, now: Date = new Date()): string {
+  return new Date(now.getTime() - retentionDays * 86_400_000).toISOString()
+}
+
+/** Mongo filter for the email attachments whose bytes are eligible to purge:
+ *  email-sourced (uploads are kept), still holding `data` (so it never re-purges),
+ *  and stored before the cutoff (type bracketing skips un-dated legacy docs). Pure
+ *  + exported so the email-only / has-data scoping is regression-tested without a
+ *  live DB — dropping any clause here is what would wrongly delete a user's upload. */
+export function expiredEmailAttachmentFilter(cutoffISO: string) {
+  return { source: 'email', data: { $exists: true }, created_at: { $lt: cutoffISO } }
+}
+
+export async function purgeExpiredAttachmentData(retentionDays = 30): Promise<number> {
+  const d = await getDb()
+  const cutoff = retentionCutoff(retentionDays)
+  const expired = await col(d, 'attachments')
+    .find(expiredEmailAttachmentFilter(cutoff), { projection: { _id: 1, task_id: 1 } })
+    .toArray()
+  if (!expired.length) return 0
+
+  const now = new Date().toISOString()
+  await col(d, 'attachments').updateMany(
+    { _id: { $in: expired.map((a) => a._id) } },
+    { $unset: { data: '' }, $set: { data_purged_at: now } },
+  )
+
+  // Flip the matching manifest entry on each owning task (and bump updated_at so
+  // the board's poll refreshes the card). Grouped per task to coalesce files that
+  // share a card; arrayFilters updates every matching entry, not just the first.
+  const byTask = new Map<string, string[]>()
+  for (const a of expired) {
+    const t = String(a.task_id)
+    const ids = byTask.get(t) ?? []
+    ids.push(String(a._id))
+    byTask.set(t, ids)
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await col(d, 'tasks').updateOne({ _id: taskId }, { $push: { attachment_ids: attId } } as any)
-  return attId
+  const ops: any[] = []
+  for (const [taskId, ids] of byTask) {
+    ops.push({
+      updateOne: {
+        filter: { _id: taskId },
+        update: { $set: { 'attachments.$[m].purged': true, updated_at: now } },
+        arrayFilters: [{ 'm.id': { $in: ids } }],
+      },
+    })
+  }
+  if (ops.length) await col(d, 'tasks').bulkWrite(ops, { ordered: false })
+  return expired.length
 }
 
 export async function getAttachment(attId: string) {
   const d = await getDb()
   return col(d, 'attachments').findOne({ _id: attId })
+}
+
+/** Remove one attachment from a task: drop the blob and pull its id + metadata
+ *  from the task. Scoped to the owning task so a stray id can't delete another
+ *  card's file. Returns true if the blob existed. */
+export async function deleteAttachment(taskId: string, attId: string): Promise<boolean> {
+  const d = await getDb()
+  const res = await col(d, 'attachments').deleteOne({ _id: attId, task_id: taskId })
+  await col(d, 'tasks').updateOne(
+    { _id: taskId },
+    {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      $pull: { attachment_ids: attId, attachments: { id: attId } } as any,
+      $set: { updated_at: new Date().toISOString() },
+    },
+  )
+  return res.deletedCount > 0
 }
 
 export async function getUsers(): Promise<User[]> {
