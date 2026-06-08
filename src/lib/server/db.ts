@@ -535,6 +535,20 @@ export async function getUser(email: string) {
 /** Resolve a person's display name to their stable login email (users._id),
  *  case-insensitively. Returns null for names that aren't provisioned app users
  *  (e.g. field crews) — those simply get no identity-based ownership. */
+/** Resolve a display name to an admin's login email via ADMIN_EMAILS, matching
+ *  the email's local-part to the name (case-insensitive). Admins granted access
+ *  through ADMIN_EMAILS may have no users doc, so a name lookup can't find them
+ *  — without this, their task assignments get no assignee_email and vanish from
+ *  their own "My Work" (the exact bug that hid an admin's tasks). The local-part
+ *  convention mirrors the SUPERVISORS first-name roster, e.g. the "Ben" dropdown
+ *  entry → ben@ravesinc.com. Pure + exported so it can be unit-tested. */
+export function resolveAdminEmailByName(name: string, adminEmailsCsv: string | undefined): string | null {
+  const n = normName(name)
+  if (!n) return null
+  const admins = (adminEmailsCsv ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+  return admins.find((e) => e.split('@')[0] === n) ?? null
+}
+
 export async function getUserEmailByName(name: string): Promise<string | null> {
   if (!normName(name)) return null
   const d = await getDb()
@@ -542,7 +556,9 @@ export async function getUserEmailByName(name: string): Promise<string | null> {
     { name: { $regex: `^\\s*${escapeRegex(name.trim())}\\s*$`, $options: 'i' } },
     { projection: { _id: 1 } },
   )
-  return u ? String(u._id).toLowerCase() : null
+  // Provisioned users win; otherwise fall back to an ADMIN_EMAILS admin so their
+  // assignments still carry identity even without a users doc.
+  return u ? String(u._id).toLowerCase() : resolveAdminEmailByName(name, env.ADMIN_EMAILS)
 }
 
 export async function upsertUser(email: string, role: string, name: string): Promise<void> {
