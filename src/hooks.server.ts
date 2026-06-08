@@ -57,7 +57,11 @@ export const CSP = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
-  "form-action 'self'",
+  // The "Sign in with Microsoft" form POSTs to /auth/signin (self), and Auth.js
+  // answers with a redirect to login.microsoftonline.com's OAuth authorize endpoint.
+  // form-action governs the whole form-submission redirect chain, so the Entra host
+  // must be allowed here or the sign-in navigation is refused.
+  "form-action 'self' https://login.microsoftonline.com",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
