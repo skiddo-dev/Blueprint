@@ -405,18 +405,20 @@
   <!-- Footer tool bar — Email / Note / Attachments / Comments collapse into one
        chip row; the active chip's panel expands below (accordion, one at a time)
        so a collapsed card stays short. -->
+  <!-- Icon-only chips (tooltips name each) so all four — incl. 📄 Email and the
+       count chips — always sit on one row in a ~240px column. -->
   <div class="card-tools">
     {#if task.full_body}
-      <button type="button" class="tool-chip" class:active={openPanel === 'email'} aria-expanded={openPanel === 'email'} onclick={() => togglePanel('email')}>📄 Email</button>
+      <button type="button" class="tool-chip" class:active={openPanel === 'email'} aria-expanded={openPanel === 'email'} aria-label="Full email" title="Full email" onclick={() => togglePanel('email')}>📄</button>
     {/if}
-    <button type="button" class="tool-chip" class:active={openPanel === 'notes'} aria-expanded={openPanel === 'notes'} onclick={() => togglePanel('notes')}>
-      📝 Note{#if hasNote}<span class="tool-dot" title="Has a note"></span>{/if}
+    <button type="button" class="tool-chip" class:active={openPanel === 'notes'} aria-expanded={openPanel === 'notes'} aria-label={hasNote ? 'Note (has content)' : 'Note'} title={hasNote ? 'Note (has content)' : 'Add a note'} onclick={() => togglePanel('notes')}>
+      📝{#if hasNote}<span class="tool-dot"></span>{/if}
     </button>
     {#if showAttachChip}
-      <button type="button" class="tool-chip" class:active={openPanel === 'attachments'} aria-expanded={openPanel === 'attachments'} onclick={() => togglePanel('attachments')}>📎{#if attachments.length}&nbsp;{attachments.length}{/if}</button>
+      <button type="button" class="tool-chip" class:active={openPanel === 'attachments'} aria-expanded={openPanel === 'attachments'} aria-label="Attachments" title="Attachments" onclick={() => togglePanel('attachments')}>📎{#if attachments.length}&nbsp;{attachments.length}{/if}</button>
     {/if}
     {#if onComment}
-      <button type="button" class="tool-chip" class:active={openPanel === 'comments'} aria-expanded={openPanel === 'comments'} onclick={() => togglePanel('comments')}>💬{#if allComments.length}&nbsp;{allComments.length}{/if}</button>
+      <button type="button" class="tool-chip" class:active={openPanel === 'comments'} aria-expanded={openPanel === 'comments'} aria-label="Comments" title="Comments" onclick={() => togglePanel('comments')}>💬{#if allComments.length}&nbsp;{allComments.length}{/if}</button>
     {/if}
   </div>
 
@@ -716,24 +718,27 @@
   .card-tools {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 4px;
     margin-top: 6px;
     margin-bottom: 6px;
   }
+  /* Snug padding/gaps so all four chips (incl. 📄 Email) fit one row in a ~240px
+     column instead of wrapping 💬 to a second line. nowrap keeps a chip intact. */
   .tool-chip {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
     background: var(--bg);
     border: 1px solid var(--border);
     color: var(--text-soft);
     border-radius: 999px;
-    padding: 3px 10px;
+    padding: 3px 7px;
     font-size: 11px;
     font-weight: 600;
     line-height: 1.4;
     min-height: 0;
     cursor: pointer;
+    white-space: nowrap;
   }
   .tool-chip:hover { border-color: var(--primary); color: var(--primary-text); }
   .tool-chip.active {
