@@ -12,7 +12,7 @@ vi.mock('$lib/server/db', () => ({
 }))
 
 import { PATCH } from './+server'
-import { updateTaskField, patchTask, getUserEmailByName } from '$lib/server/db'
+import { updateTaskField, patchTask, getUserEmailByName, getTask } from '$lib/server/db'
 
 // Admin session bypasses the ownership check, isolating the field-allowlist logic.
 const admin = { auth: async () => ({ user: { role: 'admin' } }) }
@@ -56,5 +56,32 @@ describe('PATCH /api/tasks/[id] — field allowlist (mass-assignment guard)', ()
   it('rejects a non-string field', async () => {
     await expect(PATCH(ev('t1', { field: 123, value: 'x' }))).rejects.toMatchObject({ status: 400 })
     expect(updateTaskField).not.toHaveBeenCalled()
+  })
+})
+
+describe('PATCH /api/tasks/[id] — assigning starts the task', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('promotes a "To Do" task to "In Progress" when a real person is assigned', async () => {
+    vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'To Do' } as never)
+    const res = await PATCH(ev('t1', { field: 'assigned_to', value: 'Dana' }))
+    expect(await res.json()).toEqual({ ok: true })
+    expect(patchTask).toHaveBeenCalledWith('t1', {
+      assigned_to: 'Dana',
+      assignee_email: 'dana@x.com',
+      status: 'In Progress',
+    })
+  })
+
+  it('leaves a non-"To Do" status alone on reassignment (no resurrecting/undoing)', async () => {
+    vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'Done' } as never)
+    await PATCH(ev('t1', { field: 'assigned_to', value: 'Dana' }))
+    expect(patchTask).toHaveBeenCalledWith('t1', { assigned_to: 'Dana', assignee_email: 'dana@x.com' })
+  })
+
+  it('does not start the task when the assignment is cleared to Unassigned', async () => {
+    vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'To Do' } as never)
+    await PATCH(ev('t1', { field: 'assigned_to', value: 'Unassigned' }))
+    expect(patchTask).toHaveBeenCalledWith('t1', { assigned_to: 'Unassigned', assignee_email: 'dana@x.com' })
   })
 })

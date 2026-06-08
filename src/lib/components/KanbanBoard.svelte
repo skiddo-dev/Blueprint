@@ -9,6 +9,7 @@
   import { parseMentions } from '$lib/mentions'
   import { toggleReactor } from '$lib/reactions'
   import { isOwnedBy } from '$lib/ownership'
+  import { statusOnAssign } from '$lib/taskRules'
 
   let {
     initialTasks,
@@ -222,6 +223,13 @@
       const idx = columns[s].findIndex(t => t._id === id)
       if (idx !== -1) {
         const updated = { ...columns[s][idx], [field]: value }
+        // Mirror the server rule: assigning a real person to a "To Do" task starts
+        // it. Sync the optimistic card so its status select flips immediately (the
+        // column move follows on the next poll, like any inline status change).
+        if (field === 'assigned_to') {
+          const next = statusOnAssign(columns[s][idx].status, value)
+          if (next) updated.status = next
+        }
         columns[s] = [...columns[s].slice(0, idx), updated, ...columns[s].slice(idx + 1)]
         break
       }
