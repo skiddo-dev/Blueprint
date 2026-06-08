@@ -14,13 +14,16 @@ collaborating on the tasks that are yours.
 
 ## 1. Signing in
 
-1. Open Blueprint in your browser.
+1. Open Blueprint in your browser. The sign-in screen recaps what Blueprint does —
+   flagged vendor emails become tasks, everything lives on one board, and ⌘K finds
+   anything fast.
 2. Click **🔐 Sign in with Microsoft** and use your **company Microsoft account**.
 3. You land on the **Kanban Board**.
 
-If you sign in and see a **"request access"** screen instead of the board, your
-account hasn't been granted a role yet — ask an admin to add you under **👥 User
-Access** (they'll need your email and the display name you go by).
+If you sign in and see an **"Access Pending"** screen instead of the board, your
+account hasn't been granted a role yet. Click **🙋 Request access** (you can add a
+quick note about who you are) and an admin is notified — once they approve you,
+just sign in again. No need to email anyone separately.
 
 To sign out, open the sidebar and click **Log out**.
 
@@ -31,9 +34,14 @@ To sign out, open the sidebar and click **Log out**.
 The board has two parts:
 
 - **Sidebar** (left on desktop; the **☰** menu on mobile) — your name and **PM**
-  badge, **🔎 Search**, **Log out**, the **theme** switch, and live **Board
-  Stats** (a count per column plus an overall completion bar).
+  badge, **🔎 Search**, a **📖 Help & Guide** link (opens this guide as a PDF),
+  **Log out**, the **theme** switch, and live **Board Stats** (a count per column
+  plus an overall completion bar).
 - **Board columns** — your tasks, grouped into six status columns.
+
+> **First time in?** If your board is completely empty, you'll see a **"No tasks
+> yet"** message — flagged vendor emails will sync in on their own, or you can press
+> **✏️ New Task** to add the first one. There's a link to this guide right there too.
 
 > **Heads-up — you see *your* tasks, not the whole company board.** Blueprint
 > only loads tasks that are **assigned to you** *or* that **you created**. This
@@ -89,23 +97,33 @@ Every edit you make **saves automatically** — there's no Save button.
 - **Status** — the left dropdown; same as moving the card.
 - **Assignee** — reassign to **Unassigned** or a **supervisor** (Ben, Kris, Vlad,
   Bogdan, Frank Crew). *Note: assigning a task away from yourself may remove it
-  from your **My Work** view.*
+  from your **My Work** view.* **Putting a real person on a "To Do" task
+  automatically moves it to "In Progress"** — assigning someone means work has
+  started. (Tasks already past To Do, or set back to Unassigned, are left alone.)
 - **Due date** — pick a date. An overdue, still-open task shows the date in a
   muted rose with an "Overdue" tooltip (and feeds the **My Work** overdue badge).
 - **Quote** — if a task has a quote, click the **💰** chip to open it and set the
   amount, the **pipeline stage** (Draft → Sent → Won → Lost), the quote **type**,
   and the responsible **person**.
-- **Notes** — click **📝 Add note** (or type into the notes box) to jot context.
-  Notes save when you click away.
+- **Notes** — open the **📝** chip in the card's tool bar (below) and type; notes
+  save when you click away. A small dot on the chip means the note has content.
 
-### Store tags, full email, attachments
+### Store tags and the card tool bar
 
 - **Store tags** — blue **#123** chips. Click one to **filter the whole board** to
   just that store; a bar appears up top with a **✕ Clear filter**. Click the tag
   again (or Clear) to remove the filter.
-- **📄 Full Email** — for tasks created from an email, expand this to read the
-  original message safely.
-- **📎 Attachments** — expand to download any files that came with the email.
+- **Tool chips** — along the bottom of each card is a single row of small,
+  icon-only chips. Tap one to open its panel just below the card (one at a time):
+  - **📄** — read the original **full email** safely (only on email-sourced tasks).
+  - **📝** — the **note** box (above).
+  - **📎** — **attachments** (the number shows the file count).
+  - **💬** — **comments** (the number shows the comment count).
+- **📎 Attachments** — open the chip to **download** any file (⬇️), **➕ Add file**
+  to upload your own (you can pick several at once), or remove one with **✕**. Files
+  that arrived **with an email** are kept for **30 days**, then the download is
+  removed and the entry shows **"expired"** (the record stays on the card); files
+  **you upload** are kept indefinitely.
 
 ### Delete a task
 
@@ -127,13 +145,16 @@ own — deleting is permanent.)
 3. Click **Create Task**.
 
 The task appears on your board immediately. Because you created it, it stays
-visible to you on **All Tasks** even if it's assigned to someone else.
+visible to you on **All Tasks** even if it's assigned to someone else. **Heads-up:**
+if you create it as **To Do** with a person assigned, it opens straight in **In
+Progress** (assigning someone means work has started).
 
 ---
 
 ## 5. Comments, @mentions, and reactions
 
-Open a card's **💬 Comments** section to discuss a task in context.
+Open a card's **💬** chip (in the tool bar along the bottom of the card) to discuss
+a task in context.
 
 - **Comment** — type in the box and click **Post** (or press **⌘/Ctrl + Enter**).
 - **@mention** — type `@` and start a name; pick from the autocomplete (**Enter**
@@ -210,7 +231,8 @@ here, ask an admin:
 - **🔄 Refresh / Sync Emails** — pulling flagged emails into tasks. *(This runs
   automatically in the background regardless — flagged emails become tasks on
   their own.)*
-- **👥 User Access** — adding people and setting roles.
+- **👥 User Access** — adding people, setting roles, approving **access requests**,
+  and **CSV-importing** tasks in bulk.
 - **👁️ View User Activity** ("view as" another user) and **Clear All Tasks**.
 
 Trying to open an admin page simply returns you to the board.
@@ -241,7 +263,8 @@ Trying to open an admin page simply returns you to the board.
 
 ## Getting help
 
-If something looks wrong — a missing task, a card that won't save, an access
-screen you didn't expect — note what you were doing and reach out to your
-Blueprint admin. If an error screen shows a reference **ID**, include it; it helps
-them trace exactly what happened.
+The **📖 Help & Guide** link in the sidebar reopens this guide any time. If
+something looks wrong — a missing task, a card that won't save, an access screen you
+didn't expect — note what you were doing and reach out to your Blueprint admin. If an
+error screen shows a reference **ID**, include it; it helps them trace exactly what
+happened.

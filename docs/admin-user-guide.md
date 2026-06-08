@@ -50,14 +50,24 @@ What's different with admin rights:
 
 - **🔄 Refresh now** (board toolbar) — pull flagged email right now (see
   §4; flagged mail also syncs on its own in the background).
+- **🔔 Access Requests** — appears only when someone has asked for access;
+  **approve** or **dismiss** each request right here (§3).
 - **👁️ View User Activity** — pick a person to filter the board to **their**
   tasks; choose **All tasks** to go back. A read-only way to see any one PM's load.
-- **👥 User Access** — add, update, and remove users and set their role (§3).
+- **👥 User Access** — add, update, and remove users, set their role, and see who's
+  **active this week** and each person's **last-active** time (§3).
+- **📥 Import Tasks (CSV)** — bulk-create tasks from a spreadsheet (§3).
 - **⚠️ Danger Zone → Clear All Tasks** — bulk-delete (§9).
+- **📖 Help & Guide** — opens this guide (the PDF) in a new tab. PMs get the PM
+  guide from the same link.
 
 ---
 
-## 3. Managing users & access
+## 3. Users, access requests & importing tasks
+
+Three sidebar panels manage your people and bulk data.
+
+### 👥 User Access — add / update / remove people
 
 Open the sidebar → **👥 User Access**.
 
@@ -65,16 +75,50 @@ Open the sidebar → **👥 User Access**.
 
 1. Enter their **Email** (e.g. `person@ravesinc.com`).
 2. Enter their **Display Name** — ⚠️ this must **exactly match** the name shown in
-   the task **"Assign to"** dropdown, otherwise their **My Work** view and
-   assignment won't line up.
+   the task **"Assign to"** dropdown, otherwise assignment won't line up.
 3. Pick a **Role** — **pm** (board, their own tasks) or **admin** (full app).
 4. Click **➕ Add / Update**.
 
 **To remove someone:** click the **✕** next to their row.
 
+The panel also shows **adoption at a glance**: a header line — *"N of M active this
+week"* — plus each person's **last-active** time (e.g. *3h ago*, *2d ago*, *never*),
+so you can see who's actually using Blueprint.
+
 Roles are stored in the database. Removing a user (and not having them in
 `ADMIN_EMAILS`) drops them back to the *"request access"* screen next time they
 sign in.
+
+> **My Work follows the login identity.** A person's **My Work** view is matched to
+> tasks by their **sign-in email**, not their display name — so renaming someone in
+> this panel won't break their My Work. Admins listed in `ADMIN_EMAILS` are resolved
+> to that same email identity, so their assigned tasks carry through too.
+
+### 🔔 Access Requests — approve people who asked to get in
+
+When someone signs in but hasn't been provisioned, they now land on an **"Access
+Pending"** screen where they can **request access** (with an optional note about who
+they are). Each pending request shows up in the sidebar under **🔔 Access Requests**
+(with a count badge):
+
+- **✓ Approve** — provisions them on the spot (defaulting to the **pm** role; adjust
+  in **👥 User Access** afterward if they should be an admin).
+- **✕ Dismiss** — clears the request without granting access.
+
+The panel only appears while there are pending requests.
+
+### 📥 Import Tasks (CSV) — bulk-create from a spreadsheet
+
+Open **📥 Import Tasks (CSV)** in the sidebar to create many tasks at once.
+
+1. **Upload** a `.csv` file or **paste** CSV text into the box.
+2. The columns mirror the board's **Export** file — `title`, `status`,
+   `assigned_to`, `date`, `notes`, and more. Only **`title`** is required; unknown
+   columns are ignored.
+3. Click **📥 Import**. You'll get a result line like *"✅ 12 created, 1 skipped."*
+
+Tip: use **⬇ Download current tasks** (in the same panel) to grab a correctly
+shaped file to use as your template.
 
 ---
 
@@ -91,6 +135,13 @@ parsing the date, assignee, quote, and a summary with AI, and attaching any file
 
 A newly synced task carries its **source** (📩 sender), the parsed fields, the
 **📥 inbox** chip, and a **📄 Full Email** view; attachments appear under **📎**.
+
+> **Flag-time cutoff.** To avoid back-importing years of old flagged mail, Blueprint
+> only syncs messages **flagged on or after a configured cutoff date** (set at deploy
+> time via `EMAIL_SYNC_CUTOFF`; currently early June 2026). Anything flagged before
+> that is ignored — so if an old flagged email never turns into a card, that's why,
+> not a bug. (Re-flagging it doesn't move its date, since the cutoff is judged by the
+> message's received date.)
 
 > Mailbox, Graph permissions, and the AI key are configured at deploy time — see
 > the project **README** and **`.github/DEPLOY.md`**. As an admin user you don't
@@ -157,9 +208,12 @@ quote log, so it immediately feeds the **Dashboard** analytics above.
 
 ## 7. 🏭 Prospects
 
-A warehouse **lead pipeline**, pulling properties near the configured search
-center from the **ATTOM Data API**. *Without an ATTOM key it runs on realistic
-demo data* (you'll see a "Demo data" badge) so the page still works.
+A warehouse **lead pipeline** that pulls **live, key-less** data near the configured
+search center. It now uses a free hybrid source — **OpenStreetMap** (Overpass) for
+warehouse/industrial buildings (size is estimated from the building footprint), plus
+**Oakland County's public parcel GIS** for assessed/market value and property use.
+No API key is required. If `USE_MOCK_DATA=true` is set, it runs on realistic demo
+data instead and shows a **"Demo data"** badge.
 
 - **Pull controls** — set **Radius (mi)**, **Min size (sf)**, **Max size (sf)**,
   then **⟳ Pull prospects**. A result line reports how many were pulled / new /
@@ -174,12 +228,20 @@ demo data* (you'll see a "Demo data" badge) so the page still works.
   markers**; click a marker or a row to open the detail modal.
 - **Table** — sortable by any column; set each prospect's **Status** and
   **Assignee** inline.
-- **Detail modal** — full property facts (lot, year, owner, use, assessed/market
-  value, last sale), editable **status / assignee / notes**, quick links to
+- **Detail modal** — property facts (size, year, owner, use, assessed/market
+  value), editable **status / assignee / notes**, quick links to
   **📍 Google Maps** and **🗂️ County records**, and **➕ Add to Kanban board** to
   turn a lead into a task.
 
 **Pipeline stages:** New → Contacted → Qualified → Dead.
+
+> **What the free sources can and can't give you.** The county layer covers
+> **Oakland County, MI only** and **withholds legal owner names** (the **Owner** you
+> see is the OSM occupant/operator name when present, otherwise blank). Neither
+> source has a reliable **year built**, so that column is often **—**. Values come
+> from the county (market is assessed × 2 per Michigan SEV law). Outside Oakland
+> County you'll still get buildings and sizes from OSM, just without the parcel
+> enrichment.
 
 ---
 
@@ -210,13 +272,22 @@ These behave identically for both roles — see the **[PM Guide](pm-user-guide.m
 for the details:
 
 - **Task cards** — statuses/colors, drag-to-move, inline editing, store filters,
-  full-email view, attachments, delete.
+  delete, and a bottom **tool-chip bar** (📄 full email · 📝 note · 📎 attachments ·
+  💬 comments) that opens one panel at a time. **Attachments** can now be
+  **uploaded and removed**, not just downloaded — email-sourced files are purged
+  after **30 days** (the entry stays, marked *expired*), while uploaded files are
+  kept. Assigning a real person to a **To Do** task **auto-advances it to In
+  Progress**.
 - **Comments** — @mentions, replies, reactions, ⌘/Ctrl+Enter to post (admins can
   moderate any comment).
 - **Theme** — ☀️ Light / 🌙 Dark / 🖥️ System.
 - **Mobile** — ☰ menu, column pills, bottom-sheet dialogs.
 - **Saving & offline** — auto-save, ~2s live refresh, offline banner with
   re-sync on reconnect.
+- **Help & first run** — a **📖 Help & Guide** link in the sidebar opens this guide
+  (PDF). On a brand-new, empty board you'll see a **"No tasks yet"** prompt with
+  **✏️ New Task**, **🔄 Refresh now**, and a link to the guide instead of six empty
+  columns.
 
 ---
 
@@ -227,12 +298,14 @@ for the details:
 | Area | What it's for |
 | --- | --- |
 | **🔄 Refresh now** | Pull flagged email on demand |
+| **🔔 Access Requests** | Approve / dismiss people asking for access |
 | **👁️ View User Activity** | Filter the board to one person's tasks |
-| **👥 User Access** | Add / update / remove users and roles |
+| **👥 User Access** | Add / update / remove users + roles; last-active & WAU |
+| **📥 Import Tasks (CSV)** | Bulk-create tasks from a spreadsheet |
 | **⚠️ Clear All Tasks** | Permanently delete all tasks |
 | **📊 Dashboard** | Quote analytics, win rates, pipeline |
 | **💰 Quote Generator** | Proposal PDFs (auto-logged to analytics) |
-| **🏭 Prospects** | Warehouse lead pipeline + map |
+| **🏭 Prospects** | Warehouse lead pipeline + map (live OSM + county data) |
 | **🗺️ Competitive Landscape** | Embedded market sheet |
 
 **Admin extras on the board**
@@ -249,11 +322,14 @@ for the details:
 ## Admin responsibilities & troubleshooting
 
 - **Provisioning** — keep **👥 User Access** current; make sure each person's
-  **Display Name** matches their **Assign to** name.
+  **Display Name** matches their **Assign to** name. Clear the **🔔 Access Requests**
+  queue so nobody's left waiting.
 - **Sync looks stale?** — flagged mail auto-syncs, but you can always hit
   **🔄 Refresh now**. If nothing comes in at all, it's usually a deploy-side
   config issue (mailbox / Graph permissions / keys) — see the README & DEPLOY doc.
-- **Prospects shows "Demo data"** — no `ATTOM_API_KEY` is configured; results are
-  mock until one is set.
+- **An old flagged email never became a task** — expected: only mail flagged on or
+  after the **`EMAIL_SYNC_CUTOFF`** date syncs (§4).
+- **Prospects shows "Demo data"** — `USE_MOCK_DATA=true` is set; the live OSM +
+  county source needs no key, so unset it for real results.
 - **Error screen with an ID** — that reference id is logged server-side; capture
   it when reporting an issue so it can be traced.
