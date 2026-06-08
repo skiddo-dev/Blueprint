@@ -4,6 +4,7 @@
   import type { Task, TaskStatus } from '$lib/types'
   import { STATUS_META } from '$lib/constants'
   import { extractStoreNumbers } from '$lib/storeNumbers'
+  import { isOwnedBy } from '$lib/ownership'
 
   // `items` is $bindable — bound to the parent's `columns[status]`. The zone
   // OWNS and updates it synchronously in consider/finalize (svelte-dnd-action's
@@ -59,10 +60,12 @@
   // View (My Work / All) + store-filter visibility. Non-matching cards are
   // hidden via CSS (kept in the dnd `items` list so the bound array — and
   // drag/drop — stays intact).
-  const norm = (s?: string | null) => (s ?? '').trim().toLowerCase()
   const taskStores = (t: Task) => t.store_numbers ?? extractStoreNumbers(t.title)
+  // 'mine' = owned by me, keyed on identity (email) with a display-name fallback
+  // — same rule as the server and the board (see $lib/ownership). Matching on
+  // assigned_to === myName alone hid every card from its own owner.
   const inView = (t: Task) =>
-    view === 'all' ? true : norm(t.assigned_to) === norm(myName) // 'mine'
+    view === 'all' ? true : isOwnedBy(t, { email: currentUserEmail, name: myName })
   const matches = (t: Task) =>
     inView(t) && (!storeFilter || taskStores(t).includes(storeFilter))
   const visibleCount = $derived(items.filter(matches).length)

@@ -8,6 +8,7 @@
   import { extractStoreNumbers } from '$lib/storeNumbers'
   import { parseMentions } from '$lib/mentions'
   import { toggleReactor } from '$lib/reactions'
+  import { isOwnedBy } from '$lib/ownership'
 
   let {
     initialTasks,
@@ -101,7 +102,12 @@
   const viewMine = $derived(view === 'mine')
   const norm = (s?: string | null) => (s ?? '').trim().toLowerCase()
   const today = new Date().toISOString().slice(0, 10)
-  const isMine = (t: Task) => norm(t.assigned_to) === norm(userName)
+  // "Mine" is keyed on identity (login email), with a display-name fallback for
+  // un-backfilled tasks — same rule the server uses (see $lib/ownership). Must
+  // NOT match on assigned_to === displayName alone: assigned_to holds the
+  // dropdown name, which differs from the Entra displayName, so that emptied out
+  // every user's "My Work".
+  const isMine = (t: Task) => isOwnedBy(t, { email: myEmail, name: userName })
   const isOverdue = (t: Task) =>
     !!t.date && t.date < today && t.status !== 'Done' && t.status !== 'Cancelled'
   // Which tasks the current view shows (before the store filter).
