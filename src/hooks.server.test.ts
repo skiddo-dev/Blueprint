@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { handleError, fakeAuthInProd, buildSecurityHeaders, CSP } from './hooks.server'
+import { handleError, fakeAuthInProd, buildSecurityHeaders, CSP, applySecurityHeaders } from './hooks.server'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -62,5 +62,28 @@ describe('buildSecurityHeaders', () => {
     expect(CSP).toContain("base-uri 'self'")
     expect(CSP).toContain("object-src 'none'")
     expect(CSP).toContain('https://fonts.gstatic.com') // Competitive Landscape sheet
+  })
+})
+
+describe('applySecurityHeaders', () => {
+  const extra = { 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY' }
+
+  it('sets headers in place on a normal (mutable) response', () => {
+    const res = applySecurityHeaders(new Response('ok', { status: 200 }), extra)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff')
+    expect(res.headers.get('X-Frame-Options')).toBe('DENY')
+  })
+
+  it('does NOT throw on an immutable-headers response and still applies headers (Auth.js OAuth redirect regression)', () => {
+    // Response.redirect() returns immutable headers — the exact shape Auth.js
+    // returns for the Microsoft sign-in redirect that 500'd in prod.
+    const redirect = Response.redirect('https://login.example/authorize', 302)
+    expect(() => redirect.headers.set('x', 'y')).toThrow() // precondition: immutable
+    const res = applySecurityHeaders(redirect, extra)
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe('https://login.example/authorize')
+    expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff')
+    expect(res.headers.get('X-Frame-Options')).toBe('DENY')
   })
 })
