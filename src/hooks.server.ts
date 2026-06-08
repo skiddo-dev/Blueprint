@@ -83,6 +83,28 @@ export function buildSecurityHeaders({ dev, https }: { dev: boolean; https: bool
   return headers
 }
 
+/** Apply headers to a response, tolerating immutable-header responses. Most
+ *  responses have mutable headers, but `Response.redirect()` — which Auth.js uses
+ *  for the OAuth sign-in redirect to Microsoft Entra — returns a response whose
+ *  headers are IMMUTABLE, so a bare `headers.set()` throws `TypeError: immutable`
+ *  and 500s the sign-in (caught in prod, not dev: DEV_FAKE_AUTH skips the real
+ *  redirect). In that case rebuild the response with a fresh, mutable Headers
+ *  carrying both sets. Pure + exported so it's unit-testable. */
+export function applySecurityHeaders(response: Response, extra: Record<string, string>): Response {
+  try {
+    for (const [k, v] of Object.entries(extra)) response.headers.set(k, v)
+    return response
+  } catch {
+    const headers = new Headers(response.headers)
+    for (const [k, v] of Object.entries(extra)) headers.set(k, v)
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    })
+  }
+}
+
 const securityHeaders: Handle = async ({ event, resolve }) => {
   const response = await resolve(event)
   // Behind the Container Apps ingress TLS terminates at the proxy, so the request
@@ -90,10 +112,7 @@ const securityHeaders: Handle = async ({ event, resolve }) => {
   const https =
     event.url.protocol === 'https:' ||
     event.request.headers.get('x-forwarded-proto') === 'https'
-  for (const [k, v] of Object.entries(buildSecurityHeaders({ dev, https }))) {
-    response.headers.set(k, v)
-  }
-  return response
+  return applySecurityHeaders(response, buildSecurityHeaders({ dev, https }))
 }
 
 // ── Background jobs ──────────────────────────────────────────────────────────
