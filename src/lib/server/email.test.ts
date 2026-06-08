@@ -57,3 +57,26 @@ describe('fetchRecentEmails — pagination', () => {
     expect(seen.some(u => u.includes('skiptoken=PAGE2'))).toBe(true) // second page was actually fetched
   })
 })
+
+describe('fetchRecentEmails — flag-time cutoff', () => {
+  it('constrains the Graph query to flagged mail received on/after the cutoff', async () => {
+    let messagesUrl = ''
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        const u = String(url)
+        if (u.includes('/oauth2/v2.0/token')) {
+          return new Response(JSON.stringify({ access_token: 't' }), { status: 200 })
+        }
+        if (u.includes('/messages') && !u.includes('/attachments')) messagesUrl = u
+        return new Response(JSON.stringify({ value: [] }), { status: 200 })
+      }),
+    )
+
+    await fetchRecentEmails('pm@x.com', 10)
+
+    // Both the flag filter and the receivedDateTime cutoff ride in the $filter.
+    expect(messagesUrl).toMatch(/flagStatus/)
+    expect(messagesUrl).toMatch(/receivedDateTime/)
+  })
+})
