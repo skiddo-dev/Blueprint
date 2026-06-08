@@ -85,7 +85,9 @@ jobs:
       # serving — so without this, a crash-on-boot image (a bad migration, the
       # DEV_FAKE_AUTH guard, a missing env var) would leave CI green while prod
       # kept serving the previous revision. Identify the revision running THIS
-      # image (by sha), wait for it to run, and confirm /readyz on the ingress.
+      # image (by sha), wait for it to run, then confirm BOTH /readyz AND the real
+      # sign-in entry point on the ingress — /readyz alone is not enough (see the
+      # 2026-06-08 incident: the container was "ready" while every sign-in 500'd).
       - name: Health-gate the rollout (rollback on failure)
         run: |
           set -uo pipefail
@@ -103,7 +105,13 @@ jobs:
               echo "::warning::no distinct previous image to roll back to"
             fi
           }
-          echo "Gating on the revision running $IMG via https://$FQDN/readyz"
+          # The real sign-in entry point. A healthy response is ANY non-5xx — a 3xx
+          # redirect (to Microsoft, or to /login) means the auth handler ran; a 5xx
+          # or unreachable means it crashed (the 2026-06-08 immutable-header bug).
+          # We deliberately don't chase a full Entra round-trip (CI has no creds) —
+          # catching the 5xx crash class is what would have stopped that outage.
+          AUTH_PROBE="https://$FQDN/auth/signin/microsoft-entra-id"
+          echo "Gating on revision $IMG via /readyz AND $AUTH_PROBE"
           for i in $(seq 1 30); do
             REV=$(az containerapp revision list -n "$APP" -g "$RG" \
               --query "[?properties.template.containers[0].image=='$IMG'] | [0].name" -o tsv 2>/dev/null || true)
@@ -115,7 +123,23 @@ jobs:
             CODE=$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 10 "https://$FQDN/readyz" 2>/dev/null || echo 000)
             echo "attempt $i/30: revision=${REV:-<none>} state=${STATE:-?} /readyz=$CODE"
             if { [ "$STATE" = "Running" ] || [ "$STATE" = "RunningAtMaxScale" ]; } && [ "$CODE" = "200" ]; then
-              echo "✅ new revision is healthy and serving"; exit 0
+              # /readyz is up; now confirm the auth entry point isn't 5xx'ing. Retry a
+              # few times so a single boot-race blip doesn't trigger a false rollback.
+              # No -f (we want the status, not a curl failure) and no -L (don't follow
+              # the redirect — the 3xx itself is the signal we're checking).
+              AUTH_OK=0; AUTH_CODE=000
+              for j in 1 2 3; do
+                AUTH_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$AUTH_PROBE" 2>/dev/null || echo 000)
+                echo "  auth probe $j/3: /auth/signin/microsoft-entra-id=$AUTH_CODE"
+                if [ "$AUTH_CODE" -ge 200 ] && [ "$AUTH_CODE" -lt 500 ]; then AUTH_OK=1; break; fi
+                sleep 5
+              done
+              if [ "$AUTH_OK" = "1" ]; then
+                echo "✅ new revision healthy: /readyz=200 and sign-in entry point=$AUTH_CODE (no 5xx)"; exit 0
+              fi
+              echo "::error::sign-in entry point returned $AUTH_CODE (5xx/unreachable) while /readyz=200 — auth path is broken"
+              rollback
+              exit 1
             fi
             if [ "$STATE" = "Failed" ]; then echo "::error::revision $REV failed to start"; rollback; exit 1; fi
             sleep 10
