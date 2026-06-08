@@ -63,6 +63,10 @@ describe('buildSecurityHeaders', () => {
     expect(CSP).toContain("object-src 'none'")
     expect(CSP).toContain('https://fonts.gstatic.com') // Competitive Landscape sheet
   })
+
+  it('form-action allows the Microsoft Entra OAuth redirect chain', () => {
+    expect(CSP).toContain("form-action 'self' https://login.microsoftonline.com")
+  })
 })
 
 describe('applySecurityHeaders', () => {
