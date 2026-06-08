@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { handleError, fakeAuthInProd } from './hooks.server'
+import { handleError, fakeAuthInProd, buildSecurityHeaders, CSP } from './hooks.server'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -34,5 +34,33 @@ describe('fakeAuthInProd (DEV_FAKE_AUTH production guard)', () => {
     expect(fakeAuthInProd('production', '')).toBe(false)
     expect(fakeAuthInProd('development', '1')).toBe(false) // dev/preview bypass is fine
     expect(fakeAuthInProd(undefined, '1')).toBe(false)
+  })
+})
+
+describe('buildSecurityHeaders', () => {
+  it('always sets the zero-risk hardening headers', () => {
+    const h = buildSecurityHeaders({ dev: false, https: true })
+    expect(h['X-Content-Type-Options']).toBe('nosniff')
+    expect(h['X-Frame-Options']).toBe('DENY')
+    expect(h['Referrer-Policy']).toBe('strict-origin-when-cross-origin')
+    expect(h['Permissions-Policy']).toContain('camera=()')
+  })
+
+  it('enforces CSP in built runs but not in dev (Vite HMR needs inline/eval)', () => {
+    expect(buildSecurityHeaders({ dev: false, https: true })['Content-Security-Policy']).toBe(CSP)
+    expect(buildSecurityHeaders({ dev: true, https: true })['Content-Security-Policy']).toBeUndefined()
+  })
+
+  it('sends HSTS only over real HTTPS in a built run', () => {
+    expect(buildSecurityHeaders({ dev: false, https: true })['Strict-Transport-Security']).toContain('max-age=')
+    expect(buildSecurityHeaders({ dev: false, https: false })['Strict-Transport-Security']).toBeUndefined()
+    expect(buildSecurityHeaders({ dev: true, https: true })['Strict-Transport-Security']).toBeUndefined()
+  })
+
+  it('CSP locks down framing/base/object and still allows the report iframe fonts', () => {
+    expect(CSP).toContain("frame-ancestors 'none'")
+    expect(CSP).toContain("base-uri 'self'")
+    expect(CSP).toContain("object-src 'none'")
+    expect(CSP).toContain('https://fonts.gstatic.com') // Competitive Landscape sheet
   })
 })

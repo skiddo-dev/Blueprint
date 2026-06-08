@@ -38,6 +38,64 @@ if (!building && process.env.NODE_ENV === 'production') {
   }
 }
 
+// ── HTTP security headers ─────────────────────────────────────────────────────
+// Sent on every response. The strong directives (frame-ancestors / base-uri /
+// form-action / object-src) and the supporting headers (nosniff, X-Frame-Options,
+// Referrer-Policy, Permissions-Policy, HSTS) cost nothing and close clickjacking,
+// MIME-sniffing, and referrer-leak vectors.
+//
+// CSP deliberately keeps 'unsafe-inline' for script/style. The app has legitimate
+// inline scripts (app.html's no-flash theme boot, SvelteKit's per-page hydration
+// payload) and the admin Competitive Landscape page drops a self-contained sheet —
+// inline <script>/<style> + Google Fonts — into a sandboxed `srcdoc` iframe that
+// INHERITS this policy. A nonce/hash scheme can't reach that runtime-injected
+// iframe markup without extra plumbing, and Leaflet/Chart.js set inline styles too.
+// So we allow inline here and rely on DOMPurify (user content) + the Entra gate.
+// Upgrading script-src to nonces (via kit.csp) is a tracked follow-up.
+export const CSP = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:", // Leaflet raster tiles + inline data URIs
+  "connect-src 'self'",
+  "frame-src 'self'", // the Competitive Landscape srcdoc iframe
+].join('; ')
+
+/** The security headers for a response. Pure + exported so it's unit-testable.
+ *  CSP is skipped in dev because Vite's HMR client injects inline scripts and uses
+ *  eval/websockets that a strict policy would block; it's enforced in every built
+ *  (preview/prod) run. HSTS is only meaningful over real HTTPS (the prod ingress) —
+ *  browsers ignore it on http/localhost — so it's gated on dev + the actual scheme. */
+export function buildSecurityHeaders({ dev, https }: { dev: boolean; https: boolean }): Record<string, string> {
+  const headers: Record<string, string> = {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=()',
+  }
+  if (!dev) headers['Content-Security-Policy'] = CSP
+  if (!dev && https) headers['Strict-Transport-Security'] = 'max-age=63072000; includeSubDomains'
+  return headers
+}
+
+const securityHeaders: Handle = async ({ event, resolve }) => {
+  const response = await resolve(event)
+  // Behind the Container Apps ingress TLS terminates at the proxy, so the request
+  // the node server sees is http — trust the forwarded scheme for the HSTS gate.
+  const https =
+    event.url.protocol === 'https:' ||
+    event.request.headers.get('x-forwarded-proto') === 'https'
+  for (const [k, v] of Object.entries(buildSecurityHeaders({ dev, https }))) {
+    response.headers.set(k, v)
+  }
+  return response
+}
+
 // ── Background jobs ──────────────────────────────────────────────────────────
 // Keep the Microsoft Graph push subscriptions alive (one per PM mailbox, renewed
 // before expiry) and run a low-frequency safety-net sync so a missed webhook is
@@ -73,6 +131,11 @@ startBackgroundJobs()
 // submissions — but exempt the Graph webhook, which is authenticated by
 // clientState instead. The app's own mutations use application/json (not a form
 // content-type), so they're unaffected either way.
+//
+// IMPORTANT: cross-origin application/json POSTs are kept safe by the browser's
+// CORS preflight (no permissive Access-Control-Allow-Origin is ever sent, so a
+// forged cross-site JSON request can't be read/sent). Do NOT add a permissive
+// CORS header anywhere without also tightening this guard to cover JSON.
 const FORM_CONTENT_TYPES = ['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain']
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const csrfGuard: Handle = async ({ event, resolve }) => {
@@ -151,7 +214,7 @@ const guard: Handle = async ({ event, resolve }) => {
   return resolve(event)
 }
 
-export const handle = sequence(csrfGuard, authHandle, devAuthBypass, guard)
+export const handle = sequence(securityHeaders, csrfGuard, authHandle, devAuthBypass, guard)
 
 // Catches UNEXPECTED server errors (thrown error()/redirect() are handled by
 // SvelteKit and never reach here). Logs the full error with a correlation id and

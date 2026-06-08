@@ -1,7 +1,27 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchRecentEmails } from './email'
+import { fetchRecentEmails, getGraphToken, GraphAuthError } from './email'
 
 afterEach(() => vi.unstubAllGlobals())
+
+describe('getGraphToken — auth failures are distinguishable', () => {
+  it('throws GraphAuthError (not a generic Error) when the grant is rejected', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({ error: 'invalid_client', error_description: 'AADSTS7000215: Invalid client secret.' }),
+          { status: 401 },
+        ),
+      ),
+    )
+    await expect(getGraphToken()).rejects.toBeInstanceOf(GraphAuthError)
+  })
+
+  it('returns the token on a successful grant', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ access_token: 'tok' }), { status: 200 })))
+    await expect(getGraphToken()).resolves.toBe('tok')
+  })
+})
 
 describe('fetchRecentEmails — pagination', () => {
   it('follows @odata.nextLink across pages and returns every flagged message', async () => {
