@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit'
-import { getTask, normName } from './db'
+import { getTask } from './db'
+import { isOwnedBy } from '$lib/ownership'
 import type { Task } from '$lib/types'
 
 /**
@@ -7,16 +8,16 @@ import type { Task } from '$lib/types'
  * caller's login email matches the task's created_by_email or assignee_email.
  * Falls back to the legacy display-name match ONLY for tasks that carry no
  * identity yet (un-backfilled), so the migration can roll out without locking
- * anyone out; once a task has an email, identity is authoritative.
+ * anyone out; once a task has an email, identity is authoritative. The
+ * ownership rule itself lives in $lib/ownership so the board's "My Work" filter
+ * shares it (they drifted before, which emptied "My Work").
  */
 export function canAccessTask(user: Record<string, unknown>, task: Task): boolean {
   if (user.role === 'admin') return true
-  if (task.created_by_email || task.assignee_email) {
-    const email = normName(user.email as string)
-    return !!email && (email === normName(task.created_by_email) || email === normName(task.assignee_email))
-  }
-  const name = normName((user.displayName as string) ?? (user.name as string) ?? '')
-  return normName(task.assigned_to) === name || normName(task.created_by) === name
+  return isOwnedBy(task, {
+    email: user.email as string,
+    name: (user.displayName as string) ?? (user.name as string) ?? '',
+  })
 }
 
 /** Throw 401/403/404 unless the caller may access `taskId`. The single
