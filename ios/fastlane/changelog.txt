@@ -1,0 +1,10 @@
+Board card refresh — please test in both Light and Dark mode.
+
+• Dark mode: the board now follows your system Light/Dark appearance.
+• Overdue due-dates are highlighted so they stand out.
+• Store numbers appear as tappable tags — tap one to filter the whole board to that store, tap it again (or the banner) to clear.
+• Cards now show the email sender (or who created the task), the quote amount with its status, and any PO number.
+• A short summary now appears on each card.
+• Attachments: open, add, and remove files from a task's detail screen.
+
+What to try: scroll the board in Light and Dark, tap a store-number tag to filter and clear it, open a task and add/open/remove an attachment.
