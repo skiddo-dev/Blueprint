@@ -18,3 +18,13 @@ node_modules/
 build/
 .svelte-kit/
 bench/
+
+# Non-app artifacts — keep them out of the build context / intermediate layers.
+# The runtime stage only COPYs build/ + logo.png, so none of this reaches the
+# final image, but excluding it keeps the context small and the build reproducible
+# (docs/, generated sales collateral, email drafts, and local script outputs).
+docs/
+outputs/
+*.eml
+scripts/build-raves-*
+scripts/mark-raves-*
