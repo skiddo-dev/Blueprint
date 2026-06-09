@@ -4,9 +4,11 @@ import type { ProviderSpend } from './types'
 
 // Azure Cost Management Query API. Reports actual cost (decimal, in the
 // subscription's billing currency) and is queried with a POST body describing the
-// timeframe + grouping. Authenticated with a management-plane token from the same
-// Entra service principal the app already uses for sign-in — that SP must be
-// granted the "Cost Management Reader" role on AZURE_SUBSCRIPTION_ID.
+// timeframe + grouping. Authenticated with a management-plane token from a service
+// principal that holds the "Cost Management Reader" role on AZURE_SUBSCRIPTION_ID
+// — a dedicated read-only SP via AZURE_COST_* (required when the subscription is in
+// a different tenant than the sign-in app), else the existing Entra app as a
+// same-tenant fallback. See fetchAzureSpend for the precedence.
 //
 // Token: POST https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token
 //        (client_credentials, scope=https://management.azure.com/.default)
@@ -109,13 +111,19 @@ async function runQuery(subscription: string, token: string, body: unknown): Pro
  *  normalize. Never throws — not-configured card without a subscription/SP, or
  *  an error card on failure. */
 export async function fetchAzureSpend(now: Date = new Date()): Promise<ProviderSpend> {
+  // Prefer a dedicated read-only cost service principal (AZURE_COST_*). This is
+  // REQUIRED when the billed subscription lives in a different Entra tenant than
+  // the sign-in app (you can't grant a role to an SP from another tenant, and a
+  // token from the auth app can't read the other tenant's subscription). When
+  // subscription and sign-in app share a tenant, the AZURE_*/AUTH_* fallback lets
+  // you simply reuse the existing SP.
   const subscription = env.AZURE_SUBSCRIPTION_ID?.trim()
-  const tenant = (env.AZURE_TENANT_ID || env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID)?.trim()
-  const clientId = (env.AZURE_CLIENT_ID || env.AUTH_MICROSOFT_ENTRA_ID_ID)?.trim()
-  const clientSecret = (env.AZURE_CLIENT_SECRET || env.AUTH_MICROSOFT_ENTRA_ID_SECRET)?.trim()
+  const tenant = (env.AZURE_COST_TENANT_ID || env.AZURE_TENANT_ID || env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID)?.trim()
+  const clientId = (env.AZURE_COST_CLIENT_ID || env.AZURE_CLIENT_ID || env.AUTH_MICROSOFT_ENTRA_ID_ID)?.trim()
+  const clientSecret = (env.AZURE_COST_CLIENT_SECRET || env.AZURE_CLIENT_SECRET || env.AUTH_MICROSOFT_ENTRA_ID_SECRET)?.trim()
   if (!subscription || !tenant || !clientId || !clientSecret) {
     return emptyProvider('azure', 'Azure', {
-      hint: 'Set AZURE_SUBSCRIPTION_ID and grant the Entra service principal the Cost Management Reader role.',
+      hint: 'Set AZURE_SUBSCRIPTION_ID + a Cost Management Reader principal (AZURE_COST_CLIENT_ID/_SECRET/_TENANT_ID, or reuse the Entra app if same-tenant).',
     })
   }
 
