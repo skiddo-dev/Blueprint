@@ -47,9 +47,16 @@ export async function getDb(): Promise<Db> {
         await c.close().catch(() => {})
         throw e
       }
-      await runMigrations(database)
+      // Publish BEFORE runMigrations — this ordering is load-bearing, not
+      // cosmetic. runMigrations → tryAcquireLease/releaseLease re-enter getDb();
+      // with `db` still unset they'd be handed this very `connecting` promise and
+      // deadlock the whole DB layer (every request, /readyz included, hangs —
+      // exactly what wedged the 2026-06-09 deploy's revision in Activating).
+      // Migrations stay best-effort behind the publish: /readyz gates on
+      // migrationsApplied() separately, so readiness is still correct.
       client = c
       db = database
+      await runMigrations(database)
       return database
     })().catch((e) => {
       connecting = null
