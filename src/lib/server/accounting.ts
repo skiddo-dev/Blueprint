@@ -27,6 +27,19 @@ export async function getAccounts(): Promise<Account[]> {
   return rows.map((a) => ({ ...a, _id: String(a._id) })) as Account[]
 }
 
+/** Most-recent journal entries (newest accounting date first), for the ledger
+ *  listing. Empty in mock mode. */
+export async function listJournalEntries(limit = 50): Promise<JournalEntry[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const rows = await col('journalEntries', d)
+    .find({})
+    .sort({ date: -1, created_at: -1 })
+    .limit(limit)
+    .toArray()
+  return rows.map((e) => ({ ...e, _id: String(e._id) })) as JournalEntry[]
+}
+
 /** Post a journal entry. Validates it balances, fills the server fields, and
  *  inserts it as a single atomic document (the embedded lines mean a debit can
  *  never commit without its credit, even without a transaction). Idempotent on
