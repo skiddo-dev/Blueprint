@@ -10,7 +10,13 @@
 
   const tb = $derived(data.trialBalance)
   const entries = $derived(data.entries)
-  const inBalance = $derived(tb.totalDebit === tb.totalCredit)
+  // Net presentation: each account's net balance lands in one column. The column
+  // totals (sum of nets on each side) always agree — that's the books balancing.
+  // (Don't show the gross totalDebit/totalCredit here; they wouldn't match the
+  // net columns once an account has both debits and credits, e.g. A/R.)
+  const drTotal = $derived(tb.rows.reduce((a, r) => a + (r.net > 0 ? r.net : 0), 0))
+  const crTotal = $derived(tb.rows.reduce((a, r) => a + (r.net < 0 ? -r.net : 0), 0))
+  const inBalance = $derived(drTotal === crTotal)
 
   // Cents → "$1,234.56". The values cross the load boundary as plain numbers.
   const usd = (c: number) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -28,6 +34,10 @@
       </div>
       <a class="btn-primary" href="/accounting/journal/new">+ New journal entry</a>
     </div>
+    <nav class="subnav">
+      <a href="/accounting/invoices">📄 Invoices</a>
+      <a href="/accounting/aging">📈 A/R Aging</a>
+    </nav>
     <hr style="margin: 14px 0 20px" />
   {/snippet}
 
@@ -59,8 +69,8 @@
         <tfoot>
           <tr>
             <td></td><td>Total</td>
-            <td class="num">{usd(tb.totalDebit)}</td>
-            <td class="num">{usd(tb.totalCredit)}</td>
+            <td class="num">{usd(drTotal)}</td>
+            <td class="num">{usd(crTotal)}</td>
           </tr>
         </tfoot>
       </table>
@@ -95,6 +105,12 @@
   .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   h1 { margin: 0; }
   .sub { color: var(--text-muted); margin: 4px 0 0; font-size: 14px; }
+  .subnav { display: flex; gap: 8px; margin-top: 12px; }
+  .subnav a {
+    font-size: 13px; font-weight: 600; text-decoration: none; color: var(--text-body);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 6px 12px;
+  }
+  .subnav a:hover { border-color: var(--primary); color: var(--primary-text); }
 
   .btn-primary {
     background: var(--primary); color: #fff; border: 1px solid var(--primary);

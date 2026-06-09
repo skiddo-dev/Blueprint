@@ -56,6 +56,63 @@ export interface JournalEntryInput {
   created_by?: string
 }
 
+// ── Accounts receivable (Phase 2) ─────────────────────────────────────────────
+// A bill-to party. Created on demand from the invoice form (matched
+// case-insensitively on name_lower). `_id` is a uuid (names aren't stable keys).
+export interface Customer {
+  _id: string
+  name: string
+  name_lower: string // lowercased name, for case-insensitive find-or-create + index
+  email?: string
+  created_at: string
+}
+
+export interface InvoiceLine {
+  description: string
+  quantity: number
+  unit_price: Cents
+  amount: Cents       // unit_price × quantity
+}
+
+// A customer invoice. Posting it books Dr A/R / Cr Revenue (+ Cr Sales Tax) via a
+// journal entry keyed on the invoice id, in the same transaction as the insert.
+// `customer_name` is denormalized so lists/aging don't need a join. Immutable
+// money once posted; payments reduce `balance` and advance `status`.
+export interface Invoice {
+  _id: string
+  number: number          // sequential per year
+  year: number
+  customer_id: string
+  customer_name: string
+  issue_date: string      // ISO YYYY-MM-DD
+  due_date: string        // issue_date + net terms
+  lines: InvoiceLine[]
+  subtotal: Cents
+  tax_rate: number        // percent (6 = 6%); 0 = none
+  tax: Cents
+  total: Cents
+  paid: Cents
+  balance: Cents          // total − paid
+  status: 'open' | 'partial' | 'paid' | 'void'
+  po?: string
+  quote_id?: string       // the won quote this invoice was created from, if any
+  memo?: string
+  created_by?: string
+  created_at: string
+  updated_at?: string
+}
+
+// A payment received against an invoice. Posting it books Dr Cash / Cr A/R.
+export interface Payment {
+  _id: string
+  invoice_id: string
+  amount: Cents
+  date: string            // ISO YYYY-MM-DD
+  method?: string         // free-form: "check", "ACH", …
+  created_by?: string
+  created_at: string
+}
+
 // ── Trial balance ───────────────────────────────────────────────────────────────
 // One row per account that has postings: total debits, total credits, and the
 // signed net in the debit direction (net > 0 lands in the debit column of the

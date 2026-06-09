@@ -24,6 +24,13 @@ export async function ensureAccountingIndexes(d: Db): Promise<void> {
       { source: 1, source_ref: 1 },
       { unique: true, partialFilterExpression: { source_ref: { $exists: true } } },
     ),
+    // ── Accounts receivable (Phase 2) ──
+    col(d, 'customers').createIndex({ name_lower: 1 }),        // find-or-create by name
+    col(d, 'invoices').createIndex({ year: 1, number: 1 }, { unique: true }), // sequential per year
+    col(d, 'invoices').createIndex({ status: 1, due_date: 1 }), // A/R aging scan
+    col(d, 'invoices').createIndex({ customer_id: 1 }),
+    col(d, 'invoices').createIndex({ quote_id: 1 }),           // won-quote → invoice link
+    col(d, 'payments').createIndex({ invoice_id: 1 }),         // payments for an invoice
   ])
 }
 
