@@ -1,5 +1,6 @@
 <script lang="ts">
   import PageShell from '$lib/components/PageShell.svelte'
+  import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -21,6 +22,30 @@
   // Cents → "$1,234.56". The values cross the load boundary as plain numbers.
   const usd = (c: number) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
   const entryTotal = (lines: { debit: number }[]) => lines.reduce((a, l) => a + l.debit, 0)
+
+  // Period close: lock the books through a date so nothing can post on/before it.
+  // svelte-ignore state_referenced_locally
+  let lockDate = $state(data.closeThrough ?? '')
+  $effect(() => { lockDate = data.closeThrough ?? '' })
+  let savingLock = $state(false)
+  let lockError = $state('')
+  async function saveLock(through: string) {
+    savingLock = true
+    lockError = ''
+    try {
+      const r = await fetch('/api/accounting/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ through }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      await invalidateAll()
+    } catch (e) {
+      lockError = e instanceof Error ? e.message : String(e)
+    } finally {
+      savingLock = false
+    }
+  }
 </script>
 
 <svelte:head><title>Accounting · Blueprint</title></svelte:head>
@@ -39,6 +64,8 @@
       <a href="/accounting/aging">📈 A/R Aging</a>
       <a href="/accounting/bills">🧾 Bills</a>
       <a href="/accounting/ap-aging">📉 A/P Aging</a>
+      <a href="/accounting/income-statement">📊 Income Statement</a>
+      <a href="/accounting/balance-sheet">🏦 Balance Sheet</a>
     </nav>
     <hr style="margin: 14px 0 20px" />
   {/snippet}
@@ -101,6 +128,27 @@
       </table>
     {/if}
   </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Period close</h2></div>
+    <p class="lock-status">
+      {#if data.closeThrough}
+        🔒 Books locked through <strong>{data.closeThrough}</strong> — no entry can post on or before this date.
+      {:else}
+        🔓 Open — entries can post on any date.
+      {/if}
+    </p>
+    <div class="lock-form">
+      <label>Lock through<input type="date" bind:value={lockDate} /></label>
+      <button class="btn-secondary" type="button" onclick={() => saveLock(lockDate)} disabled={savingLock || !lockDate}>
+        {savingLock ? 'Saving…' : 'Lock period'}
+      </button>
+      {#if data.closeThrough}
+        <button class="btn-ghost" type="button" onclick={() => saveLock('')} disabled={savingLock}>Clear lock</button>
+      {/if}
+    </div>
+    {#if lockError}<p class="error">{lockError}</p>{/if}
+  </section>
 </PageShell>
 
 <style>
@@ -148,4 +196,14 @@
     margin-left: 8px; background: #fef3c7; color: #b45309;
     border-radius: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600;
   }
+
+  .lock-status { font-size: 14px; color: var(--text-body); margin: 0 0 12px; }
+  .lock-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .lock-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
+  .lock-form input { font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); }
+  .btn-secondary { background: var(--bg); color: var(--text-body); border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-secondary:hover:not(:disabled) { border-color: var(--primary); }
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ghost { background: none; border: none; color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+  .error { color: #dc2626; font-size: 13px; background: #fee2e2; border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
 </style>

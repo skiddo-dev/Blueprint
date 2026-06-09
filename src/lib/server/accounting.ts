@@ -3,9 +3,10 @@
 // math live in the pure module ($lib/accounting/ledger); this layer persists.
 import type { ClientSession } from 'mongodb'
 import { env } from '$env/dynamic/private'
-import { getDb } from './db'
+import { getDb, getMeta, setMeta } from './db'
 import { DEFAULT_CHART_OF_ACCOUNTS } from '$lib/accounting/coa'
 import { buildReversingEntry, periodOf, validateEntry } from '$lib/accounting/ledger'
+import { isPeriodClosed, type Balance } from '$lib/accounting/statements'
 import type { Cents } from '$lib/money'
 import type { Account, JournalEntry, JournalEntryInput, TrialBalanceRow } from '$lib/accounting/types'
 
@@ -54,6 +55,12 @@ export async function postEntry(
   const problems = validateEntry(input)
   if (problems.length) {
     throw new Error(`Refusing to post an invalid journal entry: ${problems.join('; ')}`)
+  }
+  // Don't let anything post into a closed period (guards manual entries, invoices,
+  // payments, bills — every path funnels through here).
+  const closedThrough = await getCloseThrough()
+  if (isPeriodClosed(input.date, closedThrough)) {
+    throw new Error(`Accounting period is closed through ${closedThrough}; cannot post an entry dated ${input.date}`)
   }
   const d = await getDb()
   const entries = col('journalEntries', d)
@@ -165,4 +172,39 @@ export async function getTrialBalance(opts: { asOf?: string; period?: string } =
     totalDebit: rows.reduce((a, r) => a + r.debit, 0),
     totalCredit: rows.reduce((a, r) => a + r.credit, 0),
   }
+}
+
+/** Per-account debit/credit totals over posted entries, optionally date-bounded.
+ *  Feeds the financial statements: a from..to range for the P&L period, or just
+ *  `to` (cumulative as-of) for the balance sheet. */
+export async function getLedgerBalances(opts: { from?: string; to?: string } = {}): Promise<Balance[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const match: Record<string, unknown> = { status: 'posted' }
+  if (opts.from || opts.to) {
+    const range: Record<string, string> = {}
+    if (opts.from) range.$gte = opts.from
+    if (opts.to) range.$lte = opts.to
+    match.date = range
+  }
+  const grouped = await col('journalEntries', d).aggregate([
+    { $match: match },
+    { $unwind: '$lines' },
+    { $group: { _id: '$lines.account_id', debit: { $sum: '$lines.debit' }, credit: { $sum: '$lines.credit' } } },
+  ]).toArray()
+  return grouped.map((g) => ({ account_id: String(g._id), debit: g.debit as Cents, credit: g.credit as Cents }))
+}
+
+// ── Period close ──────────────────────────────────────────────────────────────
+/** The date the books are locked through (no entry may post on/before it), or
+ *  null if open. Stored as a single `meta` doc. */
+export async function getCloseThrough(): Promise<string | null> {
+  if (USE_MOCK) return null
+  const m = await getMeta('accounting_lock')
+  return (m?.closed_through as string) ?? null
+}
+
+/** Set (or, with null, clear) the close-through date. */
+export async function setCloseThrough(date: string | null): Promise<void> {
+  await setMeta('accounting_lock', { closed_through: date })
 }
