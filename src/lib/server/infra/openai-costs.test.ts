@@ -45,4 +45,29 @@ describe('normalizeOpenAiCosts', () => {
     expect(p.monthToDateCents).toBe(0)
     expect(p.breakdown).toEqual([])
   })
+
+  it('coerces STRING amounts (the live API returns value as a string) and sums sub-cent rows', () => {
+    // Regression: the costs endpoint returns amount.value like "0.11567415".
+    // A `typeof v === 'number'` guard would drop every row → $0.00.
+    const p = normalizeOpenAiCosts(
+      [
+        {
+          start_time: ts(2026, 6, 3),
+          results: [
+            { amount: { value: '0.11567415' }, line_item: 'gpt-4o-mini' },
+            { amount: { value: '0.0908175' }, line_item: 'gpt-4o-mini' },
+            { amount: { value: '0.007756' }, line_item: 'gpt-3.5-turbo' },
+          ],
+        },
+      ],
+      now,
+    )
+    // dollars summed first, then → cents: total 0.21424765 → 21¢
+    expect(p.monthToDateCents).toBe(21)
+    // gpt-4o-mini 0.20649165 → 21¢ (NOT lost to per-row rounding); 3.5 → 1¢
+    expect(p.breakdown).toEqual([
+      { name: 'gpt-4o-mini', amountCents: 21 },
+      { name: 'gpt-3.5-turbo', amountCents: 1 },
+    ])
+  })
 })
