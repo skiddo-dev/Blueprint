@@ -24,6 +24,32 @@ export async function listVendors(): Promise<Vendor[]> {
   return rows.map((v) => ({ ...v, _id: String(v._id) })) as Vendor[]
 }
 
+export interface VendorWithStats extends Vendor {
+  billCount: number
+  totalBilled: Cents
+  outstanding: Cents // sum of open bill balances
+}
+
+/** Vendors with their AP rollup (bill count, total billed, outstanding). */
+export async function listVendorsWithStats(): Promise<VendorWithStats[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const agg = await col('bills', d).aggregate([
+    { $group: { _id: '$vendor_id', billCount: { $sum: 1 }, totalBilled: { $sum: '$total' }, outstanding: { $sum: '$balance' } } },
+  ]).toArray()
+  const byId = new Map(agg.map((a) => [String(a._id), a]))
+  const vendors = await listVendors()
+  return vendors.map((v) => {
+    const s = byId.get(v._id)
+    return {
+      ...v,
+      billCount: (s?.billCount as number) ?? 0,
+      totalBilled: ((s?.totalBilled as number) ?? 0) as Cents,
+      outstanding: ((s?.outstanding as number) ?? 0) as Cents,
+    }
+  })
+}
+
 export async function findOrCreateVendor(
   name: string,
   email: string | undefined,
