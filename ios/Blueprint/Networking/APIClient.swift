@@ -72,6 +72,50 @@ struct APIClient {
         try Self.check(response)
     }
 
+    /// POST /api/tasks/{id}/attachments — upload a file as multipart/form-data
+    /// under the `file` field (see the endpoint). Returns the created
+    /// `Attachment` metadata the server wraps in `{ ok, attachment }`.
+    func uploadAttachment(taskId: String, filename: String, data: Data, contentType: String) async throws -> Attachment {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks/\(taskId)/attachments"))
+        req.httpMethod = "POST"
+        let boundary = "Boundary-\(UUID().uuidString)"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        req.httpBody = body
+        let (respData, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        return try JSONDecoder().decode(UploadResponse.self, from: respData).attachment
+    }
+
+    /// DELETE /api/tasks/{id}/attachments/{attId} — remove a file from a card.
+    func deleteAttachment(taskId: String, attId: String) async throws {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks/\(taskId)/attachments/\(attId)"))
+        req.httpMethod = "DELETE"
+        let (_, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+    }
+
+    /// GET /api/attachments/{id} — download the bytes (cookie-authed, like every
+    /// other call) and write them to a temp file so QuickLook can preview/share
+    /// it. Returns the local file URL.
+    func downloadAttachment(id: String, filename: String) async throws -> URL {
+        let req = URLRequest(url: baseURL.appendingPathComponent("api/attachments/\(id)"))
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("attachments", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let safeName = filename.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init) ?? id
+        let url = dir.appendingPathComponent(safeName.isEmpty ? id : safeName)
+        try data.write(to: url, options: .atomic)
+        return url
+    }
+
     /// POST /api/tasks/{id}/comments — post a comment (or a reply when
     /// `parentId` is given). Mentions are resolved server-side; the created
     /// `TimelineEntry` is returned so the UI can append it without a reload.
@@ -220,6 +264,9 @@ struct NewTask: Encodable {
 
 /// `{ ok, entry }` from `POST .../comments`.
 private struct CommentResponse: Decodable { let entry: TimelineEntry }
+
+/// `{ ok, attachment }` from `POST .../attachments`.
+private struct UploadResponse: Decodable { let attachment: Attachment }
 
 /// `{ ok, reactions }` from `POST .../react`.
 private struct ReactResponse: Decodable { let reactions: [String: [String]] }

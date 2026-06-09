@@ -10,6 +10,10 @@ struct ColumnView: View {
     /// Drag-and-drop: a card (carried as its id) was dropped on this column —
     /// move it to `status`.
     var onMove: (String, TaskStatus) async -> Void = { _, _ in }
+    /// Store-number filter: the active store (highlights matching chips) and a
+    /// tap handler the cards call when their chip is tapped.
+    var activeStore: String? = nil
+    var onStoreTap: (String) -> Void = { _ in }
 
     @State private var isTargeted = false
 
@@ -22,7 +26,7 @@ struct ColumnView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 10) {
                         ForEach(tasks) { task in
-                            TaskCardView(task: task)
+                            TaskCardView(task: task, activeStore: activeStore, onStoreTap: onStoreTap)
                                 .contentShape(Rectangle())
                                 .onTapGesture { onSelect(task) }
                                 .draggable(task.id)
@@ -35,11 +39,11 @@ struct ColumnView: View {
         }
         .padding(12)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(isTargeted ? status.background : Color(hex: 0xF8FAFC),
+        .background(isTargeted ? status.background : Color.columnSurface,
                     in: RoundedRectangle(cornerRadius: 18))
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .strokeBorder(isTargeted ? status.accent : Color(hex: 0xE2E8F0),
+                .strokeBorder(isTargeted ? status.accent : Color.cardBorder,
                               lineWidth: isTargeted ? 2 : 1)
         )
         .dropDestination(for: String.self) { ids, _ in
@@ -81,6 +85,6 @@ struct ColumnView: View {
     )
     .frame(width: 290, height: 560)
     .padding()
-    .background(Color(hex: 0xE9EDF2))
+    .background(Color.boardBackground)
 }
 #endif
