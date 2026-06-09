@@ -2,6 +2,7 @@
   import PageShell from '$lib/components/PageShell.svelte'
   import { goto, invalidateAll } from '$app/navigation'
   import { parseMoney } from '$lib/money'
+  import { parseStatementCsv, autoMatch } from '$lib/accounting/statement-import'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -38,6 +39,23 @@
   let checkedCount = $derived(data.uncleared.filter((t) => checked[t.entry_id]).length)
 
   function selectAccount(id: string) { goto(`/accounting/reconcile?account=${id}`) }
+
+  // Optional: paste a bank-statement CSV to auto-tick the matching transactions.
+  let csvText = $state('')
+  let importMsg = $state('')
+  function importStatement() {
+    importMsg = ''
+    try {
+      const lines = parseStatementCsv(csvText)
+      if (!lines.length) { importMsg = 'No transactions found — expected Date, Description, Amount columns.'; return }
+      const res = autoMatch(lines, data.uncleared)
+      for (const id of res.matchedTxnIds) checked[id] = true
+      importMsg = `Matched ${res.matchedCount} of ${lines.length} statement line${lines.length === 1 ? '' : 's'}`
+        + (res.unmatchedStatement.length ? ` · ${res.unmatchedStatement.length} unmatched (no uncleared entry with that amount)` : '')
+    } catch (e) {
+      importMsg = `Couldn't parse the CSV: ${e instanceof Error ? e.message : String(e)}`
+    }
+  }
 
   async function finish() {
     saving = true
@@ -93,6 +111,18 @@
         <span class="v mono">{Number.isNaN(difference) ? '—' : usd(difference)} {balanced ? '✓' : ''}</span>
       </div>
     </div>
+
+    {#if data.uncleared.length}
+      <details class="import-card">
+        <summary>📥 Import a bank statement (CSV) to auto-tick matches</summary>
+        <p class="import-hint">Paste your bank export — columns <code>Date</code>, <code>Description</code>, <code>Amount</code> (or Debit/Credit). Lines are matched to uncleared transactions by amount.</p>
+        <textarea bind:value={csvText} rows="5" placeholder="Date,Description,Amount&#10;2026-06-09,Customer deposit,2000.00&#10;2026-06-10,Check 1099,-500.00"></textarea>
+        <div class="import-actions">
+          <button class="btn-secondary" type="button" onclick={importStatement} disabled={!csvText.trim()}>Import &amp; match</button>
+          {#if importMsg}<span class="import-msg">{importMsg}</span>{/if}
+        </div>
+      </details>
+    {/if}
 
     <section class="card">
       <div class="card-head">
@@ -189,4 +219,15 @@
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
   .hint { color: var(--text-muted); font-size: 13px; }
   .error { color: #dc2626; font-size: 13px; background: #fee2e2; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+
+  .import-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
+  .import-card summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text); }
+  .import-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0; }
+  .import-hint code { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 4px; padding: 0 4px; font-size: 11px; }
+  .import-card textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; padding: 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); resize: vertical; }
+  .import-actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+  .import-msg { font-size: 13px; color: var(--text-body); }
+  .btn-secondary { background: var(--bg); color: var(--text-body); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-secondary:hover:not(:disabled) { border-color: var(--primary); }
+  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
