@@ -4,6 +4,7 @@ import type { Task, User, Quote, Prospect, TimelineEntry, Attachment } from '$li
 import { generateMockTasks, generateMockProspects, generateMockQuotes } from './mock'
 import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 import { requireInProd } from './config'
+import { ensureAccountingIndexes, seedChartOfAccounts } from './accounting-schema'
 
 let client: MongoClient | null = null
 let db: Db | null = null
@@ -43,6 +44,16 @@ export async function getDb(): Promise<Db> {
     })
   }
   return connecting
+}
+
+/** The connected MongoClient — needed to start a session for a multi-document
+ *  transaction (e.g. posting an invoice and its journal entry atomically).
+ *  Ensures the connection first; only meaningful against a replica set (Atlas in
+ *  prod; a local single-node replica set in dev — see README). */
+export async function getClient(): Promise<MongoClient> {
+  await getDb()
+  if (!client) throw new Error('Mongo client not initialized')
+  return client
 }
 
 // Our tasks use string UUIDs as _id (not MongoDB ObjectIds).
@@ -90,6 +101,7 @@ async function ensureIndexes(d: Db): Promise<void> {
       col(d, 'prospects').createIndex({ distance_miles: 1 }),      // getProspects sort
       col(d, 'users').createIndex({ role: 1, name: 1 }),           // getUsersByRole
     ])
+    await ensureAccountingIndexes(d)                               // accounts + journalEntries (incl. idempotency)
     indexesEnsured = true
   } catch (e) {
     console.error('[db] ensureIndexes failed (non-fatal):', e)
@@ -106,6 +118,7 @@ const MIGRATIONS: Migration[] = [
   { id: '0001-backfill-task-owner-emails', up: backfillTaskOwnerEmails },
   { id: '0002-seed-quote-counters', up: seedQuoteCounters },
   { id: '0003-stamp-attachment-retention', up: stampAttachmentRetention },
+  { id: '0004-seed-chart-of-accounts', up: seedChartOfAccounts },
 ]
 
 // 0003: prepare existing attachments for the retention policy. (a) Date + tag

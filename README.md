@@ -71,6 +71,22 @@ OPENAI_API_KEY=          # sk-...
 
 All secrets are read at **runtime** via `$env/*/private` (never baked into the build).
 
+### MongoDB (local) — replica set
+
+Production runs on **MongoDB Atlas**, which is always a replica set, so multi-document
+transactions and change streams are available there. A bare standalone `mongod` supports
+neither — and the accounting module posts an invoice and its journal entry in a single
+transaction — so for local dev run Mongo as a **single-node replica set**:
+
+```bash
+docker compose up -d mongo     # single-node replica set on :27017 (auto-initiated)
+# then in .env:
+MONGODB_URI=mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
+```
+
+A plain `mongodb://localhost:27017/` still works for everything except transaction code
+paths; use the replica-set URI to exercise those locally the way prod does.
+
 ## Testing
 
 ```bash
