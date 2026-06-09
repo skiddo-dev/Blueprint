@@ -51,6 +51,7 @@
         <h1>Bill {num} <span class="badge {bill.status}">{bill.status}</span></h1>
         <p class="sub"><a href="/accounting/bills">Bills</a> · {bill.vendor_name}</p>
       </div>
+      <a class="btn-pdf" href="/api/accounting/bills/{bill._id}/pdf" target="_blank" rel="noopener">⬇ PDF</a>
     </div>
     <hr style="margin: 14px 0 20px" />
   {/snippet}
@@ -112,9 +113,16 @@
 </PageShell>
 
 <style>
+  .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   h1 { margin: 0; font-size: 22px; }
   .sub { color: var(--text-muted); margin: 4px 0 0; font-size: 14px; }
   .sub a { color: var(--primary-text); text-decoration: none; }
+  .btn-pdf {
+    flex-shrink: 0; background: var(--bg); color: var(--text-body);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px;
+    font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap;
+  }
+  .btn-pdf:hover { border-color: var(--primary); color: var(--primary-text); }
 
   .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
   .card h2 { font-size: 15px; margin: 0 0 10px; }
