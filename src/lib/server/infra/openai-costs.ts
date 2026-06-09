@@ -17,7 +17,9 @@ import type { ProviderSpend } from './types'
 const BASE = 'https://api.openai.com/v1/organization/costs'
 
 interface CostResult {
-  amount?: { value?: number; currency?: string }
+  // The Costs API returns `amount.value` as a STRING (e.g. "0.11567415"), though
+  // a number is allowed for too — coerce with Number() before using it.
+  amount?: { value?: number | string; currency?: string }
   line_item?: string | null
 }
 interface CostBucket {
@@ -28,6 +30,10 @@ interface CostBucket {
 /** Pure: fold daily cost buckets into the normalized monthly shape. `now` is
  *  injectable so the current/last-month split is testable. */
 export function normalizeOpenAiCosts(buckets: CostBucket[], now: Date = new Date()): ProviderSpend {
+  // Accumulate in DOLLARS (the API gives amount.value as a string/number — coerce
+  // with Number()), then convert to cents once per aggregate. Summing in dollars
+  // first means a month of sub-cent line items doesn't evaporate to per-row
+  // rounding (each gpt-4o-mini call can cost a tiny fraction of a cent).
   const byMonth = new Map<string, number>()
   const curMonth = monthKey(now)
   const curLineItems = new Map<string, number>()
@@ -35,31 +41,33 @@ export function normalizeOpenAiCosts(buckets: CostBucket[], now: Date = new Date
   for (const b of buckets) {
     const month = monthKey(new Date(b.start_time * 1000))
     for (const r of b.results ?? []) {
-      const v = r.amount?.value
-      if (typeof v !== 'number' || !Number.isFinite(v)) continue
-      const c = dollarsToCents(v)
-      byMonth.set(month, (byMonth.get(month) ?? 0) + c)
+      const v = Number(r.amount?.value)
+      if (!Number.isFinite(v) || v === 0) continue
+      byMonth.set(month, (byMonth.get(month) ?? 0) + v)
       if (month === curMonth) {
         const name = r.line_item || 'Other'
-        curLineItems.set(name, (curLineItems.get(name) ?? 0) + c)
+        curLineItems.set(name, (curLineItems.get(name) ?? 0) + v)
       }
     }
   }
 
   const trend = [...byMonth.entries()]
-    .map(([period, amountCents]) => ({ period, amountCents }))
+    .map(([period, dollars]) => ({ period, amountCents: dollarsToCents(dollars) }))
     .sort((a, b) => a.period.localeCompare(b.period))
   const prevMonth = monthKey(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)))
+  const breakdownCents = new Map<string, number>(
+    [...curLineItems].map(([name, dollars]) => [name, dollarsToCents(dollars)]),
+  )
 
   return {
     provider: 'openai',
     label: 'OpenAI',
     configured: true,
     currency: 'USD',
-    monthToDateCents: byMonth.get(curMonth) ?? 0,
-    lastFullMonthCents: byMonth.get(prevMonth),
+    monthToDateCents: dollarsToCents(byMonth.get(curMonth) ?? 0),
+    lastFullMonthCents: byMonth.has(prevMonth) ? dollarsToCents(byMonth.get(prevMonth)!) : undefined,
     trend,
-    breakdown: topBreakdown(curLineItems),
+    breakdown: topBreakdown(breakdownCents),
     fetchedAt: now.toISOString(),
   }
 }
