@@ -2,6 +2,10 @@ import SwiftUI
 
 struct TaskCardView: View {
     let task: BoardTask
+    /// The store currently filtering the board (highlights its chip), and a tap
+    /// handler for the chips. Both optional so previews/non-board uses still work.
+    var activeStore: String? = nil
+    var onStoreTap: ((String) -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 0) {
@@ -18,12 +22,21 @@ struct TaskCardView: View {
                 if !task.storeNumbers.isEmpty {
                     HStack(spacing: 4) {
                         ForEach(task.storeNumbers, id: \.self) { n in
-                            Text("#\(n)")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.storeTag, in: RoundedRectangle(cornerRadius: 4))
+                            let isActive = (n == activeStore)
+                            Button { onStoreTap?(n) } label: {
+                                Text("#\(n)")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(isActive ? Color(hex: 0x6366F1) : Color.storeTag,
+                                                in: RoundedRectangle(cornerRadius: 4))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .strokeBorder(Color(hex: 0x6366F1).opacity(isActive ? 0.55 : 0), lineWidth: 2)
+                                    )
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }

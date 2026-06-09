@@ -14,6 +14,9 @@ struct BoardView: View {
     @State private var syncing = false
     @State private var syncMessage: String?
     @State private var showSync = false
+    /// Tapping a card's store-number chip filters the whole board to that store;
+    /// tapping it again (or the banner) clears it. Mirrors the web card's filter.
+    @State private var activeStore: String?
 
     private enum Phase: Equatable {
         case loading, loaded
@@ -86,14 +89,34 @@ struct BoardView: View {
                 .alert("Email sync", isPresented: $showSync, presenting: syncMessage) { _ in
                     Button("OK", role: .cancel) {}
                 } message: { Text($0) }
-                .safeAreaInset(edge: .top) {
-                    if offline {
-                        Label("Offline — showing the last saved board", systemImage: "wifi.slash")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
-                            .background(Color(hex: 0x64748B))
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    VStack(spacing: 0) {
+                        if offline {
+                            Label("Offline — showing the last saved board", systemImage: "wifi.slash")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                                .background(Color(hex: 0x64748B))
+                        }
+                        if let store = activeStore {
+                            Button { activeStore = nil } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                                    Text("Filtering store #\(store)")
+                                    Spacer(minLength: 6)
+                                    Text("Clear")
+                                    Image(systemName: "xmark.circle.fill")
+                                }
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 7)
+                                .background(Color(hex: 0x6366F1))
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
         }
@@ -125,6 +148,16 @@ struct BoardView: View {
         }
     }
 
+    /// The board, after applying the active store-number filter (if any).
+    private var visibleTasks: [BoardTask] {
+        guard let store = activeStore else { return tasks }
+        return tasks.filter { $0.storeNumbers.contains(store) }
+    }
+
+    private func toggleStore(_ n: String) {
+        activeStore = (activeStore == n) ? nil : n
+    }
+
     private var board: some View {
         GeometryReader { geo in
             ScrollView(.horizontal, showsIndicators: false) {
@@ -132,10 +165,12 @@ struct BoardView: View {
                     ForEach(TaskStatus.allCases) { status in
                         ColumnView(
                             status: status,
-                            tasks: tasks.filter { $0.status == status },
+                            tasks: visibleTasks.filter { $0.status == status },
                             onSelect: { selected = $0 },
                             onRefresh: { await load() },
-                            onMove: { id, target in await move(taskId: id, to: target) }
+                            onMove: { id, target in await move(taskId: id, to: target) },
+                            activeStore: activeStore,
+                            onStoreTap: { toggleStore($0) }
                         )
                         .frame(width: 290, height: max(geo.size.height - 32, 200))
                     }

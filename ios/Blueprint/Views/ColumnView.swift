@@ -10,6 +10,10 @@ struct ColumnView: View {
     /// Drag-and-drop: a card (carried as its id) was dropped on this column —
     /// move it to `status`.
     var onMove: (String, TaskStatus) async -> Void = { _, _ in }
+    /// Store-number filter: the active store (highlights matching chips) and a
+    /// tap handler the cards call when their chip is tapped.
+    var activeStore: String? = nil
+    var onStoreTap: (String) -> Void = { _ in }
 
     @State private var isTargeted = false
 
@@ -22,7 +26,7 @@ struct ColumnView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 10) {
                         ForEach(tasks) { task in
-                            TaskCardView(task: task)
+                            TaskCardView(task: task, activeStore: activeStore, onStoreTap: onStoreTap)
                                 .contentShape(Rectangle())
                                 .onTapGesture { onSelect(task) }
                                 .draggable(task.id)
