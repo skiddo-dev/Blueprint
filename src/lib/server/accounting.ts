@@ -7,6 +7,7 @@ import { getDb, getMeta, setMeta } from './db'
 import { DEFAULT_CHART_OF_ACCOUNTS } from '$lib/accounting/coa'
 import { buildReversingEntry, periodOf, validateEntry } from '$lib/accounting/ledger'
 import { isPeriodClosed, type Balance } from '$lib/accounting/statements'
+import { closingEntryLines } from '$lib/accounting/closing'
 import type { Cents } from '$lib/money'
 import type { Account, JournalEntry, JournalEntryInput, TrialBalanceRow } from '$lib/accounting/types'
 
@@ -177,10 +178,15 @@ export async function getTrialBalance(opts: { asOf?: string; period?: string } =
 /** Per-account debit/credit totals over posted entries, optionally date-bounded.
  *  Feeds the financial statements: a from..to range for the P&L period, or just
  *  `to` (cumulative as-of) for the balance sheet. */
-export async function getLedgerBalances(opts: { from?: string; to?: string } = {}): Promise<Balance[]> {
+export async function getLedgerBalances(
+  opts: { from?: string; to?: string; excludeClosing?: boolean } = {},
+): Promise<Balance[]> {
   if (USE_MOCK) return []
   const d = await getDb()
   const match: Record<string, unknown> = { status: 'posted' }
+  // The income statement excludes closing entries so a closed period still shows
+  // its real income; the balance sheet includes them so Retained Earnings reflects them.
+  if (opts.excludeClosing) match.source = { $ne: 'closing' }
   if (opts.from || opts.to) {
     const range: Record<string, string> = {}
     if (opts.from) range.$gte = opts.from
@@ -207,4 +213,30 @@ export async function getCloseThrough(): Promise<string | null> {
 /** Set (or, with null, clear) the close-through date. */
 export async function setCloseThrough(date: string | null): Promise<void> {
   await setMeta('accounting_lock', { closed_through: date })
+}
+
+/** Year-end close: post a closing entry that zeroes income & expense into
+ *  Retained Earnings as of `through`, then lock the period there. Posting happens
+ *  before the lock is set, so the closing entry (dated `through`) is allowed; if
+ *  there's nothing to close it just locks. Re-closing the same date is a no-op
+ *  (balances already zeroed → no lines). */
+export async function closeBooks(
+  through: string,
+  created_by?: string,
+): Promise<{ posted: boolean; entry?: JournalEntry; closedThrough: string }> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(through)) throw new Error('through must be ISO YYYY-MM-DD')
+  const [accounts, balances] = await Promise.all([getAccounts(), getLedgerBalances({ to: through })])
+  const lines = closingEntryLines(balances, accounts)
+  let entry: JournalEntry | undefined
+  if (lines.length) {
+    entry = await postEntry({
+      date: through,
+      memo: `Year-end close through ${through}`,
+      source: 'closing',
+      lines,
+      created_by,
+    })
+  }
+  await setCloseThrough(through)
+  return { posted: lines.length > 0, entry, closedThrough: through }
 }

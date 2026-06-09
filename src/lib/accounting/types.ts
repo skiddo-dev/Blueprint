@@ -17,7 +17,7 @@ export interface Account {
 }
 
 // ── Double-entry journal ───────────────────────────────────────────────────────
-export type JournalSource = 'manual' | 'invoice' | 'payment' | 'bill' | 'bill-payment'
+export type JournalSource = 'manual' | 'invoice' | 'payment' | 'bill' | 'bill-payment' | 'closing'
 
 // One leg of an entry. Exactly one of debit/credit is > 0; the other is 0.
 export interface JournalLine {
