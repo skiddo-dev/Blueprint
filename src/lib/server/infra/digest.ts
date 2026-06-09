@@ -83,11 +83,21 @@ export function buildDigestHeader(opts: {
  *  or an error) is returned as-is. */
 export async function digestFetch(
   url: string,
-  opts: { username: string; password: string; headers?: Record<string, string>; method?: string },
+  opts: {
+    username: string
+    password: string
+    headers?: Record<string, string>
+    method?: string
+    body?: string
+  },
 ): Promise<Response> {
   const method = opts.method ?? 'GET'
   const headers = opts.headers ?? {}
-  const probe = await fetch(url, { method, headers })
+  const body = opts.body
+  // The unauthenticated probe gets a 401 (no resource is created/mutated), so it's
+  // safe to send the body on it too — the challenge it returns is valid for the
+  // real request because HA2 hashes method+uri only, not the body.
+  const probe = await fetch(url, { method, headers, body })
   if (probe.status !== 401) return probe
 
   const wwwAuth = probe.headers.get('www-authenticate')
@@ -101,5 +111,5 @@ export async function digestFetch(
     password: opts.password,
     challenge,
   })
-  return fetch(url, { method, headers: { ...headers, authorization } })
+  return fetch(url, { method, headers: { ...headers, authorization }, body })
 }
