@@ -22,7 +22,7 @@
     user: { name: string; role: string }
     title: string
     crumbs?: Crumb[]
-    maxWidth?: string
+    maxWidth?: string // caps only the page CONTENT; the header + nav always span the module width
     actions?: Snippet // per-page primary action(s), shown at the top-right (desktop)
     children: Snippet
   } = $props()
@@ -58,7 +58,10 @@
   ]
 </script>
 
-<PageShell {user} {title} {maxWidth}>
+<!-- The shell column is always the full module width so the header + section nav
+     look identical on every accounting page; `maxWidth` narrows only the content
+     below them (e.g. financial statements read best at ~760px). -->
+<PageShell {user} {title} maxWidth="1320px">
   <div class="acct">
     <header class="acct-head">
       <div>
@@ -87,6 +90,8 @@
       {/each}
     </nav>
 
-    {@render children()}
+    <div class="acct-body" style:max-width={maxWidth}>
+      {@render children()}
+    </div>
   </div>
 </PageShell>
