@@ -71,7 +71,7 @@
 
 <svelte:head><title>Accounting · Blueprint</title></svelte:head>
 
-<PageShell {user} title="📒 Accounting" maxWidth="980px">
+<PageShell {user} title="📒 Accounting" maxWidth="1320px">
   {#snippet head()}
     <div class="head-row">
       <div>
