@@ -31,6 +31,29 @@ export interface VendorWithStats extends Vendor {
 }
 
 /** Vendors with their AP rollup (bill count, total billed, outstanding). */
+/** Update a vendor's name/email. A name change propagates to the denormalized
+ *  vendor_name on their bills. Returns false if no such vendor. */
+export async function updateVendor(id: string, patch: { name?: string; email?: string }): Promise<boolean> {
+  const d = await getDb()
+  const set: Record<string, unknown> = {}
+  const unset: Record<string, unknown> = {}
+  if (patch.name !== undefined && patch.name.trim()) {
+    set.name = patch.name.trim()
+    set.name_lower = patch.name.trim().toLowerCase()
+  }
+  if (patch.email !== undefined) {
+    if (patch.email.trim()) set.email = patch.email.trim()
+    else unset.email = ''
+  }
+  if (!Object.keys(set).length && !Object.keys(unset).length) return false
+  const update: Record<string, unknown> = {}
+  if (Object.keys(set).length) update.$set = set
+  if (Object.keys(unset).length) update.$unset = unset
+  const res = await col('vendors', d).updateOne({ _id: id }, update)
+  if (set.name) await col('bills', d).updateMany({ vendor_id: id }, { $set: { vendor_name: set.name } })
+  return res.matchedCount > 0
+}
+
 export async function listVendorsWithStats(): Promise<VendorWithStats[]> {
   if (USE_MOCK) return []
   const d = await getDb()
