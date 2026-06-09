@@ -26,6 +26,7 @@
     { href: '/dashboard', icon: '📊', label: 'Dashboard' },
     { href: '/quotes', icon: '💰', label: 'Quote Generator' },
     { href: '/accounting', icon: '📒', label: 'Accounting' },
+    { href: '/infra', icon: '💸', label: 'Infra Spend' },
     { href: '/prospects', icon: '🏭', label: 'Prospects' },
     { href: '/competitive-landscape', icon: '🗺️', label: 'Competitive Landscape' },
   ]
