@@ -20,6 +20,9 @@ struct BoardTask: Identifiable, Codable, Hashable {
     var status: TaskStatus
     var createdBy: String
     var attachmentIds: [String]
+    /// Uploaded-file metadata (filename/size/…); the legacy `attachmentIds` is the
+    /// id-only fallback for cards saved before this was stored.
+    var attachments: [Attachment]
     var timeline: [TimelineEntry]
     var createdAt: String?
     var updatedAt: String?
@@ -44,6 +47,7 @@ struct BoardTask: Identifiable, Codable, Hashable {
         case status
         case createdBy = "created_by"
         case attachmentIds = "attachment_ids"
+        case attachments
         case timeline
         case createdAt = "created_at"
         case updatedAt = "updated_at"
@@ -84,6 +88,15 @@ struct BoardTask: Identifiable, Codable, Hashable {
         storeNumbersRaw ?? StoreNumbers.extract(from: title)
     }
 
+    /// Files to show on the card / detail. Prefers the metadata list (has
+    /// filename + size); falls back to the legacy id-only array (id used as the
+    /// display name). Mirrors `TaskCard.svelte`'s `attachments` derivation.
+    var attachmentList: [Attachment] {
+        attachments.isEmpty
+            ? attachmentIds.map { Attachment(id: $0, filename: $0) }
+            : attachments
+    }
+
     /// True when this card originated from a synced email (has an Exchange id).
     var isFromEmail: Bool { !(exchangeId ?? "").isEmpty }
 
@@ -117,6 +130,7 @@ struct BoardTask: Identifiable, Codable, Hashable {
         status = (try? c.decode(TaskStatus.self, forKey: .status)) ?? .toDo
         createdBy = (try? c.decode(String.self, forKey: .createdBy)) ?? ""
         attachmentIds = (try? c.decode([String].self, forKey: .attachmentIds)) ?? []
+        attachments = (try? c.decode([Attachment].self, forKey: .attachments)) ?? []
         timeline = (try? c.decode([TimelineEntry].self, forKey: .timeline)) ?? []
         createdAt = try? c.decode(String.self, forKey: .createdAt)
         updatedAt = try? c.decode(String.self, forKey: .updatedAt)
@@ -153,6 +167,54 @@ enum StoreNumbers {
     }
 }
 
+/// Uploaded-file metadata for a task, mirroring the `Attachment` interface in
+/// `src/lib/types.ts`. Decoding is defensive (only `id` required) so one odd
+/// record never drops the whole list.
+struct Attachment: Identifiable, Codable, Hashable {
+    let id: String
+    var filename: String
+    var size: Int
+    var contentType: String
+    var source: String?
+    /// True once the bytes were stripped under the 30-day email-retention policy;
+    /// the record stays but the file is gone (not downloadable).
+    var purged: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case id, filename, size
+        case contentType = "content_type"
+        case source, purged
+    }
+
+    init(id: String, filename: String, size: Int = 0, contentType: String = "",
+         source: String? = nil, purged: Bool? = nil) {
+        self.id = id
+        self.filename = filename
+        self.size = size
+        self.contentType = contentType
+        self.source = source
+        self.purged = purged
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        filename = (try? c.decode(String.self, forKey: .filename)) ?? id
+        size = (try? c.decode(Int.self, forKey: .size)) ?? 0
+        contentType = (try? c.decode(String.self, forKey: .contentType)) ?? ""
+        source = try? c.decode(String.self, forKey: .source)
+        purged = try? c.decode(Bool.self, forKey: .purged)
+    }
+
+    /// A human-readable size ("12 KB", "1.4 MB"); empty when unknown.
+    var sizeLabel: String {
+        guard size > 0 else { return "" }
+        if size < 1024 { return "\(size) B" }
+        if size < 1024 * 1024 { return "\(Int((Double(size) / 1024).rounded())) KB" }
+        return String(format: "%.1f MB", Double(size) / 1024 / 1024)
+    }
+}
+
 #if DEBUG
 extension BoardTask {
     /// Memberwise initialiser for SwiftUI previews only. (Production code builds
@@ -160,7 +222,7 @@ extension BoardTask {
     /// can construct sample data without a network round-trip.)
     init(id: String, title: String, description: String? = nil, assignedTo: String = "", notes: String? = nil,
          date: String? = nil, status: TaskStatus, createdBy: String = "preview",
-         attachmentIds: [String] = [], timeline: [TimelineEntry] = [],
+         attachmentIds: [String] = [], attachments: [Attachment] = [], timeline: [TimelineEntry] = [],
          exchangeId: String? = nil, senderName: String? = nil, senderEmail: String? = nil,
          quote: String? = nil, quoteStatus: String? = nil, po: String? = nil) {
         self.id = id
@@ -172,6 +234,7 @@ extension BoardTask {
         self.status = status
         self.createdBy = createdBy
         self.attachmentIds = attachmentIds
+        self.attachments = attachments
         self.timeline = timeline
         self.createdAt = nil
         self.updatedAt = nil

@@ -1,4 +1,6 @@
 import SwiftUI
+import UniformTypeIdentifiers
+import QuickLook
 
 /// Edit a single task. Only changed fields are PATCHed (one request per field,
 /// matching the backend's `{ field, value }` contract). On success the updated
@@ -66,6 +68,10 @@ struct TaskDetailView: View {
 
                 Section("Notes") {
                     TextEditor(text: $notes).frame(minHeight: 110)
+                }
+
+                Section("Attachments") {
+                    AttachmentsView(taskId: task.id, attachments: task.attachmentList)
                 }
 
                 Section("Comments\(task.commentCount > 0 ? " (\(task.commentCount))" : "")") {
@@ -186,6 +192,154 @@ struct TaskDetailView: View {
             session.signOut()
         } catch {
             deleting = false
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+/// The attachment list for a task: download/open (QuickLook), upload (file
+/// importer), and delete — each hitting the API and updating in place, mirroring
+/// the web card's attachment panel. Purged email files show as a non-downloadable
+/// "expired" record. Changes are local to this sheet; the board's count refreshes
+/// on its next load.
+struct AttachmentsView: View {
+    let taskId: String
+
+    @Environment(AppConfig.self) private var config
+    @Environment(SessionStore.self) private var session
+
+    @State private var attachments: [Attachment]
+    @State private var showImporter = false
+    @State private var uploading = false
+    @State private var downloadingId: String?
+    @State private var previewURL: URL?
+    @State private var errorMessage: String?
+
+    init(taskId: String, attachments: [Attachment]) {
+        self.taskId = taskId
+        _attachments = State(initialValue: attachments)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if attachments.isEmpty {
+                Text("No files yet.").font(.callout).foregroundStyle(.secondary)
+            }
+            ForEach(attachments) { row($0) }
+
+            Button { showImporter = true } label: {
+                Label(uploading ? "Uploading…" : "Add file", systemImage: "plus.circle")
+                    .font(.callout)
+            }
+            .disabled(uploading)
+
+            if let errorMessage {
+                Text(errorMessage).font(.caption).foregroundStyle(.red)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fileImporter(isPresented: $showImporter,
+                      allowedContentTypes: [.item],
+                      allowsMultipleSelection: true) { result in
+            switch result {
+            case .success(let urls): Task { await upload(urls) }
+            case .failure(let err): errorMessage = err.localizedDescription
+            }
+        }
+        .quickLookPreview($previewURL)
+    }
+
+    @ViewBuilder
+    private func row(_ att: Attachment) -> some View {
+        let purged = (att.purged == true)
+        HStack(spacing: 10) {
+            Button { if !purged { Task { await open(att) } } } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "doc").foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(att.filename).font(.callout).lineLimit(1)
+                            .foregroundStyle(purged ? .secondary : .primary)
+                        if purged {
+                            Text("file removed after 30 days").font(.caption2).foregroundStyle(.secondary)
+                        } else if !att.sizeLabel.isEmpty {
+                            Text(att.sizeLabel).font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(purged)
+
+            Spacer(minLength: 6)
+
+            if downloadingId == att.id {
+                ProgressView()
+            } else if purged {
+                Text("expired").font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(Color.secondary.opacity(0.15), in: Capsule())
+                    .foregroundStyle(.secondary)
+            } else {
+                Image(systemName: "arrow.down.circle").foregroundStyle(.tint)
+            }
+
+            Button(role: .destructive) { Task { await delete(att) } } label: {
+                Image(systemName: "trash").foregroundStyle(.red)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    @MainActor
+    private func upload(_ urls: [URL]) async {
+        guard let base = config.baseURL else { errorMessage = "No backend URL configured."; return }
+        let client = APIClient(baseURL: base)
+        uploading = true
+        errorMessage = nil
+        for url in urls {
+            let scoped = url.startAccessingSecurityScopedResource()
+            do {
+                let data = try Data(contentsOf: url)
+                let type = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+                let att = try await client.uploadAttachment(taskId: taskId, filename: url.lastPathComponent,
+                                                            data: data, contentType: type)
+                attachments.append(att)
+            } catch APIClient.APIError.notAuthenticated {
+                if scoped { url.stopAccessingSecurityScopedResource() }
+                session.signOut(); uploading = false; return
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            if scoped { url.stopAccessingSecurityScopedResource() }
+        }
+        uploading = false
+    }
+
+    @MainActor
+    private func open(_ att: Attachment) async {
+        guard let base = config.baseURL, att.purged != true else { return }
+        downloadingId = att.id
+        errorMessage = nil
+        do {
+            previewURL = try await APIClient(baseURL: base).downloadAttachment(id: att.id, filename: att.filename)
+        } catch APIClient.APIError.notAuthenticated {
+            session.signOut()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        downloadingId = nil
+    }
+
+    @MainActor
+    private func delete(_ att: Attachment) async {
+        guard let base = config.baseURL else { return }
+        errorMessage = nil
+        do {
+            try await APIClient(baseURL: base).deleteAttachment(taskId: taskId, attId: att.id)
+            attachments.removeAll { $0.id == att.id }
+        } catch APIClient.APIError.notAuthenticated {
+            session.signOut()
+        } catch {
             errorMessage = error.localizedDescription
         }
     }
