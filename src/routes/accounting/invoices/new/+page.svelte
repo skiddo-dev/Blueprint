@@ -1,6 +1,7 @@
 <script lang="ts">
   import PageShell from '$lib/components/PageShell.svelte'
   import { goto } from '$app/navigation'
+  import { page } from '$app/state'
   import { parseMoney } from '$lib/money'
   import { dueDate } from '$lib/accounting/invoicing'
   import type { PageData } from './$types'
@@ -58,6 +59,18 @@
     lines = [{ description: q.description || 'Contract work', quantity: '1', unit_price: String(q.amount ?? '') }]
     if (q.po) po = q.po
   }
+
+  // Prefill from a ?quote=<id> link (the dashboard "Create invoice" shortcut).
+  let prefilled = false
+  $effect(() => {
+    if (prefilled) return
+    const qid = page.url.searchParams.get('quote')
+    if (qid && wonQuotes.some((x) => x._id === qid)) {
+      quoteId = qid
+      applyQuote()
+      prefilled = true
+    }
+  })
 
   async function submit() {
     saving = true
