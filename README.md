@@ -1,6 +1,6 @@
 # Blueprint — Email-to-Task Kanban for Grocery Construction
 
-Turns flagged vendor emails, permits, and site alerts into actionable Kanban tasks, with AI-powered parsing. A SvelteKit full-stack app backed by MongoDB, with Microsoft Entra sign-in and a native iOS client.
+Turns flagged vendor emails, permits, and site alerts into actionable Kanban tasks, with AI-powered parsing. A SvelteKit full-stack app backed by MongoDB, with Microsoft Entra sign-in, a native iOS client, and **Blueprint Books** — a built-in double-entry accounting module (invoices/A-R, bills/A-P, financial statements, bank reconciliation, period close).
 
 ## Stack
 
@@ -24,6 +24,7 @@ Turns flagged vendor emails, permits, and site alerts into actionable Kanban tas
 - **Self-serve access requests** — an un-provisioned user can request access from the sign-in gate; admins approve/dismiss from the User Access panel (which also shows each user's last-active + weekly-active count).
 - **CSV import** (admin) — bulk-create tasks from a CSV whose columns mirror the task export, so an export round-trips.
 - PDF quote generation and a Dashboard (admin)
+- **📒 Blueprint Books** (admin) — full double-entry bookkeeping built in: a finance hub (cash / A-R / A-P / net-income KPIs with month-over-month deltas and a sparkline, monthly revenue-vs-expenses chart, aging charts), **invoices → payments → A/R aging** (create from a won quote; status filters, overdue highlighting, payment progress), **vendor bills → payments → A/P aging**, customer/vendor directories, **income statement / balance sheet / cash-flow** statements with one-click periods and print, **bank reconciliation** with CSV auto-match, year-end close with a Retained-Earnings closing entry, and client-ready invoice/bill PDFs. Money is integer cents; corrections are reversing entries (append-only audit trail). Walkthrough screenshots in [`docs/books-screenshots/`](docs/books-screenshots/).
 - **Prospects** (admin) — a warehouse lead pipeline near Bloomfield Hills, MI built from **free, key-less public data**: OpenStreetMap (Overpass) for warehouse locations + footprint-derived size, and **Oakland County parcel GIS** for assessed value / class. Sortable table, status-colored Leaflet map, analytics charts (size / city / decade / distance / pipeline), live filters + search, CSV export, per-prospect status/assignee/notes, a detail modal (Google Maps + county-record links), and one-click **Add to Kanban board**. Set `USE_MOCK_DATA=true` to serve generated demo data offline.
 - Entra SSO with roles (admin / pm)
 
