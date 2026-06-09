@@ -8,6 +8,6 @@ export const load: PageServerLoad = async ({ url }) => {
   const today = new Date().toISOString().slice(0, 10)
   const from = url.searchParams.get('from') || `${today.slice(0, 4)}-01-01`
   const to = url.searchParams.get('to') || today
-  const [balances, accounts] = await Promise.all([getLedgerBalances({ from, to }), getAccounts()])
+  const [balances, accounts] = await Promise.all([getLedgerBalances({ from, to, excludeClosing: true }), getAccounts()])
   return { from, to, statement: incomeStatement(balances, accounts) }
 }

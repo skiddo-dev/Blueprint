@@ -46,6 +46,27 @@
       savingLock = false
     }
   }
+
+  // Year-end close: post the closing entry (income/expense → Retained Earnings)
+  // through the date, then lock there.
+  async function closeBooks(through: string) {
+    if (!confirm(`Close the books through ${through}? This posts a closing entry rolling net income into Retained Earnings and locks the period.`)) return
+    savingLock = true
+    lockError = ''
+    try {
+      const r = await fetch('/api/accounting/close-books', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ through }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      await invalidateAll()
+    } catch (e) {
+      lockError = e instanceof Error ? e.message : String(e)
+    } finally {
+      savingLock = false
+    }
+  }
 </script>
 
 <svelte:head><title>Accounting · Blueprint</title></svelte:head>
@@ -143,14 +164,18 @@
       {/if}
     </p>
     <div class="lock-form">
-      <label>Lock through<input type="date" bind:value={lockDate} /></label>
+      <label>Through<input type="date" bind:value={lockDate} /></label>
       <button class="btn-secondary" type="button" onclick={() => saveLock(lockDate)} disabled={savingLock || !lockDate}>
         {savingLock ? 'Saving…' : 'Lock period'}
+      </button>
+      <button class="btn-secondary" type="button" onclick={() => closeBooks(lockDate)} disabled={savingLock || !lockDate}>
+        {savingLock ? 'Working…' : 'Close year-end'}
       </button>
       {#if data.closeThrough}
         <button class="btn-ghost" type="button" onclick={() => saveLock('')} disabled={savingLock}>Clear lock</button>
       {/if}
     </div>
+    <p class="lock-hint"><strong>Lock period</strong> just blocks back-dated posting. <strong>Close year-end</strong> also posts a closing entry rolling net income into Retained Earnings.</p>
     {#if lockError}<p class="error">{lockError}</p>{/if}
   </section>
 </PageShell>
@@ -202,6 +227,7 @@
   }
 
   .lock-status { font-size: 14px; color: var(--text-body); margin: 0 0 12px; }
+  .lock-hint { font-size: 12px; color: var(--text-muted); margin: 10px 0 0; }
   .lock-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
   .lock-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
   .lock-form input { font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); }
