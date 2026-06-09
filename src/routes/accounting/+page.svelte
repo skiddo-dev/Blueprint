@@ -68,6 +68,7 @@
       <a href="/accounting/ap-aging">📉 A/P Aging</a>
       <a href="/accounting/income-statement">📊 Income Statement</a>
       <a href="/accounting/balance-sheet">🏦 Balance Sheet</a>
+      <a href="/accounting/reconcile">✅ Reconcile</a>
     </nav>
     <hr style="margin: 14px 0 20px" />
   {/snippet}
