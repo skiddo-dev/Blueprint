@@ -254,6 +254,7 @@ const guard: Handle = async ({ event, resolve }) => {
       path.startsWith('/quotes') ||
       path.startsWith('/prospects') ||
       path.startsWith('/accounting') ||
+      path.startsWith('/infra') ||
       path.startsWith('/competitive-landscape')) &&
     user.role !== 'admin'
   ) {
