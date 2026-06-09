@@ -784,7 +784,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Date</th><th>Store</th><th>Point of Contact</th><th>Work Type</th><th>Amount</th><th>Status</th></tr>
+            <tr><th>Date</th><th>Store</th><th>Point of Contact</th><th>Work Type</th><th>Amount</th><th>Status</th><th>Invoice</th></tr>
           </thead>
           <tbody>
             {#each shownQuotes as q (q._id)}
@@ -806,10 +806,17 @@
                     <option value="lost">Lost</option>
                   </select>
                 </td>
+                <td>
+                  {#if (q.status ?? 'open') === 'won'}
+                    <a class="invoice-link" href="/accounting/invoices/new?quote={q._id}">Create invoice →</a>
+                  {:else}
+                    <span class="muted-note">—</span>
+                  {/if}
+                </td>
               </tr>
             {/each}
             {#if shownQuotes.length === 0}
-              <tr><td colspan="6" class="muted-note">No {quoteFilter} quotes match the filters.</td></tr>
+              <tr><td colspan="7" class="muted-note">No {quoteFilter} quotes match the filters.</td></tr>
             {/if}
           </tbody>
         </table>
@@ -902,6 +909,8 @@
   .muted-note { font-size: 11px; color: var(--text-faint); margin: 4px 2px 10px; }
   .error { color: #dc2626; font-size: 13px; margin: 6px 2px; }
   .status-select { font-size: 12px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+  .invoice-link { font-size: 12px; font-weight: 600; color: var(--primary-text); text-decoration: none; white-space: nowrap; }
+  .invoice-link:hover { text-decoration: underline; }
   .status-select.status-won { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
   .status-select.status-lost { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
   .status-select:disabled { opacity: 0.5; cursor: wait; }
