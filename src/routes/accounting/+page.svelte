@@ -80,28 +80,31 @@
       </div>
       <a class="btn-primary" href="/accounting/journal/new">+ New journal entry</a>
     </div>
-    <nav class="subnav" aria-label="Accounting sections">
-      <span class="group" role="group" aria-label="Receivables">
-        <a href="/accounting/invoices"><span class="ico">📄</span>Invoices</a>
-        <a href="/accounting/customers"><span class="ico">🤝</span>Customers</a>
-        <a href="/accounting/aging"><span class="ico">📈</span>A/R Aging</a>
-      </span>
-      <span class="group" role="group" aria-label="Payables">
-        <a href="/accounting/bills"><span class="ico">🧾</span>Bills</a>
-        <a href="/accounting/vendors"><span class="ico">🏗️</span>Vendors</a>
-        <a href="/accounting/ap-aging"><span class="ico">📉</span>A/P Aging</a>
-      </span>
-      <span class="group" role="group" aria-label="Reports">
-        <a href="/accounting/income-statement"><span class="ico">📊</span>Income Statement</a>
-        <a href="/accounting/balance-sheet"><span class="ico">🏦</span>Balance Sheet</a>
-        <a href="/accounting/cash-flow"><span class="ico">💵</span>Cash Flow</a>
-      </span>
-      <span class="group" role="group" aria-label="Banking">
-        <a href="/accounting/reconcile"><span class="ico">✅</span>Reconcile</a>
-      </span>
-    </nav>
     <hr style="margin: 14px 0 20px" />
   {/snippet}
+
+  <!-- Lives in the always-visible content (not the desktop-only head) so the
+       section links are reachable on mobile too. -->
+  <nav class="subnav" aria-label="Accounting sections">
+    <span class="group" role="group" aria-label="Receivables">
+      <a href="/accounting/invoices"><span class="ico">📄</span>Invoices</a>
+      <a href="/accounting/customers"><span class="ico">🤝</span>Customers</a>
+      <a href="/accounting/aging"><span class="ico">📈</span>A/R Aging</a>
+    </span>
+    <span class="group" role="group" aria-label="Payables">
+      <a href="/accounting/bills"><span class="ico">🧾</span>Bills</a>
+      <a href="/accounting/vendors"><span class="ico">🏗️</span>Vendors</a>
+      <a href="/accounting/ap-aging"><span class="ico">📉</span>A/P Aging</a>
+    </span>
+    <span class="group" role="group" aria-label="Reports">
+      <a href="/accounting/income-statement"><span class="ico">📊</span>Income Statement</a>
+      <a href="/accounting/balance-sheet"><span class="ico">🏦</span>Balance Sheet</a>
+      <a href="/accounting/cash-flow"><span class="ico">💵</span>Cash Flow</a>
+    </span>
+    <span class="group" role="group" aria-label="Banking">
+      <a href="/accounting/reconcile"><span class="ico">✅</span>Reconcile</a>
+    </span>
+  </nav>
 
   <section class="card">
     <div class="card-head">
@@ -192,7 +195,9 @@
   .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   h1 { margin: 0; }
   .sub { color: var(--text-muted); margin: 4px 0 0; font-size: 14px; }
-  .subnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+  .subnav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 18px; }
+  /* On mobile the desktop head (with its hr) is hidden, so add a little breathing room under the sticky top bar. */
+  @media (max-width: 768px) { .subnav { margin-top: 12px; } }
   .subnav .group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   /* thin divider between functional groups (Receivables · Payables · Reports · Banking) */
   .subnav .group:not(:first-child)::before {
