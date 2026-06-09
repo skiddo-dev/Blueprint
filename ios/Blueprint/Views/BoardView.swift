@@ -115,11 +115,11 @@ struct BoardView: View {
         case .loading:
             ProgressView("Loading board…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(hex: 0xE9EDF2))
+                .background(Color.boardBackground)
         case .failed(let message):
             ErrorState(message: message) { await load() }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(hex: 0xE9EDF2))
+                .background(Color.boardBackground)
         case .loaded:
             board
         }
@@ -142,7 +142,7 @@ struct BoardView: View {
                 }
                 .padding(16)
             }
-            .background(Color(hex: 0xE9EDF2))
+            .background(Color.boardBackground)
         }
     }
 

@@ -35,11 +35,11 @@ struct ColumnView: View {
         }
         .padding(12)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(isTargeted ? status.background : Color(hex: 0xF8FAFC),
+        .background(isTargeted ? status.background : Color.columnSurface,
                     in: RoundedRectangle(cornerRadius: 18))
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .strokeBorder(isTargeted ? status.accent : Color(hex: 0xE2E8F0),
+                .strokeBorder(isTargeted ? status.accent : Color.cardBorder,
                               lineWidth: isTargeted ? 2 : 1)
         )
         .dropDestination(for: String.self) { ids, _ in
@@ -81,6 +81,6 @@ struct ColumnView: View {
     )
     .frame(width: 290, height: 560)
     .padding()
-    .background(Color(hex: 0xE9EDF2))
+    .background(Color.boardBackground)
 }
 #endif
