@@ -37,6 +37,8 @@
     <nav class="subnav">
       <a href="/accounting/invoices">📄 Invoices</a>
       <a href="/accounting/aging">📈 A/R Aging</a>
+      <a href="/accounting/bills">🧾 Bills</a>
+      <a href="/accounting/ap-aging">📉 A/P Aging</a>
     </nav>
     <hr style="margin: 14px 0 20px" />
   {/snippet}

@@ -79,10 +79,12 @@ export function agingBucket(dueDateISO: string, asOfISO: string): AgingBucket {
   return '90+'
 }
 
-export type AgingInput = { _id: string; number: number; customer_name: string; due_date: string; balance: Cents }
+// `name` is the party (customer for A/R, vendor for A/P) — the aging logic is the
+// same for receivables and payables, so it's party-agnostic.
+export type AgingInput = { _id: string; number: number; name: string; due_date: string; balance: Cents }
 export type AgingRow = AgingInput & { bucket: AgingBucket }
 
-/** Bucket a set of open invoices by age and total each bucket. */
+/** Bucket a set of open documents (invoices or bills) by age and total each bucket. */
 export function buildAging(
   open: AgingInput[],
   asOfISO: string,

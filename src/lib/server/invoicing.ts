@@ -12,7 +12,8 @@
 // before anything persists, so there's no torn state to begin with.
 import type { ClientSession } from 'mongodb'
 import { env } from '$env/dynamic/private'
-import { getDb, getClient } from './db'
+import { getDb } from './db'
+import { withTxn } from './txn'
 import { postEntry } from './accounting'
 import { cents, type Cents } from '$lib/money'
 import {
@@ -25,40 +26,6 @@ const USE_MOCK = env.USE_MOCK_DATA === 'true'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function col(name: string, d: Awaited<ReturnType<typeof getDb>>) { return d.collection<any>(name) }
-
-// ── Transaction helper ────────────────────────────────────────────────────────
-let txnSupported: boolean | null = null
-
-function isTxnUnsupported(e: unknown): boolean {
-  const err = e as { code?: number; codeName?: string; message?: string }
-  const msg = String(err?.message ?? '')
-  return (
-    err?.code === 20 ||
-    err?.codeName === 'IllegalOperation' ||
-    /Transaction numbers are only allowed on a replica set member or mongos|Transactions are not supported|does not support transactions/i.test(msg)
-  )
-}
-
-/** Run `fn` inside a transaction when supported, else without a session. */
-export async function withTxn<T>(fn: (session?: ClientSession) => Promise<T>): Promise<T> {
-  if (txnSupported === false) return fn(undefined)
-  const client = await getClient()
-  const session = client.startSession()
-  try {
-    let result!: T
-    await session.withTransaction(async () => { result = await fn(session) })
-    txnSupported = true
-    return result
-  } catch (e) {
-    if (isTxnUnsupported(e)) {
-      txnSupported = false
-      return fn(undefined) // standalone dev: re-run sequentially (nothing persisted under the session)
-    }
-    throw e
-  } finally {
-    await session.endSession()
-  }
-}
 
 // ── Customers ─────────────────────────────────────────────────────────────────
 export async function listCustomers(): Promise<Customer[]> {
@@ -254,7 +221,7 @@ export async function getArAging(asOf?: string) {
     open.map((i) => ({
       _id: String(i._id),
       number: i.number as number,
-      customer_name: i.customer_name as string,
+      name: i.customer_name as string,
       due_date: i.due_date as string,
       balance: i.balance as Cents,
     })),

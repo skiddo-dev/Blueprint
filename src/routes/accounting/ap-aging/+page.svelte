@@ -13,12 +13,12 @@
   const labels: Record<string, string> = { current: 'Current', '1-30': '1–30 days', '31-60': '31–60 days', '61-90': '61–90 days', '90+': '90+ days' }
 </script>
 
-<svelte:head><title>A/R Aging · Blueprint</title></svelte:head>
+<svelte:head><title>A/P Aging · Blueprint</title></svelte:head>
 
-<PageShell {user} title="📈 A/R Aging" maxWidth="1000px">
+<PageShell {user} title="📉 A/P Aging" maxWidth="1000px">
   {#snippet head()}
-    <h1>📈 A/R Aging</h1>
-    <p class="sub"><a href="/accounting">Accounting</a> · Receivables by age</p>
+    <h1>📉 A/P Aging</h1>
+    <p class="sub"><a href="/accounting">Accounting</a> · Payables by age</p>
     <hr style="margin: 14px 0 20px" />
   {/snippet}
 
@@ -30,21 +30,21 @@
       </div>
     {/each}
     <div class="bucket total">
-      <span class="b-label">Total outstanding</span>
+      <span class="b-label">Total owed</span>
       <span class="b-amount">{usd(aging.total)}</span>
     </div>
   </div>
 
   <section class="card">
-    <div class="card-head"><h2>Open invoices</h2></div>
+    <div class="card-head"><h2>Open bills</h2></div>
     {#if aging.rows.length === 0}
-      <p class="empty">Nothing outstanding — all invoices are paid. 🎉</p>
+      <p class="empty">Nothing owed — all bills are paid. 🎉</p>
     {:else}
       <table>
-        <thead><tr><th>#</th><th>Customer</th><th>Due</th><th>Age</th><th class="num">Balance</th></tr></thead>
+        <thead><tr><th>#</th><th>Vendor</th><th>Due</th><th>Age</th><th class="num">Balance</th></tr></thead>
         <tbody>
           {#each aging.rows as r (r._id)}
-            <tr onclick={() => (window.location.href = `/accounting/invoices/${r._id}`)}>
+            <tr onclick={() => (window.location.href = `/accounting/bills/${r._id}`)}>
               <td class="mono">#{r.number}</td>
               <td>{r.name}</td>
               <td class="mono">{r.due_date}</td>

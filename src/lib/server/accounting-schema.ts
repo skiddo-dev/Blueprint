@@ -31,6 +31,12 @@ export async function ensureAccountingIndexes(d: Db): Promise<void> {
     col(d, 'invoices').createIndex({ customer_id: 1 }),
     col(d, 'invoices').createIndex({ quote_id: 1 }),           // won-quote → invoice link
     col(d, 'payments').createIndex({ invoice_id: 1 }),         // payments for an invoice
+    // ── Accounts payable (Phase 3) ──
+    col(d, 'vendors').createIndex({ name_lower: 1 }),          // find-or-create by name
+    col(d, 'bills').createIndex({ year: 1, number: 1 }, { unique: true }), // sequential per year
+    col(d, 'bills').createIndex({ status: 1, due_date: 1 }),   // A/P aging scan
+    col(d, 'bills').createIndex({ vendor_id: 1 }),
+    col(d, 'billPayments').createIndex({ bill_id: 1 }),        // payments for a bill
   ])
 }
 

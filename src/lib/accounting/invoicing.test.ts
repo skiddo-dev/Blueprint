@@ -90,9 +90,9 @@ describe('agingBucket', () => {
 describe('buildAging', () => {
   it('totals balances per bucket and overall', () => {
     const open = [
-      { _id: 'a', number: 1, customer_name: 'Acme', due_date: '2026-06-30', balance: cents(10000) }, // current
-      { _id: 'b', number: 2, customer_name: 'Acme', due_date: '2026-06-01', balance: cents(5000) },  // 1-30 (8 days late)
-      { _id: 'c', number: 3, customer_name: 'Globex', due_date: '2026-03-01', balance: cents(2500) },// 90+
+      { _id: 'a', number: 1, name: 'Acme', due_date: '2026-06-30', balance: cents(10000) }, // current
+      { _id: 'b', number: 2, name: 'Acme', due_date: '2026-06-01', balance: cents(5000) },  // 1-30 (8 days late)
+      { _id: 'c', number: 3, name: 'Globex', due_date: '2026-03-01', balance: cents(2500) },// 90+
     ]
     const aging = buildAging(open, '2026-06-09')
     expect(aging.buckets.current).toBe(10000)

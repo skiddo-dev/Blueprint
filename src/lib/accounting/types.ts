@@ -113,6 +113,59 @@ export interface Payment {
   created_at: string
 }
 
+// ── Accounts payable (Phase 3) ────────────────────────────────────────────────
+// A vendor/supplier/subcontractor we owe. Mirror of Customer.
+export interface Vendor {
+  _id: string
+  name: string
+  name_lower: string
+  email?: string
+  created_at: string
+}
+
+// A bill line is a cost categorized to an expense/COGS account — its debit side.
+// (Unlike an invoice line, the account varies per line: job materials, subs, etc.)
+export interface BillLine {
+  account_id: string  // → Account._id; an expense/COGS account (the debit)
+  description: string
+  amount: Cents
+}
+
+// A vendor bill (money we owe). Posting it books Dr <expense/COGS per line> /
+// Cr Accounts Payable, in the same transaction as the insert. Mirror of Invoice;
+// payments reduce `balance` and advance `status`.
+export interface Bill {
+  _id: string
+  number: number          // internal sequential reference, per year
+  year: number
+  vendor_id: string
+  vendor_name: string
+  bill_date: string       // ISO YYYY-MM-DD
+  due_date: string
+  lines: BillLine[]
+  total: Cents            // sum of line amounts
+  paid: Cents
+  balance: Cents
+  status: 'open' | 'partial' | 'paid' | 'void'
+  vendor_invoice_no?: string // the vendor's own invoice number
+  po?: string
+  memo?: string
+  created_by?: string
+  created_at: string
+  updated_at?: string
+}
+
+// A payment we made against a bill. Posting it books Dr A/P / Cr Cash.
+export interface BillPayment {
+  _id: string
+  bill_id: string
+  amount: Cents
+  date: string
+  method?: string
+  created_by?: string
+  created_at: string
+}
+
 // ── Trial balance ───────────────────────────────────────────────────────────────
 // One row per account that has postings: total debits, total credits, and the
 // signed net in the debit direction (net > 0 lands in the debit column of the
