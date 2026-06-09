@@ -6,7 +6,7 @@
 // (job-costed books, A/R + A/P, statements, period close, invoice/bill PDFs)
 // as the next funded phase after Field Rollout + Reliability.
 
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 
@@ -291,6 +291,61 @@ function addDeliverSlide(presentation) {
   addFooter(slide, 5)
 }
 
+// Walkthrough screenshots: docs/books-screenshots/ (2x captures of the deployed
+// V3 UI over seeded demo books — see that folder's README for the cast/recipe).
+const SHOTS_DIR = join(DOCS, 'books-screenshots')
+const SHOT_ASPECT = 1900 / 3000
+
+function addScreenshot(slide, file, x, y, w, caption) {
+  const h = Math.round(w * SHOT_ASPECT)
+  addShape(slide, { x: x - 2, y: y - 2, w: w + 4, h: h + 4, fill: C.line })
+  const img = slide.images.add({
+    data: readFileSync(join(SHOTS_DIR, file)),
+    contentType: 'image/png',
+  })
+  img.position = { left: x, top: y, width: w, height: h }
+  if (caption) {
+    addText(slide, caption, x, y + h + 10, w + 20, 40, { size: 13, color: C.gray, fill: C.light })
+  }
+  return h
+}
+
+function addWalkthroughHeroSlide(presentation) {
+  const slide = presentation.slides.add()
+  addShape(slide, { x: 0, y: 0, w: W, h: H, fill: C.light })
+  addScreenshot(slide, '01-overview.png', 72, 204, 720)
+  addHeader(
+    slide,
+    'Product walkthrough',
+    'Already built — this is the live product, not a mockup.',
+    'Screenshots from the deployed module with demo books loaded; every figure ties out.',
+  )
+  smallCard(slide, 'Money at a glance', 'Cash, A/R, A/P, and profit — each with month-over-month direction.', 860, 204, 348, 120, C.green)
+  smallCard(slide, 'Trend, not guesswork', 'Six months of revenue vs expenses, with net income per month.', 860, 340, 348, 120, C.cyan)
+  smallCard(slide, 'Urgency built in', 'Overdue invoices and bills due this week surface themselves.', 860, 476, 348, 120, C.amber)
+  addFooter(slide, 6)
+}
+
+function addWalkthroughFlowsSlide(presentation) {
+  const slide = presentation.slides.add()
+  addShape(slide, { x: 0, y: 0, w: W, h: H, fill: C.light })
+  addHeader(slide, 'Product walkthrough', 'From invoice to clean statements.', null)
+  addScreenshot(slide, '02-invoices.png', 72, 206, 368, 'Invoices: status filters, overdue flags, payment progress')
+  addScreenshot(slide, '04-income-statement.png', 456, 206, 368, 'Income statement: one-click periods, print for the bank')
+  addScreenshot(slide, '08-reconcile.png', 840, 206, 368, 'Bank reconciliation: tick to zero, CSV auto-match')
+  smallCard(
+    slide,
+    'Also in the product',
+    'Vendor bills and A/P, customer and vendor directories, A/R + A/P aging, balance sheet, cash flow, journal and trial balance, period close, invoice/bill PDFs, dark mode.',
+    72,
+    512,
+    1136,
+    110,
+    C.blue,
+  )
+  addFooter(slide, 7)
+}
+
 function addCommercialSlide(presentation) {
   const slide = presentation.slides.add()
   addShape(slide, { x: 0, y: 0, w: W, h: H, fill: C.light })
@@ -313,7 +368,7 @@ function addCommercialSlide(presentation) {
   smallCard(slide, 'Books Complete', '$28,000 adds bank reconciliation, cash-flow statement, data migration from current books, and 30-day hypercare.', 646, 246, 250, 172, C.amber)
   smallCard(slide, 'Books Care', 'Optional monthly lane for month-end review, reconciliation checks, and small accounting changes.', 930, 246, 250, 172, C.green)
   smallCard(slide, 'Builds on what is shipped', 'The ledger, A/R, A/P, statements, period close, and invoice/bill PDFs are already built. This phase tailors and rolls them out for Raves.', 646, 456, 534, 120, C.blue)
-  addFooter(slide, 6)
+  addFooter(slide, 8)
 }
 
 function addMapSlide(presentation) {
@@ -356,7 +411,7 @@ function addMapSlide(presentation) {
       })
     }
   })
-  addFooter(slide, 7)
+  addFooter(slide, 9)
 }
 
 function addAskSlide(presentation) {
@@ -383,7 +438,7 @@ function addAskSlide(presentation) {
   smallCard(slide, 'Next artifact', 'One-page Books SOW and opening-balance checklist.', 160, 532, 280, 96, C.green)
   smallCard(slide, 'Next meeting', 'Kickoff once opening balances are confirmed.', 500, 532, 280, 96, C.cyan)
   smallCard(slide, 'Next offer', 'Books Care after go-live for monthly close support.', 840, 532, 280, 96, C.amber)
-  addFooter(slide, 8, true)
+  addFooter(slide, 10, true)
 }
 
 async function writeBlob(blob, path) {
@@ -426,6 +481,8 @@ addProofSlide(presentation)
 addSystemMapSlide(presentation)
 addRiskSlide(presentation)
 addDeliverSlide(presentation)
+addWalkthroughHeroSlide(presentation)
+addWalkthroughFlowsSlide(presentation)
 addCommercialSlide(presentation)
 addMapSlide(presentation)
 addAskSlide(presentation)
