@@ -25,7 +25,10 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          # Pinned to 22 to match the production runtime (node:22-alpine in the
+          # Dockerfile) and the engines field in package.json — CI must exercise
+          # the same major Node serves on, not a newer one.
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
