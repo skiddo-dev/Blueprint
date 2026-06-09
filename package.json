@@ -10,6 +10,7 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test": "vitest run",
     "test:watch": "vitest",
+    "build:raves-books-pitch-deck": "node --no-warnings scripts/build-raves-books-pitch-deck.mjs",
     "gen:ios": "node scripts/gen-ios-config.ts",
     "gen:ios:check": "node scripts/gen-ios-config.ts && git diff --exit-code -- ios/Blueprint/Models/BlueprintConfig.generated.swift"
   },
