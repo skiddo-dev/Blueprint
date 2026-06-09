@@ -1,7 +1,8 @@
 <script lang="ts">
-  import PageShell from '$lib/components/PageShell.svelte'
+  import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto } from '$app/navigation'
   import { parseMoney } from '$lib/money'
+  import { usd } from '$lib/accounting/format'
   import { dueDate } from '$lib/accounting/invoicing'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -33,7 +34,6 @@
     if (!t) return NaN
     try { return parseMoney(t) } catch { return NaN }
   }
-  const usd = (c: number) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 
   let amounts = $derived(lines.map((l) => amtCents(l.amount)))
   let total = $derived(amounts.reduce((a, n) => a + (Number.isFinite(n) ? n : 0), 0))
@@ -76,81 +76,72 @@
 
 <svelte:head><title>New bill · Blueprint</title></svelte:head>
 
-<PageShell {user} title="🧾 New bill" maxWidth="860px">
-  {#snippet head()}
-    <h1>🧾 New bill</h1>
-    <p class="sub"><a href="/accounting/bills">Bills</a> · New</p>
-    <hr style="margin: 14px 0 20px" />
-  {/snippet}
+<AccountingShell {user} title="🧾 New bill" maxWidth="860px"
+  crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Bills', href: '/accounting/bills' }, { label: 'New' }]}>
+  <section class="card">
+    <div class="meta-grid">
+      <label class="grow">Vendor
+        <input type="text" list="vendor-list" bind:value={vendorName} placeholder="Vendor / subcontractor" />
+        <datalist id="vendor-list">{#each vendors as v (v._id)}<option value={v.name}></option>{/each}</datalist>
+      </label>
+      <label class="grow">Email (optional)<input type="email" bind:value={vendorEmail} placeholder="ap@vendor.com" /></label>
+    </div>
+    <div class="meta-grid">
+      <label>Bill date<input type="date" bind:value={billDate} /></label>
+      <label>Net days<input type="number" min="0" bind:value={netDays} /></label>
+      <label>Due date<input type="text" value={due} readonly class="readonly" /></label>
+      <label>Vendor inv #<input type="text" bind:value={vendorInvoiceNo} placeholder="optional" /></label>
+      <label>PO<input type="text" bind:value={po} placeholder="optional" /></label>
+    </div>
 
-  <div class="meta-grid">
-    <label class="grow">Vendor
-      <input type="text" list="vendor-list" bind:value={vendorName} placeholder="Vendor / subcontractor" />
-      <datalist id="vendor-list">{#each vendors as v (v._id)}<option value={v.name}></option>{/each}</datalist>
-    </label>
-    <label class="grow">Email (optional)<input type="email" bind:value={vendorEmail} placeholder="ap@vendor.com" /></label>
-  </div>
-  <div class="meta-grid">
-    <label>Bill date<input type="date" bind:value={billDate} /></label>
-    <label>Net days<input type="number" min="0" bind:value={netDays} /></label>
-    <label>Due date<input type="text" value={due} readonly class="readonly" /></label>
-    <label>Vendor inv #<input type="text" bind:value={vendorInvoiceNo} placeholder="optional" /></label>
-    <label>PO<input type="text" bind:value={po} placeholder="optional" /></label>
-  </div>
+    <div class="lines">
+      <div class="lines-head"><span>Expense account</span><span>Description</span><span class="num">Amount</span><span></span></div>
+      {#each lines as line, i (i)}
+        <div class="line">
+          <select bind:value={line.account_id} aria-label="Account">
+            <option value="" disabled>Select account…</option>
+            {#each accounts as a (a.code)}<option value={a.code}>{a.code} · {a.name}</option>{/each}
+          </select>
+          <input type="text" bind:value={line.description} placeholder="What was this for?" aria-label="Description" />
+          <input class="num" type="text" inputmode="decimal" bind:value={line.amount} placeholder="0.00" aria-label="Amount" />
+          <button class="remove" type="button" onclick={() => removeLine(i)} disabled={lines.length <= 1} aria-label="Remove line">✕</button>
+        </div>
+      {/each}
+      <button class="add" type="button" onclick={addLine}>+ Add line</button>
+    </div>
 
-  <div class="lines">
-    <div class="lines-head"><span>Expense account</span><span>Description</span><span class="num">Amount</span><span></span></div>
-    {#each lines as line, i (i)}
-      <div class="line">
-        <select bind:value={line.account_id} aria-label="Account">
-          <option value="" disabled>Select account…</option>
-          {#each accounts as a (a.code)}<option value={a.code}>{a.code} · {a.name}</option>{/each}
-        </select>
-        <input type="text" bind:value={line.description} placeholder="What was this for?" aria-label="Description" />
-        <input class="num" type="text" inputmode="decimal" bind:value={line.amount} placeholder="0.00" aria-label="Amount" />
-        <button class="remove" type="button" onclick={() => removeLine(i)} disabled={lines.length <= 1} aria-label="Remove line">✕</button>
-      </div>
-    {/each}
-    <button class="add" type="button" onclick={addLine}>+ Add line</button>
-  </div>
+    <div class="totals">
+      <span>Total</span><span class="num">{usd(total)}</span>
+    </div>
 
-  <div class="totals">
-    <span>Total</span><span class="num">{usd(total)}</span>
-  </div>
+    <label class="memo">Memo (optional)<input type="text" bind:value={memo} placeholder="Notes for this bill" /></label>
 
-  <label class="memo">Memo (optional)<input type="text" bind:value={memo} placeholder="Notes for this bill" /></label>
+    {#if error}<p class="error">{error}</p>{/if}
 
-  {#if error}<p class="error">{error}</p>{/if}
-
-  <div class="actions">
-    <a class="btn-secondary" href="/accounting/bills">Cancel</a>
-    <button class="btn-primary" type="button" onclick={submit} disabled={!canSubmit}>
-      {saving ? 'Creating…' : 'Create & post bill'}
-    </button>
-  </div>
-</PageShell>
+    <div class="actions">
+      <a class="btn-secondary" href="/accounting/bills">Cancel</a>
+      <button class="btn-primary" type="button" onclick={submit} disabled={!canSubmit}>
+        {saving ? 'Creating…' : 'Create & post bill'}
+      </button>
+    </div>
+  </section>
+</AccountingShell>
 
 <style>
-  h1 { margin: 0; }
-  .sub { color: var(--text-muted); margin: 4px 0 0; font-size: 14px; }
-  .sub a { color: var(--primary-text); text-decoration: none; }
-
+  /* Bespoke bill-form layout; shared primitives come from accounting.css. */
   label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text-body); }
-  input, select { font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); width: 100%; }
-  input:focus, select:focus { outline: none; border-color: var(--primary); }
-  .readonly { background: var(--card-bg); color: var(--text-muted); }
+  .meta-grid input, .line input, .line select, .memo input { width: 100%; }
 
   .meta-grid { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
   .meta-grid .grow { flex: 1; min-width: 220px; }
   .meta-grid > label { flex: 1; min-width: 110px; }
 
-  .lines { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+  .lines { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
   .lines-head, .line { display: grid; grid-template-columns: 2fr 2.4fr 1.2fr 34px; gap: 8px; align-items: center; }
   .lines-head { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; padding: 0 2px 6px; }
   .line { margin-bottom: 8px; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
   input.num { text-align: right; }
-  .remove { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text-muted); height: 34px; cursor: pointer; }
+  .remove { background: var(--card-bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text-muted); height: 34px; cursor: pointer; }
   .remove:hover:not(:disabled) { border-color: #fca5a5; color: #dc2626; }
   .remove:disabled { opacity: 0.4; cursor: not-allowed; }
   .add { margin-top: 4px; background: none; border: 1px dashed var(--border); border-radius: 7px; color: var(--primary-text); padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -160,11 +151,7 @@
   .totals .num { min-width: 120px; }
 
   .memo { margin-top: 14px; }
-  .error { color: #dc2626; font-size: 13px; background: #fee2e2; border-radius: 8px; padding: 8px 12px; margin-top: 12px; }
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
-  .btn-primary { background: var(--primary); color: #fff; border: 1px solid var(--primary); border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-secondary { background: var(--bg); color: var(--text-body); border: 1px solid var(--border); border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; text-decoration: none; }
 
   @media (max-width: 640px) {
     .lines-head { display: none; }
