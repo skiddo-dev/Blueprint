@@ -17,6 +17,7 @@
 
 <AccountingShell {user} title="📉 A/P Aging" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Payables by age' }]}>
+  <p class="report-hint">Money you owe vendors, grouped by how many days past due each bill is — anything right of "Current" is late and may strain the relationship.</p>
   <div class="aging-top">
     <AgingBars title="Payables by age" buckets={aging.buckets} total={aging.total} />
   </div>

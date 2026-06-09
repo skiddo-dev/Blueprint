@@ -6,7 +6,7 @@ import { env } from '$env/dynamic/private'
 import { getDb, getMeta, setMeta } from './db'
 import { DEFAULT_CHART_OF_ACCOUNTS } from '$lib/accounting/coa'
 import { buildReversingEntry, periodOf, validateEntry } from '$lib/accounting/ledger'
-import { isPeriodClosed, type Balance } from '$lib/accounting/statements'
+import { isPeriodClosed, type Balance, type PeriodBalance } from '$lib/accounting/statements'
 import { closingEntryLines } from '$lib/accounting/closing'
 import type { Cents } from '$lib/money'
 import type { Account, JournalEntry, JournalEntryInput, TrialBalanceRow } from '$lib/accounting/types'
@@ -199,6 +199,30 @@ export async function getLedgerBalances(
     { $group: { _id: '$lines.account_id', debit: { $sum: '$lines.debit' }, credit: { $sum: '$lines.credit' } } },
   ]).toArray()
   return grouped.map((g) => ({ account_id: String(g._id), debit: g.debit as Cents, credit: g.credit as Cents }))
+}
+
+/** Per-account totals bucketed by posting month (`period` on each entry), over
+ *  ALL posted non-closing entries — the hub folds these into the monthly P&L
+ *  trend and cash sparkline via monthlyActivity(). The books are young enough
+ *  that returning every month is cheaper than two windowed queries. */
+export async function getPeriodBalances(): Promise<PeriodBalance[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const grouped = await col('journalEntries', d).aggregate([
+    { $match: { status: 'posted', source: { $ne: 'closing' } } },
+    { $unwind: '$lines' },
+    { $group: {
+      _id: { period: '$period', account_id: '$lines.account_id' },
+      debit: { $sum: '$lines.debit' },
+      credit: { $sum: '$lines.credit' },
+    } },
+  ]).toArray()
+  return grouped.map((g) => ({
+    period: String((g._id as { period: string }).period),
+    account_id: String((g._id as { account_id: string }).account_id),
+    debit: g.debit as Cents,
+    credit: g.credit as Cents,
+  }))
 }
 
 // ── Period close ──────────────────────────────────────────────────────────────

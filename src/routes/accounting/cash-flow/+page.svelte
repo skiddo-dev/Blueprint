@@ -17,6 +17,11 @@
 
 <AccountingShell {user} title="💵 Cash Flow" maxWidth="760px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Statement of Cash Flows' }]}>
+  {#snippet actions()}
+    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+  {/snippet}
+
+  <p class="report-hint">Where the cash actually moved over the period — money in and out of the bank, grouped by day-to-day operations, equipment, and financing.</p>
   <DateRange from={data.from} to={data.to} base="/accounting/cash-flow" />
 
   <section class="card">

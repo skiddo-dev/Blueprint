@@ -58,6 +58,7 @@
     </div>
     {#if customers.length === 0}
       <p class="empty">No customers yet. They're created automatically when you raise an invoice.</p>
+      <p><a class="btn-primary" href="/accounting/invoices/new">+ Create your first invoice</a></p>
     {:else}
       <div class="table-wrap">
         <table>
@@ -80,7 +81,7 @@
                 </tr>
               {:else}
                 <tr>
-                  <td>{c.name}</td>
+                  <td><span class="party"><span class="avatar">{c.name.trim().slice(0, 1).toUpperCase()}</span>{c.name}</span></td>
                   <td class="muted">{c.email ?? '—'}</td>
                   <td class="num">{c.invoiceCount}</td>
                   <td class="num">{usd(c.totalInvoiced)}</td>

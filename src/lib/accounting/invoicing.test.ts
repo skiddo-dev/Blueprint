@@ -3,7 +3,7 @@ import { cents } from '$lib/money'
 import { isBalanced } from './ledger'
 import {
   ACCT, lineAmount, invoiceTotals, invoiceStatus, invoiceJournalLines, paymentJournalLines,
-  daysBetween, agingBucket, buildAging, dueDate, AGING_BUCKETS,
+  daysBetween, agingBucket, buildAging, dueDate, dueWithin, AGING_BUCKETS,
 } from './invoicing'
 
 describe('lineAmount / invoiceTotals', () => {
@@ -106,5 +106,22 @@ describe('buildAging', () => {
     const aging = buildAging([], '2026-06-09')
     expect(aging.total).toBe(0)
     expect(AGING_BUCKETS.every((b) => aging.buckets[b] === 0)).toBe(true)
+  })
+})
+
+describe('dueWithin', () => {
+  const r = (due_date: string, balance: number) => ({ due_date, balance: cents(balance) })
+  it('sums balances due on or before asOf + days, including overdue', () => {
+    const rows = [
+      r('2026-06-01', 1000), // overdue — still counts
+      r('2026-06-12', 2000), // due within the window
+      r('2026-06-16', 4000), // exactly asOf + 7
+      r('2026-06-17', 8000), // outside the window
+    ]
+    expect(dueWithin(rows, '2026-06-09', 7)).toBe(7000)
+  })
+  it('is 0 for no rows and excludes everything with a 0-day window unless due today or earlier', () => {
+    expect(dueWithin([], '2026-06-09', 7)).toBe(0)
+    expect(dueWithin([r('2026-06-09', 500), r('2026-06-10', 900)], '2026-06-09', 0)).toBe(500)
   })
 })

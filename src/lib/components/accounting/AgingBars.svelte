@@ -4,7 +4,7 @@
   // from getArAging()/getApAging(). Reused on the hub and the two aging pages.
   import Chart from '$lib/components/Chart.svelte'
   import { AGING_BUCKETS, type AgingBucket } from '$lib/accounting/invoicing'
-  import { usd } from '$lib/accounting/format'
+  import { usd, usdCompact } from '$lib/accounting/format'
   import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
 
   let {
@@ -51,7 +51,7 @@
       },
     },
     scales: {
-      x: { stacked: true, beginAtZero: true, ticks: { font: { size: 10 }, callback: (v) => usd(Math.round(Number(v) * 100)) } },
+      x: { stacked: true, beginAtZero: true, ticks: { font: { size: 10 }, callback: (v) => usdCompact(Math.round(Number(v) * 100)) } },
       y: { stacked: true, grid: { display: false }, ticks: { display: false } },
     },
   }

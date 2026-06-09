@@ -101,6 +101,12 @@ export function buildAging(
   return { buckets, total: sumCents(AGING_BUCKETS.map((b) => buckets[b])), rows }
 }
 
+/** Total balance due on or before `asOf + days` — overdue items included, since
+ *  they're also money that must move this week. Feeds the hub's urgency chips. */
+export function dueWithin(rows: { due_date: string; balance: Cents }[], asOfISO: string, days: number): Cents {
+  return cents(rows.reduce((t, r) => t + (daysBetween(r.due_date, asOfISO) >= -days ? r.balance : 0), 0))
+}
+
 /** Due date = issue date + net terms (days), as an ISO YYYY-MM-DD string. */
 export function dueDate(issueISO: string, netDays: number): string {
   const d = new Date(`${issueISO}T00:00:00Z`)

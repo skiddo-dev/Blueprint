@@ -15,6 +15,11 @@
 
 <AccountingShell {user} title="📊 Income Statement" maxWidth="760px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Profit & Loss' }]}>
+  {#snippet actions()}
+    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+  {/snippet}
+
+  <p class="report-hint">What the business earned over the period: revenue, minus the cost of doing the jobs, minus overhead — ending at net income.</p>
   <DateRange from={data.from} to={data.to} base="/accounting/income-statement" />
 
   <section class="card">
