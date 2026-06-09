@@ -2,8 +2,8 @@
 
 A complete walkthrough of Blueprint for **Administrators**. Admins have the full
 app: the whole Kanban board (everyone's tasks), user management, email sync, and
-the four admin-only workspaces — **Dashboard**, **Quote Generator**, **Prospects**,
-and **Competitive Landscape**.
+the five admin-only workspaces — **Dashboard**, **Quote Generator**,
+**📒 Accounting (Blueprint Books)**, **Prospects**, and **Competitive Landscape**.
 
 > **Two roles.** Blueprint has **Admin** and **PM**. PMs are limited to their own
 > tasks on the board; admins see and run everything. If you're looking for the
@@ -57,7 +57,7 @@ What's different with admin rights:
 - **👥 User Access** — add, update, and remove users, set their role, and see who's
   **active this week** and each person's **last-active** time (§3).
 - **📥 Import Tasks (CSV)** — bulk-create tasks from a spreadsheet (§3).
-- **⚠️ Danger Zone → Clear All Tasks** — bulk-delete (§9).
+- **⚠️ Danger Zone → Clear All Tasks** — bulk-delete (§10).
 - **📖 Help & Guide** — opens this guide (the PDF) in a new tab. PMs get the PM
   guide from the same link.
 
@@ -253,7 +253,97 @@ nothing to edit here.
 
 ---
 
-## 9. Global search & the danger zone
+## 9. 📒 Blueprint Books — Accounting
+
+Blueprint's built-in **double-entry bookkeeping**: invoices and receivables,
+vendor bills and payables, financial statements, bank reconciliation, and a
+period close — all in the same app as the board and quotes, no QuickBooks
+round-trips. Every page shares a section nav
+(**Overview · Receivables · Payables · Reports · Banking**) so you're never more
+than one click from any part of the books.
+
+### The Overview hub
+
+Open **📒 Accounting** in the nav. The top of the page answers *"how are we
+doing?"* at a glance:
+
+- **KPI tiles** — **Cash on hand** (with this month's change and a 6-month
+  sparkline), **A/R outstanding** (with the overdue slice in red), **A/P
+  outstanding** (with what's **due within 7 days**), and **Net income YTD**
+  (with this month's figure). The A/R, A/P, and net-income tiles click through
+  to their detail pages.
+- **Revenue vs expenses** — a month-by-month chart of the last 6 months;
+  hover a month to see exact figures and the net.
+- **A/R & A/P aging** — how old your open invoices and bills are, color-graded
+  from current (green) to 90+ days (red).
+- **Recent journal entries**, a collapsible **Trial Balance** (with an
+  in-balance check), and the **Period close** card (below).
+
+### Invoices & getting paid (Receivables)
+
+- **📄 Invoices** — the working list. **Filter pills** (All / Open / Overdue /
+  Paid, with counts) plus a **search box** (customer or number). Due dates read
+  as urgency — *"Due in 12d"*, *"20d overdue"* in red with the whole row
+  tinted — and each row carries a **payment progress bar** and the footer totals
+  the filtered set.
+- **+ New invoice** — line items with live totals and tax; or **start from a won
+  quote** (also reachable straight from the Dashboard quote tracker's
+  *Create invoice →* link) so the amounts and PO carry over.
+- **Invoice detail** — record payments (amount / date / method) as they arrive;
+  status moves **open → partial → paid** automatically and every payment posts
+  its own journal entry. **⬇ PDF** downloads a client-ready invoice.
+- **🤝 Customers** — one line per customer with invoice count, total invoiced,
+  and outstanding balance; edit names/emails inline (renames propagate to their
+  invoices).
+- **📈 A/R Aging** — open invoices bucketed by days past due, chart on top,
+  click any row to open the invoice.
+
+### Bills & what you owe (Payables)
+
+Mirrors receivables: **🧾 Bills** (same filters, urgency dates, progress bars),
+**+ New bill** (each line books to an expense account — job materials,
+subcontractors, rent…), bill detail with payments and **⬇ PDF**, **🏗️ Vendors**
+directory, and **📉 A/P Aging**.
+
+### Reports
+
+Three financial statements, each with **one-click period buttons**
+(*This month · Last month · This quarter · YTD* — the balance sheet gets
+*Today · End of last month · End of last year*), a plain-English line explaining
+what the report shows, and a **🖨 Print** button that strips the app chrome for
+a clean handoff to your bank or accountant:
+
+- **📊 Income Statement** — revenue − cost of goods sold = gross profit, less
+  operating expenses = **net income**.
+- **🏦 Balance Sheet** — what the business owns vs owes on a date, with a
+  **✓ Balanced** badge.
+- **💵 Cash Flow** — where cash actually moved: operations, equipment,
+  financing.
+
+### ✅ Bank reconciliation
+
+Match the books to a bank statement: pick the bank account, enter the
+**statement date and ending balance**, then tick transactions until the
+**difference reads $0.00 ✓** — only then does **Finish reconciliation** enable.
+Optionally **paste your bank's CSV export** and Blueprint auto-ticks the
+matching amounts. Past reconciliations are listed per account.
+
+### Period close & corrections
+
+On the Overview hub:
+
+- **Lock period** — blocks anything from posting on or before the chosen date
+  (back-dating protection once a month is finalized).
+- **Close year-end** — additionally posts the closing entry that rolls net
+  income into **Retained Earnings**, then locks.
+
+Blueprint Books is **append-only**: corrections are posted as **reversing
+entries**, never edits — so the audit trail is always intact. Money is stored
+as exact cents; the books balance to the penny or the entry doesn't post.
+
+---
+
+## 10. Global search & the danger zone
 
 **Global search (⌘K / Ctrl+K)** — as an admin, search spans **tasks, quotes, and
 prospects** (PMs only get their own tasks). Match by store #, PO, vendor,
@@ -266,7 +356,7 @@ button enables. Use with care — there's no undo.
 
 ---
 
-## 10. Shared basics (same as PM)
+## 11. Shared basics (same as PM)
 
 These behave identically for both roles — see the **[PM Guide](pm-user-guide.md)**
 for the details:
@@ -305,6 +395,7 @@ for the details:
 | **⚠️ Clear All Tasks** | Permanently delete all tasks |
 | **📊 Dashboard** | Quote analytics, win rates, pipeline |
 | **💰 Quote Generator** | Proposal PDFs (auto-logged to analytics) |
+| **📒 Accounting** | Blueprint Books — invoices/A-R, bills/A-P, statements, reconciliation, period close |
 | **🏭 Prospects** | Warehouse lead pipeline + map (live OSM + county data) |
 | **🗺️ Competitive Landscape** | Embedded market sheet |
 
