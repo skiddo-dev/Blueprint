@@ -77,9 +77,14 @@ platform :ios do
 
     # 5. Upload to TestFlight. Internal testers get it automatically once Apple
     #    finishes processing; external distribution is left off (enable in App
-    #    Store Connect when you're ready).
+    #    Store Connect when you're ready). The build's "What to Test" notes come
+    #    from TESTFLIGHT_CHANGELOG if set, else fastlane/changelog.txt.
+    changelog = ENV["TESTFLIGHT_CHANGELOG"]
+    changelog_file = File.expand_path("changelog.txt", __dir__)
+    changelog ||= File.read(changelog_file).strip if File.exist?(changelog_file)
     upload_to_testflight(
       api_key: api_key,
+      changelog: changelog,
       skip_waiting_for_build_processing: true,
       distribute_external: false,
     )

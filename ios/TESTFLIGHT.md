@@ -64,6 +64,10 @@ This runs `xcodegen generate`, bumps the build number past the latest on
 TestFlight, archives a Release build, exports a signed App Store `.ipa` (via
 [`ExportOptions.plist`](ExportOptions.plist)), and uploads it.
 
+The build's **"What to Test"** notes are taken from
+[`fastlane/changelog.txt`](fastlane/changelog.txt) (edit it before each release),
+or override per-run with `TESTFLIGHT_CHANGELOG="…" bundle exec fastlane beta`.
+
 ### Manual fallback (no fastlane)
 
 ```bash
