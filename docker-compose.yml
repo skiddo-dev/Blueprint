@@ -1,0 +1,34 @@
+# Local MongoDB for development, configured as a SINGLE-NODE REPLICA SET.
+#
+# Why a replica set locally? Production runs on MongoDB Atlas, which is always a
+# replica set — so multi-document transactions and change streams are available
+# there. A bare standalone `mongod` supports neither, so transaction code paths
+# (e.g. the accounting module posting an invoice + its journal entry atomically)
+# can't be exercised locally without this. One node is enough to unlock both.
+#
+#   docker compose up -d mongo
+#   # then point .env at it:
+#   MONGODB_URI=mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
+#
+# The healthcheck initiates the replica set on first boot (idempotent: it only
+# initiates if rs.status() reports it isn't yet a member).
+services:
+  mongo:
+    image: mongo:7
+    container_name: blueprint-mongo
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: >
+        mongosh --port 27017 --quiet --eval
+        "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }) }"
+      interval: 5s
+      timeout: 30s
+      start_period: 5s
+      retries: 30
+
+volumes:
+  mongo-data:

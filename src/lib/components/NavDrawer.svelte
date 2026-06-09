@@ -25,6 +25,7 @@
     { href: '/', icon: '🏗️', label: 'Kanban Board' },
     { href: '/dashboard', icon: '📊', label: 'Dashboard' },
     { href: '/quotes', icon: '💰', label: 'Quote Generator' },
+    { href: '/accounting', icon: '📒', label: 'Accounting' },
     { href: '/prospects', icon: '🏭', label: 'Prospects' },
     { href: '/competitive-landscape', icon: '🗺️', label: 'Competitive Landscape' },
   ]
