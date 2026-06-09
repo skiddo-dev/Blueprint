@@ -1,5 +1,6 @@
 <script lang="ts">
-  import PageShell from '$lib/components/PageShell.svelte'
+  import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import { usd } from '$lib/accounting/format'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -9,7 +10,6 @@
   const user = $derived({ name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' })
   const vendors = $derived(data.vendors)
 
-  const usd = (c: number) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
   const totalOutstanding = $derived(vendors.reduce((a, v) => a + v.outstanding, 0))
 
   // Inline edit of a vendor's name/email.
@@ -49,71 +49,57 @@
 
 <svelte:head><title>Vendors · Blueprint</title></svelte:head>
 
-<PageShell {user} title="🏗️ Vendors" maxWidth="940px">
-  {#snippet head()}
-    <h1>🏗️ Vendors</h1>
-    <p class="sub"><a href="/accounting">Accounting</a> · {vendors.length} vendor{vendors.length === 1 ? '' : 's'} · {usd(totalOutstanding)} owed</p>
-    <hr style="margin: 14px 0 20px" />
-  {/snippet}
-
-  <section class="card">
+<AccountingShell {user} title="🏗️ Vendors" maxWidth="940px"
+  crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Vendors' }]}>
+  <section class="card flush">
+    <div class="card-head">
+      <h2>{vendors.length} vendor{vendors.length === 1 ? '' : 's'}</h2>
+      <span class="muted">{usd(totalOutstanding)} owed</span>
+    </div>
     {#if vendors.length === 0}
       <p class="empty">No vendors yet. They're created automatically when you enter a bill.</p>
     {:else}
-      <table>
-        <thead>
-          <tr><th>Vendor</th><th>Email</th><th class="num">Bills</th><th class="num">Total billed</th><th class="num">Outstanding</th><th></th></tr>
-        </thead>
-        <tbody>
-          {#each vendors as v (v._id)}
-            {#if editingId === v._id}
-              <tr class="editing">
-                <td><input type="text" bind:value={draftName} aria-label="Name" /></td>
-                <td><input type="email" bind:value={draftEmail} placeholder="(none)" aria-label="Email" /></td>
-                <td class="num">{v.billCount}</td>
-                <td class="num">{usd(v.totalBilled)}</td>
-                <td class="num">{usd(v.outstanding)}</td>
-                <td class="actions">
-                  <button class="link" type="button" onclick={() => save(v._id)} disabled={saving || !draftName.trim()}>{saving ? '…' : 'Save'}</button>
-                  <button class="link muted" type="button" onclick={cancel} disabled={saving}>Cancel</button>
-                </td>
-              </tr>
-            {:else}
-              <tr>
-                <td>{v.name}</td>
-                <td class="muted">{v.email ?? '—'}</td>
-                <td class="num">{v.billCount}</td>
-                <td class="num">{usd(v.totalBilled)}</td>
-                <td class="num" class:owed={v.outstanding > 0}>{usd(v.outstanding)}</td>
-                <td class="actions"><button class="link" type="button" onclick={() => startEdit(v)}>Edit</button></td>
-              </tr>
-            {/if}
-          {/each}
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Vendor</th><th>Email</th><th class="num">Bills</th><th class="num">Total billed</th><th class="num">Outstanding</th><th></th></tr>
+          </thead>
+          <tbody>
+            {#each vendors as v (v._id)}
+              {#if editingId === v._id}
+                <tr class="editing">
+                  <td><input type="text" bind:value={draftName} aria-label="Name" /></td>
+                  <td><input type="email" bind:value={draftEmail} placeholder="(none)" aria-label="Email" /></td>
+                  <td class="num">{v.billCount}</td>
+                  <td class="num">{usd(v.totalBilled)}</td>
+                  <td class="num">{usd(v.outstanding)}</td>
+                  <td class="row-actions">
+                    <button class="link" type="button" onclick={() => save(v._id)} disabled={saving || !draftName.trim()}>{saving ? '…' : 'Save'}</button>
+                    <button class="link muted" type="button" onclick={cancel} disabled={saving}>Cancel</button>
+                  </td>
+                </tr>
+              {:else}
+                <tr>
+                  <td>{v.name}</td>
+                  <td class="muted">{v.email ?? '—'}</td>
+                  <td class="num">{v.billCount}</td>
+                  <td class="num">{usd(v.totalBilled)}</td>
+                  <td class="num" class:owed={v.outstanding > 0}>{usd(v.outstanding)}</td>
+                  <td class="row-actions"><button class="link" type="button" onclick={() => startEdit(v)}>Edit</button></td>
+                </tr>
+              {/if}
+            {/each}
+          </tbody>
+        </table>
+      </div>
       {#if error}<p class="error">{error}</p>{/if}
     {/if}
   </section>
-</PageShell>
+</AccountingShell>
 
 <style>
-  h1 { margin: 0; }
-  .sub { color: var(--text-muted); margin: 4px 0 0; font-size: 14px; }
-  .sub a { color: var(--primary-text); text-decoration: none; }
-
-  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border-soft); }
-  th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .muted { color: var(--text-muted); }
-  .owed { font-weight: 600; color: #b45309; }
-  .empty { color: var(--text-muted); font-size: 14px; padding: 8px 2px; }
-  .actions { text-align: right; white-space: nowrap; }
-  tr.editing { background: var(--primary-bg); }
-  td input { font: inherit; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); width: 100%; }
-  .link { background: none; border: none; color: var(--primary-text); font-size: 13px; font-weight: 600; cursor: pointer; padding: 2px 6px; }
-  .link.muted { color: var(--text-muted); }
-  .link:disabled { opacity: 0.5; cursor: not-allowed; }
-  .error { color: #dc2626; font-size: 13px; background: #fee2e2; border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+  /* Inline-edit specifics not covered by the shared sheet. */
+  tr.editing td { background: var(--primary-bg); }
+  td input { padding: 5px 7px; border-radius: 6px; width: 100%; }
+  .row-actions { text-align: right; white-space: nowrap; }
 </style>

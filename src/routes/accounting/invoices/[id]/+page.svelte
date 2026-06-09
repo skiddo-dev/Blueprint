@@ -1,5 +1,7 @@
 <script lang="ts">
-  import PageShell from '$lib/components/PageShell.svelte'
+  import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
+  import { usd } from '$lib/accounting/format'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -11,8 +13,6 @@
   const payments = $derived(data.payments)
   const num = $derived(`${inv.year}-${String(inv.number).padStart(4, '0')}`)
   const openForPayment = $derived(inv.status !== 'paid' && inv.status !== 'void' && inv.balance > 0)
-
-  const usd = (c: number) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 
   const today = new Date().toISOString().slice(0, 10)
   let payAmount = $state('')
@@ -44,16 +44,11 @@
 
 <svelte:head><title>Invoice {num} · Blueprint</title></svelte:head>
 
-<PageShell {user} title="📄 Invoice {num}" maxWidth="820px">
-  {#snippet head()}
-    <div class="head-row">
-      <div>
-        <h1>Invoice {num} <span class="badge {inv.status}">{inv.status}</span></h1>
-        <p class="sub"><a href="/accounting/invoices">Invoices</a> · {inv.customer_name}</p>
-      </div>
-      <a class="btn-pdf" href="/api/accounting/invoices/{inv._id}/pdf" target="_blank" rel="noopener">⬇ PDF</a>
-    </div>
-    <hr style="margin: 14px 0 20px" />
+<AccountingShell {user} title="📄 Invoice {num}" maxWidth="820px"
+  crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Invoices', href: '/accounting/invoices' }, { label: num }]}>
+  {#snippet actions()}
+    <StatusBadge status={inv.status} />
+    <a class="btn-secondary" href="/api/accounting/invoices/{inv._id}/pdf" target="_blank" rel="noopener">⬇ PDF</a>
   {/snippet}
 
   <section class="card">
@@ -83,7 +78,7 @@
   </section>
 
   <section class="card">
-    <h2>Payments</h2>
+    <div class="card-head"><h2>Payments</h2></div>
     {#if payments.length === 0}
       <p class="empty">No payments recorded.</p>
     {:else}
@@ -111,51 +106,21 @@
       <p class="paid-note">✓ Paid in full.</p>
     {/if}
   </section>
-</PageShell>
+</AccountingShell>
 
 <style>
-  .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  h1 { margin: 0; font-size: 22px; }
-  .sub { color: var(--text-muted); margin: 4px 0 0; font-size: 14px; }
-  .sub a { color: var(--primary-text); text-decoration: none; }
-  .btn-pdf {
-    flex-shrink: 0; background: var(--bg); color: var(--text-body);
-    border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px;
-    font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap;
-  }
-  .btn-pdf:hover { border-color: var(--primary); color: var(--primary-text); }
-
-  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; }
-  .card h2 { font-size: 15px; margin: 0 0 10px; }
-
+  /* Invoice-specific facts/totals/payment layout; shared chrome from accounting.css. */
   .facts { display: flex; flex-wrap: wrap; gap: 18px 28px; margin-bottom: 16px; }
   .facts > div { display: flex; flex-direction: column; gap: 2px; }
   .facts .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border-soft); }
-  th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
   .totals { margin-top: 14px; margin-left: auto; max-width: 320px; }
   .totals > div { display: flex; justify-content: space-between; gap: 24px; padding: 4px 0; font-size: 13px; color: var(--text-body); }
   .totals .grand { font-weight: 700; color: var(--text); border-top: 2px solid var(--border); margin-top: 4px; padding-top: 8px; }
   .totals .bal { font-weight: 700; color: var(--text); border-top: 1px solid var(--border-soft); margin-top: 4px; padding-top: 8px; }
 
-  .empty { color: var(--text-muted); font-size: 14px; }
   .pay-form { display: flex; gap: 10px; align-items: flex-end; margin-top: 14px; flex-wrap: wrap; }
   .pay-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
   .pay-form .grow { flex: 1; min-width: 140px; }
-  .pay-form input { font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); }
-  .btn-primary { background: var(--primary); color: #fff; border: 1px solid var(--primary); border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .error { color: #dc2626; font-size: 13px; background: #fee2e2; border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
   .paid-note { color: #047857; font-weight: 600; font-size: 14px; margin-top: 12px; }
-
-  .badge { font-size: 12px; font-weight: 600; border-radius: 8px; padding: 2px 9px; text-transform: capitalize; vertical-align: middle; margin-left: 6px; }
-  .badge.open { background: #dbeafe; color: #1d4ed8; }
-  .badge.partial { background: #fef3c7; color: #b45309; }
-  .badge.paid { background: #d1fae5; color: #047857; }
-  .badge.void { background: #f1f5f9; color: #475569; }
 </style>

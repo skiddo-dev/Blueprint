@@ -1,7 +1,8 @@
 <script lang="ts">
-  import PageShell from '$lib/components/PageShell.svelte'
+  import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto, invalidateAll } from '$app/navigation'
   import { parseMoney } from '$lib/money'
+  import { usd } from '$lib/accounting/format'
   import { parseStatementCsv, autoMatch } from '$lib/accounting/statement-import'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -10,7 +11,6 @@
   const session = $derived(data.session as unknown as AppSession)
   const user = $derived({ name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' })
 
-  const usd = (c: number) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
   const accountName = $derived(data.accounts.find((a) => a._id === data.accountId)?.name ?? data.accountId)
   const lastRec = $derived(data.history[0])
 
@@ -81,24 +81,19 @@
 
 <svelte:head><title>Reconcile · Blueprint</title></svelte:head>
 
-<PageShell {user} title="✅ Reconcile" maxWidth="900px">
-  {#snippet head()}
-    <h1>✅ Bank Reconciliation</h1>
-    <p class="sub"><a href="/accounting">Accounting</a> · match the ledger to a bank statement</p>
-    <hr style="margin: 14px 0 20px" />
-  {/snippet}
-
+<AccountingShell {user} title="✅ Bank Reconciliation" maxWidth="900px"
+  crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Match the ledger to a bank statement' }]}>
   {#if data.accounts.length === 0}
-    <section class="card"><p class="empty">No bank accounts in the chart of accounts.</p></section>
+    <section class="card flush"><p class="empty">No bank accounts in the chart of accounts.</p></section>
   {:else}
-    <div class="controls">
-      <label>Account
+    <div class="toolbar">
+      <label class="field">Account
         <select value={data.accountId} onchange={(e) => selectAccount(e.currentTarget.value)}>
           {#each data.accounts as a (a._id)}<option value={a._id}>{a.code} · {a.name}</option>{/each}
         </select>
       </label>
-      <label>Statement date<input type="date" bind:value={statementDate} /></label>
-      <label>Statement ending balance<input type="text" inputmode="decimal" bind:value={statementBalanceStr} placeholder="0.00" /></label>
+      <label class="field">Statement date<input type="date" bind:value={statementDate} /></label>
+      <label class="field">Statement ending balance<input type="text" inputmode="decimal" bind:value={statementBalanceStr} placeholder="0.00" /></label>
     </div>
 
     <div class="summary">
@@ -132,20 +127,22 @@
       {#if data.uncleared.length === 0}
         <p class="empty">Nothing uncleared on this account. {lastRec ? `Last reconciled ${lastRec.statement_date}.` : ''}</p>
       {:else}
-        <table>
-          <thead><tr><th class="chk"></th><th>Date</th><th>Description</th><th>Source</th><th class="num">Amount</th></tr></thead>
-          <tbody>
-            {#each data.uncleared as t (t.entry_id)}
-              <tr class:ticked={checked[t.entry_id]} onclick={() => (checked[t.entry_id] = !checked[t.entry_id])}>
-                <td class="chk"><input type="checkbox" bind:checked={checked[t.entry_id]} onclick={(e) => e.stopPropagation()} /></td>
-                <td class="mono">{t.date}</td>
-                <td>{t.memo ?? '—'}</td>
-                <td><span class="chip">{t.source}</span></td>
-                <td class="num" class:neg={t.amount < 0}>{usd(t.amount)}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th class="chk"></th><th>Date</th><th>Description</th><th>Source</th><th class="num">Amount</th></tr></thead>
+            <tbody>
+              {#each data.uncleared as t (t.entry_id)}
+                <tr class:ticked={checked[t.entry_id]} onclick={() => (checked[t.entry_id] = !checked[t.entry_id])}>
+                  <td class="chk"><input type="checkbox" bind:checked={checked[t.entry_id]} onclick={(e) => e.stopPropagation()} /></td>
+                  <td class="mono">{t.date}</td>
+                  <td>{t.memo ?? '—'}</td>
+                  <td><span class="chip">{t.source}</span></td>
+                  <td class="num" class:neg={t.amount < 0}>{usd(t.amount)}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
       {/if}
     </section>
 
@@ -161,35 +158,30 @@
     {#if data.history.length}
       <section class="card">
         <div class="card-head"><h2>Reconciliation history — {accountName}</h2></div>
-        <table>
-          <thead><tr><th>Statement date</th><th class="num">Ending balance</th><th class="num">Cleared</th><th class="num">Items</th></tr></thead>
-          <tbody>
-            {#each data.history as r (r._id)}
-              <tr>
-                <td class="mono">{r.statement_date}</td>
-                <td class="num">{usd(r.statement_balance)}</td>
-                <td class="num">{usd(r.cleared_total)}</td>
-                <td class="num">{r.cleared_entry_ids.length}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Statement date</th><th class="num">Ending balance</th><th class="num">Cleared</th><th class="num">Items</th></tr></thead>
+            <tbody>
+              {#each data.history as r (r._id)}
+                <tr>
+                  <td class="mono">{r.statement_date}</td>
+                  <td class="num">{usd(r.statement_balance)}</td>
+                  <td class="num">{usd(r.cleared_total)}</td>
+                  <td class="num">{r.cleared_entry_ids.length}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
       </section>
     {/if}
   {/if}
-</PageShell>
+</AccountingShell>
 
 <style>
-  h1 { margin: 0; }
-  .sub { color: var(--text-muted); margin: 4px 0 0; font-size: 14px; }
-  .sub a { color: var(--primary-text); text-decoration: none; }
-
-  .controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-  .controls label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
-  .controls input, .controls select { font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); }
-
+  /* Reconcile-specific layout; shared chrome (card, table, buttons, chip) from accounting.css. */
   .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
-  .summary > div { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .summary > div { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow); }
   .summary .k { font-size: 11px; color: var(--text-muted); font-weight: 600; }
   .summary .v { font-size: 16px; font-weight: 700; color: var(--text); }
   .summary .diff.ok { border-color: #6ee7b7; background: #ecfdf5; }
@@ -197,37 +189,20 @@
   .summary .diff.bad { border-color: #fcd9b6; background: #fffbeb; }
   .summary .diff.bad .v { color: #b45309; }
 
-  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
-  .card-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
-  .card-head h2 { font-size: 15px; margin: 0; }
-  .muted { color: var(--text-muted); font-size: 12px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border-soft); }
-  th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
   tbody tr { cursor: pointer; }
   tbody tr:hover { background: var(--bg); }
   tbody tr.ticked { background: var(--primary-bg); }
   .chk { width: 32px; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
   .num.neg { color: #b45309; }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .chip { background: var(--chip-bg); color: var(--primary-text); border-radius: 8px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
-  .empty { color: var(--text-muted); font-size: 14px; padding: 4px 2px; }
 
-  .actions { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-  .btn-primary { background: var(--primary); color: #fff; border: 1px solid var(--primary); border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .actions { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
   .hint { color: var(--text-muted); font-size: 13px; }
-  .error { color: #dc2626; font-size: 13px; background: #fee2e2; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
 
-  .import-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
+  .import-card { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
   .import-card summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text); }
   .import-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0; }
   .import-hint code { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 4px; padding: 0 4px; font-size: 11px; }
-  .import-card textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; padding: 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); resize: vertical; }
+  .import-card textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; resize: vertical; }
   .import-actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
   .import-msg { font-size: 13px; color: var(--text-body); }
-  .btn-secondary { background: var(--bg); color: var(--text-body); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-secondary:hover:not(:disabled) { border-color: var(--primary); }
-  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

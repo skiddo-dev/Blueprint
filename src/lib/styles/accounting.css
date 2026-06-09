@@ -1,0 +1,128 @@
+/* Shared V2 styling for the accounting module. Imported once by AccountingShell,
+ * which wraps every accounting page's content in `.acct`. Scoping each rule under
+ * `.acct` lets the pages keep their plain class names (`.card`, `table`, `.num`,
+ * `.btn-primary`, …) while the definitions live here once — no per-page <style>
+ * duplication, and nothing leaks to the rest of the app. All colors are design
+ * tokens (app.css :root), so light/dark theming is automatic.
+ *
+ * Pages may still keep a small scoped <style> for genuinely bespoke layout
+ * (invoice line grid, reconcile summary, statement rows); only the shared
+ * primitives below should be deleted from pages during migration. */
+
+/* ── Header + breadcrumb (desktop; mirrors PageShell's hidden-on-mobile head) ── */
+.acct-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.acct-head h1 { margin: 0; font-size: 22px; line-height: 1.2; }
+.acct-crumbs { color: var(--text-muted); margin: 4px 0 0; font-size: 13px; }
+.acct-crumbs a { color: var(--primary-text); text-decoration: none; }
+.acct-crumbs a:hover { text-decoration: underline; }
+.acct-crumbs .sep { margin: 0 6px; color: var(--text-faint); }
+.acct-head-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+@media (max-width: 768px) { .acct-head { display: none; } }
+
+/* ── Persistent section nav (Receivables · Payables · Reports · Banking) ── */
+.acct-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; }
+@media (max-width: 768px) { .acct-nav { margin-top: 12px; } }
+.acct-nav .group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.acct-nav .group:not(:first-child)::before {
+  content: ''; align-self: center; width: 1px; height: 22px; background: var(--border); margin: 0 4px;
+}
+.acct-nav a {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; line-height: 1.1;
+  font-size: 13px; font-weight: 600; text-decoration: none; color: var(--text-body);
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.acct-nav a:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary-text); }
+.acct-nav a.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.acct-nav a.active:hover { color: #fff; filter: brightness(1.05); }
+.acct-nav .ico { font-size: 13px; line-height: 1; }
+
+/* ── Cards ── */
+.acct .card {
+  background: var(--card-bg); border: 1px solid var(--border-card);
+  border-radius: 12px; padding: 16px 18px; margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+.acct .card.flush { margin-bottom: 0; }
+.acct .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.acct .card-head h2 { font-size: 15px; margin: 0; color: var(--text); }
+.acct .section-title {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-muted); font-weight: 700; margin: 18px 0 10px;
+}
+.acct .section-title:first-child { margin-top: 0; }
+
+/* ── Tables ── */
+.acct table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.acct th, .acct td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border-soft); }
+.acct th {
+  color: var(--text-muted); font-weight: 600; font-size: 12px;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.acct td { color: var(--text-body); }
+.acct tfoot td { font-weight: 700; color: var(--text); border-top: 2px solid var(--border); border-bottom: none; }
+.acct tr.row-link { cursor: pointer; }
+.acct tbody tr.row-link:hover td { background: var(--primary-bg); }
+.acct .num { text-align: right; font-variant-numeric: tabular-nums; }
+.acct .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-body); }
+.acct .neg { color: #b45309; }
+.acct .owed { font-weight: 600; color: #b45309; }
+.acct .table-wrap { overflow-x: auto; }
+
+/* ── Inline status/info bits ── */
+.acct .badge { font-size: 12px; font-weight: 600; border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
+.acct .badge.ok { background: #d1fae5; color: #047857; }
+.acct .badge.bad { background: #fee2e2; color: #dc2626; }
+.acct .chip { background: var(--chip-bg); color: var(--primary-text); border-radius: 8px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
+.acct .tag { margin-left: 8px; background: #fef3c7; color: #b45309; border-radius: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
+.acct .muted { color: var(--text-muted); }
+.acct .empty { color: var(--text-muted); font-size: 14px; padding: 10px 2px; }
+
+/* ── Buttons ── */
+.acct .btn-primary {
+  background: var(--primary); color: #fff; border: 1px solid var(--primary);
+  border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600;
+  text-decoration: none; white-space: nowrap; flex-shrink: 0; cursor: pointer;
+}
+.acct .btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+.acct .btn-secondary {
+  background: var(--card-bg); color: var(--text-body); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600;
+  text-decoration: none; white-space: nowrap; cursor: pointer;
+}
+.acct .btn-secondary:hover:not(:disabled) { border-color: var(--primary); }
+.acct .btn-ghost { background: none; border: none; color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+.acct .btn-primary:disabled, .acct .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+.acct .link { background: none; border: none; color: var(--primary-text); font-size: 13px; font-weight: 600; cursor: pointer; padding: 2px 6px; text-decoration: none; }
+.acct .link.muted { color: var(--text-muted); }
+.acct .link:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Form controls + toolbars ── */
+.acct input, .acct select, .acct textarea {
+  font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border);
+  border-radius: 7px; background: var(--bg); color: var(--text);
+}
+.acct input:focus, .acct select:focus, .acct textarea:focus { outline: none; border-color: var(--primary); }
+.acct input[readonly], .acct .readonly { background: var(--card-bg); color: var(--text-muted); }
+.acct .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
+.acct .toolbar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
+
+/* ── Layout grids ── */
+.acct .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.acct .charts-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 18px; }
+.acct .quick-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+
+/* ── Errors ── */
+.acct .error { color: #dc2626; font-size: 13px; background: #fee2e2; border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+:root[data-theme="dark"] .acct .error { background: #3f1d1d; color: #fca5a5; }
+:root[data-theme="dark"] .acct .badge.ok { background: #064e3b; color: #6ee7b7; }
+:root[data-theme="dark"] .acct .badge.bad { background: #3f1d1d; color: #fca5a5; }
+:root[data-theme="dark"] .acct .tag { background: #422006; color: #fcd34d; }
