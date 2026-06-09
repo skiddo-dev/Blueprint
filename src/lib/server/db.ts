@@ -4,7 +4,8 @@ import type { Task, User, Quote, Prospect, TimelineEntry, Attachment } from '$li
 import { generateMockTasks, generateMockProspects, generateMockQuotes } from './mock'
 import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 import { requireInProd } from './config'
-import { ensureAccountingIndexes, seedChartOfAccounts } from './accounting-schema'
+import { ensureAccountingIndexes, ensureAccountingConstraints, seedChartOfAccounts } from './accounting-schema'
+import { log } from './log'
 
 let client: MongoClient | null = null
 let db: Db | null = null
@@ -33,11 +34,23 @@ export async function getDb(): Promise<Db> {
       const dbName = env.MONGODB_DB_NAME ?? env.MONGO_DB_NAME ?? 'blueprint'
       const c = new MongoClient(uri)
       await c.connect()
+      const database = c.db(dbName)
+      // Build indexes BEFORE publishing the connection: if an integrity-critical
+      // (unique/idempotency) index can't be created, ensureIndexes throws here, so
+      // `client`/`db` are never assigned — getDb stays un-memoized and retries on
+      // the next call, while /readyz pings fail meanwhile so this replica isn't
+      // handed traffic without the safeguards. Close the pool so a failed cold
+      // connect doesn't leak it.
+      try {
+        await ensureIndexes(database)
+      } catch (e) {
+        await c.close().catch(() => {})
+        throw e
+      }
+      await runMigrations(database)
       client = c
-      db = c.db(dbName)
-      await ensureIndexes(db)
-      await runMigrations(db)
-      return db
+      db = database
+      return database
     })().catch((e) => {
       connecting = null
       throw e
@@ -76,14 +89,23 @@ export async function pingDb(): Promise<boolean> {
 // Create the indexes the app's hot queries depend on. Idempotent — createIndex is
 // a no-op when an equivalent index already exists — so it's safe to run on every
 // cold connect, and it keeps the index set version-controlled (SSOT) instead of
-// hand-applied per environment. Best-effort: a failure is logged, never fatal, so
-// a transient index issue can't take the whole DB layer down.
+// hand-applied per environment.
+//
+// Two tiers, with different failure handling:
+//  • Performance indexes — best-effort. A failure only slows queries, so it's
+//    logged (which now also alerts) and swallowed; a transient index issue can't
+//    take the DB layer down.
+//  • Integrity constraints (unique/idempotency) — FATAL. Serving without them
+//    risks duplicate quote/invoice/bill numbers or a double-posted journal entry,
+//    so a failure throws and the caller (getDb) leaves the connection unpublished
+//    → /readyz reports not-ready until the next cold connect succeeds.
 //
 // The My Work query (getTasksForUser) is served by the created_by_email /
 // assignee_email indexes; its legacy case-insensitive name regex is only a
 // transition fallback for un-backfilled tasks (can't use a btree, but rare).
 async function ensureIndexes(d: Db): Promise<void> {
   if (indexesEnsured) return
+  // ── Performance tier (best-effort) ──
   try {
     await Promise.all([
       col(d, 'tasks').createIndex({ updated_at: -1 }),             // getTasksSignature — polled ~every 2s by every open client
@@ -94,18 +116,31 @@ async function ensureIndexes(d: Db): Promise<void> {
       col(d, 'attachments').createIndex({ source: 1, created_at: 1 }), // retention sweep — find expired email attachments cheaply
       col(d, 'quotes').createIndex({ created_at: -1 }),            // getQuotes sort
       col(d, 'quotes').createIndex({ year: 1, quote_number: -1 }), // legacy quote-number lookup
-      col(d, 'quotes').createIndex(                                // unique per-year number — defense in depth atop the atomic counter
-        { year: 1, quote_number: 1 },
-        { unique: true, partialFilterExpression: { quote_number: { $exists: true } } },
-      ),
       col(d, 'prospects').createIndex({ distance_miles: 1 }),      // getProspects sort
       col(d, 'users').createIndex({ role: 1, name: 1 }),           // getUsersByRole
     ])
-    await ensureAccountingIndexes(d)                               // accounts + journalEntries (incl. idempotency)
-    indexesEnsured = true
+    await ensureAccountingIndexes(d)                               // accounts + journalEntries listing indexes
   } catch (e) {
-    console.error('[db] ensureIndexes failed (non-fatal):', e)
+    log.error('ensureIndexes: performance indexes failed (degraded, non-fatal)', {
+      error: e instanceof Error ? e.message : String(e),
+    })
   }
+  // ── Integrity tier (fatal: a throw here propagates out of getDb) ──
+  await ensureCriticalIndexes(d)
+  indexesEnsured = true
+}
+
+// The uniqueness/idempotency guards: the per-year unique quote number (defense in
+// depth atop the atomic counter) plus the accounting constraints (unique
+// invoice/bill numbers, journal idempotency). Deliberately NOT wrapped in a
+// try/catch — a failure must reach getDb so the instance reads not-ready rather
+// than silently serve without the safeguard.
+async function ensureCriticalIndexes(d: Db): Promise<void> {
+  await col(d, 'quotes').createIndex(
+    { year: 1, quote_number: 1 },
+    { unique: true, partialFilterExpression: { quote_number: { $exists: true } } },
+  )
+  await ensureAccountingConstraints(d)
 }
 
 // ── Migrations ────────────────────────────────────────────────────────────────
@@ -211,7 +246,7 @@ async function runMigrations(d: Db): Promise<void> {
     }
     migrationsRun = true
   } catch (e) {
-    console.error('[db] runMigrations failed (non-fatal):', e)
+    log.error('runMigrations failed (non-fatal)', { error: e instanceof Error ? e.message : String(e) })
   } finally {
     await releaseLease('migrations')
   }

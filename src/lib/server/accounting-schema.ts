@@ -8,15 +8,40 @@ import { DEFAULT_CHART_OF_ACCOUNTS } from '$lib/accounting/coa'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function col(d: Db, name: string) { return d.collection<any>(name) }
 
-/** Indexes the accounting hot paths depend on. Idempotent (createIndex is a
- *  no-op when an equivalent index exists), so it's safe on every cold connect —
- *  called from db.ts's ensureIndexes alongside the core collections. */
+/** Performance indexes for the accounting hot paths. Idempotent (createIndex is a
+ *  no-op when an equivalent index exists), so it's safe on every cold connect.
+ *  Best-effort — a failure here only slows queries, never corrupts data — so db.ts
+ *  calls this inside its non-fatal perf-index batch. The uniqueness/idempotency
+ *  guards live in {@link ensureAccountingConstraints} instead. */
 export async function ensureAccountingIndexes(d: Db): Promise<void> {
   await Promise.all([
     col(d, 'accounts').createIndex({ type: 1, code: 1 }),
     col(d, 'journalEntries').createIndex({ date: -1 }),         // ledger listing
     col(d, 'journalEntries').createIndex({ period: 1 }),        // period reports / close
     col(d, 'journalEntries').createIndex({ 'lines.account_id': 1 }), // trial balance + per-account ledger
+    // ── Accounts receivable (Phase 2) ──
+    col(d, 'customers').createIndex({ name_lower: 1 }),        // find-or-create by name
+    col(d, 'invoices').createIndex({ status: 1, due_date: 1 }), // A/R aging scan
+    col(d, 'invoices').createIndex({ customer_id: 1 }),
+    col(d, 'invoices').createIndex({ quote_id: 1 }),           // won-quote → invoice link
+    col(d, 'payments').createIndex({ invoice_id: 1 }),         // payments for an invoice
+    // ── Accounts payable (Phase 3) ──
+    col(d, 'vendors').createIndex({ name_lower: 1 }),          // find-or-create by name
+    col(d, 'bills').createIndex({ status: 1, due_date: 1 }),   // A/P aging scan
+    col(d, 'bills').createIndex({ vendor_id: 1 }),
+    col(d, 'billPayments').createIndex({ bill_id: 1 }),        // payments for a bill
+    col(d, 'reconciliations').createIndex({ account_id: 1, statement_date: -1 }), // bank rec history
+  ])
+}
+
+/** Integrity-critical uniqueness/idempotency indexes — correctness, not speed.
+ *  Without them a race could post a journal entry twice or mint a duplicate
+ *  invoice/bill number, so db.ts treats a failure here as FATAL (the app reads
+ *  not-ready rather than serve without the safeguard). Idempotent, same as above.
+ *  A duplicate-key error here means existing data already violates the constraint
+ *  — that's the signal to fix the data, not to drop the guard. */
+export async function ensureAccountingConstraints(d: Db): Promise<void> {
+  await Promise.all([
     // Idempotency: a given source doc (invoice/payment/…) posts its entry at most
     // once. Partial so manual entries and reversals — which carry no source_ref —
     // are exempt from the uniqueness constraint.
@@ -24,20 +49,8 @@ export async function ensureAccountingIndexes(d: Db): Promise<void> {
       { source: 1, source_ref: 1 },
       { unique: true, partialFilterExpression: { source_ref: { $exists: true } } },
     ),
-    // ── Accounts receivable (Phase 2) ──
-    col(d, 'customers').createIndex({ name_lower: 1 }),        // find-or-create by name
     col(d, 'invoices').createIndex({ year: 1, number: 1 }, { unique: true }), // sequential per year
-    col(d, 'invoices').createIndex({ status: 1, due_date: 1 }), // A/R aging scan
-    col(d, 'invoices').createIndex({ customer_id: 1 }),
-    col(d, 'invoices').createIndex({ quote_id: 1 }),           // won-quote → invoice link
-    col(d, 'payments').createIndex({ invoice_id: 1 }),         // payments for an invoice
-    // ── Accounts payable (Phase 3) ──
-    col(d, 'vendors').createIndex({ name_lower: 1 }),          // find-or-create by name
-    col(d, 'bills').createIndex({ year: 1, number: 1 }, { unique: true }), // sequential per year
-    col(d, 'bills').createIndex({ status: 1, due_date: 1 }),   // A/P aging scan
-    col(d, 'bills').createIndex({ vendor_id: 1 }),
-    col(d, 'billPayments').createIndex({ bill_id: 1 }),        // payments for a bill
-    col(d, 'reconciliations').createIndex({ account_id: 1, statement_date: -1 }), // bank rec history
+    col(d, 'bills').createIndex({ year: 1, number: 1 }, { unique: true }),    // sequential per year
   ])
 }
 
