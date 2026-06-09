@@ -1,5 +1,6 @@
 <script lang="ts">
-  import PageShell from '$lib/components/PageShell.svelte'
+  import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import { usd } from '$lib/accounting/format'
   import { goto } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -13,28 +14,21 @@
   let asOf = $state(data.asOf)
   $effect(() => { asOf = data.asOf })
 
-  const usd = (c: number) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
   function apply() { goto(`/accounting/balance-sheet?asOf=${asOf}`) }
 </script>
 
 <svelte:head><title>Balance Sheet · Blueprint</title></svelte:head>
 
-<PageShell {user} title="🏦 Balance Sheet" maxWidth="760px">
-  {#snippet head()}
-    <div class="head-row">
-      <div>
-        <h1>🏦 Balance Sheet</h1>
-        <p class="sub"><a href="/accounting">Accounting</a> · As of {asOf}</p>
-      </div>
-      <span class="badge" class:ok={st.balanced} class:bad={!st.balanced}>
-        {st.balanced ? '✓ Balanced' : '✕ Out of balance'}
-      </span>
-    </div>
-    <hr style="margin: 14px 0 20px" />
+<AccountingShell {user} title="🏦 Balance Sheet" maxWidth="760px"
+  crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: `As of ${asOf}` }]}>
+  {#snippet actions()}
+    <span class="badge" class:ok={st.balanced} class:bad={!st.balanced}>
+      {st.balanced ? '✓ Balanced' : '✕ Out of balance'}
+    </span>
   {/snippet}
 
-  <div class="range">
-    <label>As of<input type="date" bind:value={asOf} /></label>
+  <div class="toolbar">
+    <label class="field">As of<input type="date" bind:value={asOf} /></label>
     <button class="btn-secondary" type="button" onclick={apply}>Apply</button>
   </div>
 
@@ -59,24 +53,11 @@
       <span>Total Liabilities &amp; Equity</span><span class="num">{usd(st.totalLiabilitiesAndEquity)}</span>
     </div>
   </section>
-</PageShell>
+</AccountingShell>
 
 <style>
-  .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  h1 { margin: 0; }
-  .sub { color: var(--text-muted); margin: 4px 0 0; font-size: 14px; }
-  .sub a { color: var(--primary-text); text-decoration: none; }
-  .badge { font-size: 12px; font-weight: 600; border-radius: 10px; padding: 2px 9px; flex-shrink: 0; }
-  .badge.ok { background: #d1fae5; color: #047857; }
-  .badge.bad { background: #fee2e2; color: #dc2626; }
-
-  .range { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
-  .range label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
-  .range input { font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); }
-  .btn-secondary { background: var(--bg); color: var(--text-body); border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-secondary:hover { border-color: var(--primary); }
-
-  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; font-size: 14px; }
+  /* Statement rows; shared chrome from accounting.css. */
+  .card { font-size: 14px; padding: 18px 20px; }
   .sec-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; margin: 0 0 4px; }
   .row { display: flex; justify-content: space-between; gap: 24px; padding: 5px 0; color: var(--text-body); }
   .row.muted { color: var(--text-faint); }

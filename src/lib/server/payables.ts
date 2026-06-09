@@ -24,6 +24,55 @@ export async function listVendors(): Promise<Vendor[]> {
   return rows.map((v) => ({ ...v, _id: String(v._id) })) as Vendor[]
 }
 
+export interface VendorWithStats extends Vendor {
+  billCount: number
+  totalBilled: Cents
+  outstanding: Cents // sum of open bill balances
+}
+
+/** Vendors with their AP rollup (bill count, total billed, outstanding). */
+/** Update a vendor's name/email. A name change propagates to the denormalized
+ *  vendor_name on their bills. Returns false if no such vendor. */
+export async function updateVendor(id: string, patch: { name?: string; email?: string }): Promise<boolean> {
+  const d = await getDb()
+  const set: Record<string, unknown> = {}
+  const unset: Record<string, unknown> = {}
+  if (patch.name !== undefined && patch.name.trim()) {
+    set.name = patch.name.trim()
+    set.name_lower = patch.name.trim().toLowerCase()
+  }
+  if (patch.email !== undefined) {
+    if (patch.email.trim()) set.email = patch.email.trim()
+    else unset.email = ''
+  }
+  if (!Object.keys(set).length && !Object.keys(unset).length) return false
+  const update: Record<string, unknown> = {}
+  if (Object.keys(set).length) update.$set = set
+  if (Object.keys(unset).length) update.$unset = unset
+  const res = await col('vendors', d).updateOne({ _id: id }, update)
+  if (set.name) await col('bills', d).updateMany({ vendor_id: id }, { $set: { vendor_name: set.name } })
+  return res.matchedCount > 0
+}
+
+export async function listVendorsWithStats(): Promise<VendorWithStats[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const agg = await col('bills', d).aggregate([
+    { $group: { _id: '$vendor_id', billCount: { $sum: 1 }, totalBilled: { $sum: '$total' }, outstanding: { $sum: '$balance' } } },
+  ]).toArray()
+  const byId = new Map(agg.map((a) => [String(a._id), a]))
+  const vendors = await listVendors()
+  return vendors.map((v) => {
+    const s = byId.get(v._id)
+    return {
+      ...v,
+      billCount: (s?.billCount as number) ?? 0,
+      totalBilled: ((s?.totalBilled as number) ?? 0) as Cents,
+      outstanding: ((s?.outstanding as number) ?? 0) as Cents,
+    }
+  })
+}
+
 export async function findOrCreateVendor(
   name: string,
   email: string | undefined,

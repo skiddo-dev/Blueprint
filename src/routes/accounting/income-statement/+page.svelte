@@ -1,6 +1,7 @@
 <script lang="ts">
-  import PageShell from '$lib/components/PageShell.svelte'
-  import { goto } from '$app/navigation'
+  import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import DateRange from '$lib/components/accounting/DateRange.svelte'
+  import { usd } from '$lib/accounting/format'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -8,32 +9,13 @@
   const session = $derived(data.session as unknown as AppSession)
   const user = $derived({ name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' })
   const st = $derived(data.statement)
-
-  // Mutable inputs seeded from the loaded range, re-synced on navigation.
-  // svelte-ignore state_referenced_locally
-  let from = $state(data.from)
-  // svelte-ignore state_referenced_locally
-  let to = $state(data.to)
-  $effect(() => { from = data.from; to = data.to })
-
-  const usd = (c: number) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-  function apply() { goto(`/accounting/income-statement?from=${from}&to=${to}`) }
 </script>
 
 <svelte:head><title>Income Statement · Blueprint</title></svelte:head>
 
-<PageShell {user} title="📊 Income Statement" maxWidth="760px">
-  {#snippet head()}
-    <h1>📊 Income Statement</h1>
-    <p class="sub"><a href="/accounting">Accounting</a> · Profit &amp; Loss</p>
-    <hr style="margin: 14px 0 20px" />
-  {/snippet}
-
-  <div class="range">
-    <label>From<input type="date" bind:value={from} /></label>
-    <label>To<input type="date" bind:value={to} /></label>
-    <button class="btn-secondary" type="button" onclick={apply}>Apply</button>
-  </div>
+<AccountingShell {user} title="📊 Income Statement" maxWidth="760px"
+  crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Profit & Loss' }]}>
+  <DateRange from={data.from} to={data.to} base="/accounting/income-statement" />
 
   <section class="card">
     {#snippet sectionBlock(title: string, lines: { account_id: string; name: string; amount: number }[], total: number)}
@@ -56,20 +38,11 @@
       <span>Net Income</span><span class="num">{usd(st.netIncome)}</span>
     </div>
   </section>
-</PageShell>
+</AccountingShell>
 
 <style>
-  h1 { margin: 0; }
-  .sub { color: var(--text-muted); margin: 4px 0 0; font-size: 14px; }
-  .sub a { color: var(--primary-text); text-decoration: none; }
-
-  .range { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
-  .range label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
-  .range input { font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); }
-  .btn-secondary { background: var(--bg); color: var(--text-body); border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-secondary:hover { border-color: var(--primary); }
-
-  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; font-size: 14px; }
+  /* Statement rows; shared chrome (card, toolbar) from accounting.css. */
+  .card { font-size: 14px; padding: 18px 20px; }
   .sec-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; margin: 14px 0 4px; }
   .sec-title:first-child { margin-top: 0; }
   .row { display: flex; justify-content: space-between; gap: 24px; padding: 5px 0; color: var(--text-body); }

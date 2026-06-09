@@ -35,6 +35,55 @@ export async function listCustomers(): Promise<Customer[]> {
   return rows.map((c) => ({ ...c, _id: String(c._id) })) as Customer[]
 }
 
+export interface CustomerWithStats extends Customer {
+  invoiceCount: number
+  totalInvoiced: Cents
+  outstanding: Cents // sum of open invoice balances
+}
+
+/** Customers with their AR rollup (invoice count, total invoiced, outstanding). */
+/** Update a customer's name/email. A name change propagates to the denormalized
+ *  customer_name on their invoices. Returns false if no such customer. */
+export async function updateCustomer(id: string, patch: { name?: string; email?: string }): Promise<boolean> {
+  const d = await getDb()
+  const set: Record<string, unknown> = {}
+  const unset: Record<string, unknown> = {}
+  if (patch.name !== undefined && patch.name.trim()) {
+    set.name = patch.name.trim()
+    set.name_lower = patch.name.trim().toLowerCase()
+  }
+  if (patch.email !== undefined) {
+    if (patch.email.trim()) set.email = patch.email.trim()
+    else unset.email = ''
+  }
+  if (!Object.keys(set).length && !Object.keys(unset).length) return false
+  const update: Record<string, unknown> = {}
+  if (Object.keys(set).length) update.$set = set
+  if (Object.keys(unset).length) update.$unset = unset
+  const res = await col('customers', d).updateOne({ _id: id }, update)
+  if (set.name) await col('invoices', d).updateMany({ customer_id: id }, { $set: { customer_name: set.name } })
+  return res.matchedCount > 0
+}
+
+export async function listCustomersWithStats(): Promise<CustomerWithStats[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const agg = await col('invoices', d).aggregate([
+    { $group: { _id: '$customer_id', invoiceCount: { $sum: 1 }, totalInvoiced: { $sum: '$total' }, outstanding: { $sum: '$balance' } } },
+  ]).toArray()
+  const byId = new Map(agg.map((a) => [String(a._id), a]))
+  const customers = await listCustomers()
+  return customers.map((c) => {
+    const s = byId.get(c._id)
+    return {
+      ...c,
+      invoiceCount: (s?.invoiceCount as number) ?? 0,
+      totalInvoiced: ((s?.totalInvoiced as number) ?? 0) as Cents,
+      outstanding: ((s?.outstanding as number) ?? 0) as Cents,
+    }
+  })
+}
+
 /** Find a customer by (case-insensitive) name or create one. */
 export async function findOrCreateCustomer(
   name: string,
