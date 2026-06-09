@@ -113,3 +113,106 @@ Also make sure:
   `AcrPull`, or use ACR admin creds (`az containerapp registry set`).
 - **Azure AD → App registration → Redirect URIs** includes
   `https://<prod-domain>/auth/callback/microsoft-entra-id`.
+
+## 4. Monitoring & alerting
+
+Two complementary layers. Health **gates** (`/healthz` liveness, `/readyz`
+readiness) hold or recycle a bad instance; **alerts** page a human when something
+fails after a successful deploy.
+
+### a) App-level error alerts (in-app)
+
+Error-level logs — background sync / Graph / OpenAI failures, failed data
+migrations, and unhandled server errors — are forwarded to an optional webhook so
+they don't die silently in the log stream. Point it at a Slack/Teams incoming
+webhook (or any JSON endpoint). The same message dedups to at most once per 5 min.
+
+```bash
+APP=raves-blueprint; RG=Blueprint
+az containerapp secret set -n "$APP" -g "$RG" --secrets \
+  alert-webhook-url="https://hooks.slack.com/services/T000/B000/xxxx"
+az containerapp update -n "$APP" -g "$RG" --set-env-vars \
+  ALERT_WEBHOOK_URL=secretref:alert-webhook-url
+```
+
+Unset = no-op (no alerts, app unaffected). The seam lives in
+[`src/lib/server/log.ts`](../src/lib/server/log.ts) (`dispatchAlert`) — swap it for
+App Insights / Sentry there without touching call sites.
+
+### b) Azure-native availability + log alerts (recommended)
+
+Catches a fully-down app (the in-app webhook can't fire if the process is dead).
+The 2026-06-08 sign-in outage was invisible because nothing probed the **real**
+sign-in path — both `/healthz` and `/readyz` returned 200 throughout. So probe the
+sign-in redirect, not a health endpoint:
+
+- **App Insights availability (standard) test** against
+  `https://<prod-domain>/auth/signin/microsoft-entra-id` — expect a **302**
+  redirect; alert on any **5xx** or timeout.
+- **Log alert** on the app's error logs matching `auth`/`error`/`immutable`
+  (the outage signature), in case the redirect itself still 200s.
+- Wire both to an **Action Group** that sends **SMS/email** to the on-call number.
+
+These live in Azure (Portal → Monitor → Alerts), not in this repo, so they survive
+an app rollback. Document the Action Group recipients alongside your runbook.
+
+## 5. Backup, restore & disaster recovery
+
+### What needs protecting
+
+**All persistent state is one MongoDB Atlas database.** There is no separate blob
+store — email/upload **attachments are stored as binary inside Mongo** — so a
+single database backup is the complete restore surface for: `tasks` (+ comments),
+`attachments`, `quotes`, `prospects`, `users`, `accessRequests`, the accounting
+ledger (`journalEntries`, `invoices`, `bills`, `payments`, `billPayments`,
+`customers`, `vendors`, `reconciliations`, `accounts`, `counters`), and the
+`meta`/`migrations` bookkeeping.
+
+Runtime **secrets/config are NOT in the database or the repo** — they live as
+Container App secrets + the Entra app registration. Keep `AUTH_SECRET`,
+`AZURE_CLIENT_SECRET`, `MONGODB_URI`, and `OPENAI_API_KEY` in a password manager;
+sections 1–3 above are the recipe to rebuild everything else from scratch.
+
+### Backup policy  *(confirm against your cluster)*
+
+Verify in **Atlas → Cluster → Backup**:
+
+- **Dedicated tier (M10+):** enable **Cloud Backup** with **continuous /
+  point-in-time recovery (PITR)** plus scheduled snapshots. Recommended: snapshot
+  every 6–12h, retain ≥ 7 daily / 4 weekly, PITR window ≥ 72h.
+- **Shared tier (M0/M2/M5):** PITR/continuous backup is **not available** — rely on
+  scheduled `mongodump` (e.g. a daily GitHub Action to encrypted storage) until you
+  move to M10+. Treat this as a gap to close before calling the data tier
+  production-grade.
+
+**Targets (set with the client, then record here):**
+
+| Objective | Target | Mechanism |
+|---|---|---|
+| RPO (max data loss) | _e.g._ ≤ 5 min (PITR) / ≤ 24h (snapshot only) | Atlas continuous backup |
+| RTO (max downtime to restore) | _e.g._ ≤ 2h | restore-to-new-cluster drill below |
+
+### Restore drill  *(run quarterly — never restore over prod)*
+
+1. **Atlas → Backup → Restore** the chosen snapshot / PITR timestamp to a **NEW
+   cluster** (e.g. `blueprint-restore-test`). Never restore in place over prod.
+2. Grab the restored cluster's SRV URI; point a **staging** Container App revision's
+   `MONGODB_URI` at it (or run `node build` locally with that URI).
+3. Hit **`/readyz`** — expect `{"db":true,"config":true,"migrations":true}` (200).
+   Migrations run automatically on first connect; integrity indexes are recreated
+   and must succeed or readiness stays 503 (by design).
+4. Smoke the data: board loads, dashboard quote totals, and an accounting report
+   (trial balance / balance sheet) reconcile against expectations.
+5. Record the date and the **actual** RTO observed; delete the test cluster.
+
+### Data-incident runbook
+
+- **Accidental delete / corruption:** on a dedicated tier, **PITR-restore to a new
+  cluster at a timestamp just before the incident**, validate per the drill, then
+  cut `MONGODB_URI` over. Don't mutate prod while diagnosing.
+- **Destructive endpoints to treat with care:** `POST /api/tasks/backfill-cutoff`
+  **hard-deletes** old synced cards — always run it **dry-run first**. Accounting
+  period close / closing entries are reversible **through the app**, not via raw DB
+  edits — never hand-edit `journalEntries`.
+- **Comms:** trip the on-call Action Group (section 4b), then post status; the same
+  number that gets the availability SMS owns the restore decision.

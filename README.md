@@ -130,7 +130,7 @@ node build        # run the production server (listens on PORT, default 3000)
 
 Production runs as the Docker image in [`Dockerfile`](Dockerfile) on **Azure Container Apps**. Set the runtime env vars (above) as **Azure App Settings**, register the prod redirect URI, and — since the app sits behind the HTTPS ingress — set `ORIGIN=https://<your-prod-domain>` so SvelteKit's CSRF/origin check passes.
 
-One-time deploy setup (registry, role assignment, optional GitHub Actions OIDC auto-deploy) is documented in [`.github/DEPLOY.md`](.github/DEPLOY.md).
+One-time deploy setup (registry, role assignment, optional GitHub Actions OIDC auto-deploy), plus **monitoring & alerting** and the **backup / restore / disaster-recovery runbook**, are documented in [`.github/DEPLOY.md`](.github/DEPLOY.md).
 
 ## iOS app
 
