@@ -115,3 +115,38 @@ export function balanceSheet(balances: Balance[], accounts: Account[]): {
 export function isPeriodClosed(dateISO: string, closedThroughISO: string | null | undefined): boolean {
   return !!closedThroughISO && dateISO <= closedThroughISO
 }
+
+export type PeriodBalance = Balance & { period: string } // "YYYY-MM"
+export type MonthActivity = {
+  month: string // "YYYY-MM"
+  revenue: Cents
+  expenses: Cents // COGS + opex together — the trend chart doesn't split them
+  net: Cents
+  bankNet: Cents // net movement on bank-subtype accounts (cash in − cash out)
+}
+
+/** Month-by-month P&L + cash movement for the hub's trend chart and sparkline.
+ *  Months with no postings are absent — the caller decides how to pad. Contra
+ *  accounts net correctly for the same reason as the statements above. */
+export function monthlyActivity(rows: PeriodBalance[], accounts: Account[]): MonthActivity[] {
+  const kind = new Map(accounts.map((a) => [a._id, { type: a.type, bank: a.type === 'asset' && a.subtype === 'bank' }]))
+  const byMonth = new Map<string, { revenue: number; expenses: number; bankNet: number }>()
+  for (const r of rows) {
+    const k = kind.get(r.account_id)
+    if (!k) continue
+    const m = byMonth.get(r.period) ?? { revenue: 0, expenses: 0, bankNet: 0 }
+    if (k.type === 'income') m.revenue += r.credit - r.debit
+    else if (k.type === 'expense') m.expenses += r.debit - r.credit
+    if (k.bank) m.bankNet += r.debit - r.credit
+    byMonth.set(r.period, m)
+  }
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([month, m]) => ({
+      month,
+      revenue: cents(m.revenue),
+      expenses: cents(m.expenses),
+      net: cents(m.revenue - m.expenses),
+      bankNet: cents(m.bankNet),
+    }))
+}

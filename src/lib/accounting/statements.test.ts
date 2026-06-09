@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { cents } from '$lib/money'
-import { incomeStatement, balanceSheet, isPeriodClosed, type Balance } from './statements'
+import { incomeStatement, balanceSheet, isPeriodClosed, monthlyActivity, type Balance } from './statements'
 import type { Account } from './types'
 
 // A small chart covering each type + a contra account in each direction.
@@ -87,5 +87,43 @@ describe('isPeriodClosed', () => {
     expect(isPeriodClosed('2026-06-01', '2026-05-31')).toBe(false)
     expect(isPeriodClosed('2026-05-15', null)).toBe(false)
     expect(isPeriodClosed('2026-05-15', undefined)).toBe(false)
+  })
+})
+
+describe('monthlyActivity', () => {
+  // Local chart: monthlyActivity also needs a bank-subtype account for cash flow.
+  const acc: Account[] = [
+    { _id: '1000', code: '1000', name: 'Cash — Operating', type: 'asset', normal: 'debit', subtype: 'bank', active: true },
+    { _id: '1100', code: '1100', name: 'A/R', type: 'asset', normal: 'debit', subtype: 'receivable', active: true },
+    { _id: '4000', code: '4000', name: 'Contract Revenue', type: 'income', normal: 'credit', active: true },
+    { _id: '4900', code: '4900', name: 'Sales Discounts', type: 'income', normal: 'debit', contra: true, active: true },
+    { _id: '5000', code: '5000', name: 'Job Materials', type: 'expense', normal: 'debit', subtype: 'cogs', active: true },
+    { _id: '6100', code: '6100', name: 'Rent', type: 'expense', normal: 'debit', subtype: 'opex', active: true },
+  ]
+  const row = (period: string, account_id: string, debit: number, credit: number) =>
+    ({ period, account_id, debit: cents(debit), credit: cents(credit) })
+
+  it('buckets revenue, expenses (COGS+opex), net and bank movement by month, sorted', () => {
+    const rows = [
+      // Feb listed before Jan to prove sorting.
+      row('2026-02', '4000', 0, 8000),
+      row('2026-02', '5000', 2500, 0),
+      row('2026-02', '1000', 6000, 500),
+      row('2026-01', '4000', 0, 10000),
+      row('2026-01', '4900', 500, 0),   // contra-revenue nets against revenue
+      row('2026-01', '5000', 3000, 0),
+      row('2026-01', '6100', 2000, 0),  // opex folds into expenses
+      row('2026-01', '1000', 4000, 1000),
+      row('2026-01', '1100', 10000, 4000), // A/R is not a bank account — no bankNet
+    ]
+    const months = monthlyActivity(rows, acc)
+    expect(months.map((m) => m.month)).toEqual(['2026-01', '2026-02'])
+    expect(months[0]).toEqual({ month: '2026-01', revenue: 9500, expenses: 5000, net: 4500, bankNet: 3000 })
+    expect(months[1]).toEqual({ month: '2026-02', revenue: 8000, expenses: 2500, net: 5500, bankNet: 5500 })
+  })
+
+  it('ignores rows for unknown accounts and returns [] for no rows', () => {
+    expect(monthlyActivity([], acc)).toEqual([])
+    expect(monthlyActivity([row('2026-01', '9999', 100, 0)], acc)).toEqual([])
   })
 })

@@ -118,10 +118,63 @@
 .acct .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
 .acct .toolbar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
 
+/* ── Working-list toolbar: status filter pills + search ── */
+.acct .list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.acct .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.acct .filter-pills button {
+  font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+  background: var(--bg); color: var(--text-soft); border: 1px solid var(--border);
+}
+.acct .filter-pills button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.acct .filter-pills button .count { font-weight: 400; opacity: 0.75; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.acct .search-box { min-width: 180px; font-size: 13px; }
+
+/* ── Urgency + payment progress in tables ── */
+.acct .due-chip { font-size: 12px; white-space: nowrap; color: var(--text-muted); }
+.acct .due-chip.overdue { color: #dc2626; font-weight: 600; }
+.acct tbody tr.row-overdue td { background: #fef2f2; }
+.acct tbody tr.row-overdue.row-link:hover td { background: #fee2e2; }
+:root[data-theme="dark"] .acct tbody tr.row-overdue td { background: #2d1818; }
+:root[data-theme="dark"] .acct tbody tr.row-overdue.row-link:hover td { background: #3f1d1d; }
+.acct .pay-progress { display: inline-block; vertical-align: middle; width: 72px; height: 5px; border-radius: 3px; background: var(--border-soft); overflow: hidden; }
+.acct .pay-progress > span { display: block; height: 100%; background: #10b981; border-radius: 3px; }
+
 /* ── Layout grids ── */
 .acct .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; }
 .acct .charts-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 18px; }
 .acct .quick-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+
+/* ── Jargon hint affordance: a small "?" whose title explains the term ── */
+.acct .hint-q {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border-radius: 50%; vertical-align: 1px;
+  border: 1px solid var(--border); color: var(--text-faint);
+  font-size: 10px; font-weight: 700; cursor: help;
+}
+
+/* ── Party (customer/vendor) initial avatars in directory lists ── */
+.acct .party { display: inline-flex; align-items: center; gap: 9px; }
+.acct .avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--chip-bg); color: var(--primary-text); font-size: 12px; font-weight: 700;
+}
+
+/* ── Report hint (plain-language subtitle under a statement title) ── */
+.acct .report-hint { font-size: 13px; color: var(--text-muted); margin: -6px 0 14px; max-width: 70ch; }
+
+/* ── Print: statements get handed to banks and accountants. Strip the app
+      chrome (drawer, nav, toolbars, buttons) and let the statement card own
+      the page. Scoped to accounting pages via .acct. ── */
+@media print {
+  aside.sidebar, .sidebar-backdrop, .mobile-topbar { display: none !important; }
+  .acct-nav, .acct-head-actions, .acct .toolbar, .acct .quick-picks, .acct .btn-primary, .acct .btn-secondary { display: none !important; }
+  .app-layout, .main-content { height: auto !important; overflow: visible !important; }
+  .main-content { max-width: none !important; padding: 0 !important; }
+  .acct .acct-body { max-width: none !important; }
+  .acct .card { border: none; box-shadow: none; padding: 0; }
+  .acct-head { border-bottom: 2px solid #000; }
+}
 
 /* ── Errors ── */
 .acct .error { color: #dc2626; font-size: 13px; background: #fee2e2; border-radius: 8px; padding: 8px 12px; margin-top: 10px; }

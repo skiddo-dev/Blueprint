@@ -2,6 +2,7 @@
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import StatTile from '$lib/components/accounting/StatTile.svelte'
   import AgingBars from '$lib/components/accounting/AgingBars.svelte'
+  import TrendChart from '$lib/components/accounting/TrendChart.svelte'
   import { usd } from '$lib/accounting/format'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
@@ -77,24 +78,33 @@
     <a class="btn-primary" href="/accounting/journal/new">+ New journal entry</a>
   {/snippet}
 
-  <!-- KPI tiles: the at-a-glance financial health of the business. -->
+  <!-- KPI tiles: the at-a-glance financial health of the business, with
+       direction (deltas/sparkline) and urgency (overdue / due-soon) chips. -->
   <div class="kpi-grid">
-    <StatTile value={usd(kpis.cashOnHand)} label="Cash on hand" accent="#6366f1" />
+    <StatTile
+      value={usd(kpis.cashOnHand)} label="Cash on hand" accent="#6366f1"
+      sub={kpis.cashDeltaMtd === 0 ? 'Flat this month' : `${kpis.cashDeltaMtd > 0 ? '+' : '−'}${usd(Math.abs(kpis.cashDeltaMtd))} this month`}
+      tone={kpis.cashDeltaMtd > 0 ? 'good' : kpis.cashDeltaMtd < 0 ? 'bad' : 'muted'}
+      spark={data.cashSpark}
+    />
     <StatTile
       value={usd(kpis.ar.total)} label="A/R outstanding" accent="#3b82f6"
       sub={kpis.ar.overdue > 0 ? `${usd(kpis.ar.overdue)} overdue` : 'None overdue'}
       tone={kpis.ar.overdue > 0 ? 'bad' : 'good'}
+      href="/accounting/aging"
     />
     <StatTile
       value={usd(kpis.ap.total)} label="A/P outstanding" accent="#f59e0b"
-      sub={kpis.ap.overdue > 0 ? `${usd(kpis.ap.overdue)} overdue` : 'None overdue'}
-      tone={kpis.ap.overdue > 0 ? 'warn' : 'good'}
+      sub={kpis.ap.dueSoon > 0 ? `${usd(kpis.ap.dueSoon)} due within 7d` : 'Nothing due this week'}
+      tone={kpis.ap.dueSoon > 0 ? 'warn' : 'good'}
+      href="/accounting/ap-aging"
     />
     <StatTile
       value={usd(kpis.netIncomeYtd)} label="Net income · YTD"
       accent={kpis.netIncomeYtd >= 0 ? '#10b981' : '#ef4444'}
-      sub={`${usd(kpis.netIncomeMtd)} this month`}
+      sub={`${kpis.netIncomeMtd >= 0 ? '+' : '−'}${usd(Math.abs(kpis.netIncomeMtd))} this month`}
       tone={kpis.netIncomeMtd >= 0 ? 'good' : 'bad'}
+      href="/accounting/income-statement"
     />
   </div>
 
@@ -104,6 +114,9 @@
     <a class="btn-secondary" href="/accounting/bills/new">🧾 New bill</a>
     <a class="btn-secondary" href="/accounting/reconcile">✅ Reconcile</a>
   </div>
+
+  <!-- The "how's the business doing" trend — monthly revenue vs expenses. -->
+  <TrendChart months={data.trend} title="Revenue vs expenses · last 6 months" />
 
   <!-- A/R & A/P aging distribution. -->
   <div class="charts-2">
@@ -137,8 +150,8 @@
   <!-- Trial balance is accountant detail — collapsed by default so the hub leads
        with the financial picture, not the ledger. -->
   <details class="card trial">
-    <summary>
-      <span class="sum-title">Trial Balance</span>
+    <summary title="Every posting carries equal debits and credits, so the two column totals must match — if they do, the books balance.">
+      <span class="sum-title">Trial Balance <span class="hint-q" aria-hidden="true">?</span></span>
       <span class="badge" class:ok={inBalance} class:bad={!inBalance}>
         {inBalance ? '✓ In balance' : '✕ Out of balance'}
       </span>

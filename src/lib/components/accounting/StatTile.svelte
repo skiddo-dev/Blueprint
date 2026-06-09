@@ -1,13 +1,15 @@
 <script lang="ts">
   // Dashboard-style KPI tile (mirrors the dashboard's `.metric`): a big value, a
-  // label, an accent top-border, and an optional colored sub-line (e.g. overdue
-  // amount in red). Becomes a link when `href` is set.
+  // label, an accent top-border, an optional colored pill chip (delta / urgency),
+  // and an optional sparkline so the number carries direction. Becomes a link
+  // when `href` is set.
   let {
     value,
     label,
     accent = '#6366f1',
     sub,
     tone = 'muted',
+    spark,
     href,
   }: {
     value: string
@@ -15,8 +17,20 @@
     accent?: string
     sub?: string
     tone?: 'muted' | 'good' | 'bad' | 'warn'
+    spark?: number[] // sampled series, oldest → newest; scaled to fit
     href?: string
   } = $props()
+
+  // Normalize the series into polyline points for a 64×22 viewBox. A flat or
+  // single-point series draws a midline rather than dividing by zero.
+  const points = $derived.by(() => {
+    if (!spark || spark.length < 2) return ''
+    const min = Math.min(...spark)
+    const max = Math.max(...spark)
+    const span = max - min || 1
+    const step = 64 / (spark.length - 1)
+    return spark.map((v, i) => `${(i * step).toFixed(1)},${(19 - ((v - min) / span) * 16 + 1.5).toFixed(1)}`).join(' ')
+  })
 </script>
 
 <svelte:element
@@ -28,7 +42,16 @@
 >
   <div class="val">{value}</div>
   <div class="lbl">{label}</div>
-  {#if sub}<div class="sub {tone}">{sub}</div>{/if}
+  {#if sub || points}
+    <div class="foot">
+      {#if sub}<span class="chip {tone}">{sub}</span>{/if}
+      {#if points}
+        <svg class="spark" width="64" height="22" viewBox="0 0 64 22" aria-hidden="true">
+          <polyline {points} fill="none" stroke={accent} stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+        </svg>
+      {/if}
+    </div>
+  {/if}
 </svelte:element>
 
 <style>
@@ -41,9 +64,17 @@
   .tile.link:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
   .val { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.15; }
   .lbl { font-size: 12px; color: var(--text-faint); margin-top: 3px; }
-  .sub { font-size: 12px; font-weight: 600; margin-top: 6px; }
-  .sub.muted { color: var(--text-muted); }
-  .sub.good { color: #047857; }
-  .sub.bad { color: #dc2626; }
-  .sub.warn { color: #b45309; }
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; min-height: 22px; }
+  .spark { flex-shrink: 0; opacity: 0.9; }
+  .chip {
+    font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 8px; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip.muted { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border-soft); }
+  .chip.good { background: #d1fae5; color: #047857; }
+  .chip.bad { background: #fee2e2; color: #dc2626; }
+  .chip.warn { background: #fef3c7; color: #b45309; }
+  :global(:root[data-theme='dark']) .chip.good { background: #064e3b; color: #6ee7b7; }
+  :global(:root[data-theme='dark']) .chip.bad { background: #3f1d1d; color: #fca5a5; }
+  :global(:root[data-theme='dark']) .chip.warn { background: #422006; color: #fcd34d; }
 </style>

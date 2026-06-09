@@ -58,6 +58,7 @@
     </div>
     {#if vendors.length === 0}
       <p class="empty">No vendors yet. They're created automatically when you enter a bill.</p>
+      <p><a class="btn-primary" href="/accounting/bills/new">+ Enter your first bill</a></p>
     {:else}
       <div class="table-wrap">
         <table>
@@ -80,7 +81,7 @@
                 </tr>
               {:else}
                 <tr>
-                  <td>{v.name}</td>
+                  <td><span class="party"><span class="avatar">{v.name.trim().slice(0, 1).toUpperCase()}</span>{v.name}</span></td>
                   <td class="muted">{v.email ?? '—'}</td>
                   <td class="num">{v.billCount}</td>
                   <td class="num">{usd(v.totalBilled)}</td>

@@ -15,6 +15,15 @@
   $effect(() => { asOf = data.asOf })
 
   function apply() { goto(`/accounting/balance-sheet?asOf=${asOf}`) }
+
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  function pick(which: 'today' | 'last-month-end' | 'last-year-end') {
+    const now = new Date()
+    if (which === 'today') asOf = iso(now)
+    else if (which === 'last-month-end') asOf = iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0)))
+    else asOf = `${now.getUTCFullYear() - 1}-12-31`
+    apply()
+  }
 </script>
 
 <svelte:head><title>Balance Sheet · Blueprint</title></svelte:head>
@@ -25,9 +34,17 @@
     <span class="badge" class:ok={st.balanced} class:bad={!st.balanced}>
       {st.balanced ? '✓ Balanced' : '✕ Out of balance'}
     </span>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
   {/snippet}
 
+  <p class="report-hint">A snapshot of what the business owns and owes on a single date — assets on one side, liabilities plus equity on the other. The two sides must match.</p>
   <div class="toolbar">
+    <div class="quick-picks" role="group" aria-label="Quick as-of picks">
+      <button class="btn-secondary" type="button" onclick={() => pick('today')}>Today</button>
+      <button class="btn-secondary" type="button" onclick={() => pick('last-month-end')}>End of last month</button>
+      <button class="btn-secondary" type="button" onclick={() => pick('last-year-end')}>End of last year</button>
+    </div>
+    <span class="qp-sep" aria-hidden="true"></span>
     <label class="field">As of<input type="date" bind:value={asOf} /></label>
     <button class="btn-secondary" type="button" onclick={apply}>Apply</button>
   </div>
@@ -57,6 +74,9 @@
 
 <style>
   /* Statement rows; shared chrome from accounting.css. */
+  .quick-picks { display: flex; gap: 6px; flex-wrap: wrap; }
+  .quick-picks .btn-secondary { padding: 7px 11px; font-size: 12px; border-radius: 999px; }
+  .qp-sep { width: 1px; height: 26px; background: var(--border); align-self: flex-end; margin: 0 2px 5px; }
   .card { font-size: 14px; padding: 18px 20px; }
   .sec-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; margin: 0 0 4px; }
   .row { display: flex; justify-content: space-between; gap: 24px; padding: 5px 0; color: var(--text-body); }
