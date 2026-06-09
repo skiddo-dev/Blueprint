@@ -61,8 +61,10 @@
     </div>
     <nav class="subnav">
       <a href="/accounting/invoices">📄 Invoices</a>
+      <a href="/accounting/customers">🤝 Customers</a>
       <a href="/accounting/aging">📈 A/R Aging</a>
       <a href="/accounting/bills">🧾 Bills</a>
+      <a href="/accounting/vendors">🏗️ Vendors</a>
       <a href="/accounting/ap-aging">📉 A/P Aging</a>
       <a href="/accounting/income-statement">📊 Income Statement</a>
       <a href="/accounting/balance-sheet">🏦 Balance Sheet</a>

@@ -35,6 +35,32 @@ export async function listCustomers(): Promise<Customer[]> {
   return rows.map((c) => ({ ...c, _id: String(c._id) })) as Customer[]
 }
 
+export interface CustomerWithStats extends Customer {
+  invoiceCount: number
+  totalInvoiced: Cents
+  outstanding: Cents // sum of open invoice balances
+}
+
+/** Customers with their AR rollup (invoice count, total invoiced, outstanding). */
+export async function listCustomersWithStats(): Promise<CustomerWithStats[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const agg = await col('invoices', d).aggregate([
+    { $group: { _id: '$customer_id', invoiceCount: { $sum: 1 }, totalInvoiced: { $sum: '$total' }, outstanding: { $sum: '$balance' } } },
+  ]).toArray()
+  const byId = new Map(agg.map((a) => [String(a._id), a]))
+  const customers = await listCustomers()
+  return customers.map((c) => {
+    const s = byId.get(c._id)
+    return {
+      ...c,
+      invoiceCount: (s?.invoiceCount as number) ?? 0,
+      totalInvoiced: ((s?.totalInvoiced as number) ?? 0) as Cents,
+      outstanding: ((s?.outstanding as number) ?? 0) as Cents,
+    }
+  })
+}
+
 /** Find a customer by (case-insensitive) name or create one. */
 export async function findOrCreateCustomer(
   name: string,
