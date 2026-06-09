@@ -37,6 +37,7 @@ export async function ensureAccountingIndexes(d: Db): Promise<void> {
     col(d, 'bills').createIndex({ status: 1, due_date: 1 }),   // A/P aging scan
     col(d, 'bills').createIndex({ vendor_id: 1 }),
     col(d, 'billPayments').createIndex({ bill_id: 1 }),        // payments for a bill
+    col(d, 'reconciliations').createIndex({ account_id: 1, statement_date: -1 }), // bank rec history
   ])
 }
 
