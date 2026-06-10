@@ -11,6 +11,7 @@
   } from '$lib/prospects'
   import PageShell from '$lib/components/PageShell.svelte'
   import Chart from '$lib/components/Chart.svelte'
+  import Icon from '$lib/components/Icon.svelte'
   import { escapeHtml } from '$lib/sanitize'
   import type { ChartData, ChartOptions } from 'chart.js'
 
@@ -116,17 +117,19 @@
     labels: buckets.map(b => b.label),
     datasets: [{ data: buckets.map(b => b.count), backgroundColor: color, borderRadius: 4 }],
   })
+  // No explicit tick/grid/label colors: they follow the themed Chart.js
+  // defaults set by Chart.svelte (light/dark aware).
   const barOpts: ChartOptions = {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
-      x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
-      y: { beginAtZero: true, ticks: { color: '#94a3b8', precision: 0 }, grid: { color: '#eef2f6' } },
+      x: { ticks: { font: { size: 10 } }, grid: { display: false } },
+      y: { beginAtZero: true, ticks: { precision: 0 }, grid: {} },
     },
   }
   const doughnutOpts: ChartOptions = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'bottom', labels: { color: '#475569', font: { size: 11 }, boxWidth: 12 } } },
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
   }
   const sizeData = $derived(barData(sizeHistogram(filtered), '#6366f1'))
   const cityData = $derived(barData(byCity(filtered).slice(0, 8), '#3b82f6'))
@@ -304,7 +307,7 @@
       <label>Radius (mi)<input type="number" name="radiusMiles" min="1" max="50" bind:value={radiusMiles} /></label>
       <label>Min size (sf)<input type="number" name="minSqft" min="0" step="1000" bind:value={minSqft} /></label>
       <label>Max size (sf)<input type="number" name="maxSqft" min="0" step="1000" bind:value={maxSqft} /></label>
-      <button type="submit" class="primary" disabled={pulling}>{pulling ? 'Pulling…' : '⟳ Pull prospects'}</button>
+      <button type="submit" class="primary" disabled={pulling}><Icon name="refresh" size={13} /> {pulling ? 'Pulling…' : 'Pull prospects'}</button>
       {#if form?.ok}
         <span class="result ok">Pulled {form.count} · {form.added} new, {form.updated} updated{form.live ? '' : ' (demo)'}</span>
       {:else if form?.error}
@@ -346,7 +349,7 @@
         <div class="fg actions">
           <span class="count">{filtered.length} of {prospectList.length}</span>
           {#if filtersActive}<button class="chip" onclick={resetFilters}>Reset</button>{/if}
-          <button class="chip" onclick={downloadCSV} disabled={filtered.length === 0}>⤓ CSV</button>
+          <button class="chip" onclick={downloadCSV} disabled={filtered.length === 0}><Icon name="download" size={12} /> CSV</button>
         </div>
       </div>
 
@@ -436,7 +439,7 @@
           {PROSPECT_STATUS_META[statusOf(p)].label}
         </span>
       </div>
-      <button class="modal-close" onclick={() => (modalId = null)} aria-label="Close">✕</button>
+      <button class="modal-close" onclick={() => (modalId = null)} aria-label="Close"><Icon name="x" size={15} /></button>
     </div>
 
     <div class="detail-grid">
@@ -474,10 +477,10 @@
     </label>
 
     <div class="modal-actions">
-      <a class="chip" href={gmaps(p)} target="_blank" rel="noopener">📍 Google Maps</a>
-      <a class="chip" href={countySearch(p)} target="_blank" rel="noopener">🗂️ County records</a>
+      <a class="chip" href={gmaps(p)} target="_blank" rel="noopener"><Icon name="pin" size={12} /> Google Maps</a>
+      <a class="chip" href={countySearch(p)} target="_blank" rel="noopener"><Icon name="archive" size={12} /> County records</a>
       <button class="primary" disabled={addState === 'adding' || addState === 'added'} onclick={() => addToBoard(p)}>
-        {addState === 'added' ? '✓ Added to board' : addState === 'adding' ? 'Adding…' : '➕ Add to Kanban board'}
+        {#if addState === 'added'}<Icon name="check" size={13} /> Added to board{:else if addState === 'adding'}Adding…{:else}<Icon name="plus" size={13} /> Add to Kanban board{/if}
       </button>
       {#if addState === 'error'}<span class="result err">Couldn’t add (needs MongoDB).</span>{/if}
     </div>
@@ -491,13 +494,13 @@
 
   .badge.mock {
     display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 10px;
-    background: #fffbeb; color: #b45309; border: 1px solid #fde68a; font-weight: 600; font-size: 11px;
+    background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); font-weight: 600; font-size: 11px;
   }
 
   .pull-bar, .filter-bar {
     display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end;
     background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 10px;
-    padding: 12px 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+    padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow);
   }
   .pull-bar label, .fg { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
   .pull-bar input { width: 110px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; }
@@ -511,31 +514,31 @@
   .count { font-size: 12px; color: var(--text-faint); font-weight: 600; }
 
   .chip {
+    display: inline-flex; align-items: center; gap: 5px;
     padding: 5px 10px; font-size: 12px; font-weight: 600; border: 1px solid var(--border);
     border-radius: 7px; background: var(--bg); color: var(--text-soft); cursor: pointer; text-decoration: none;
   }
   .chip:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary-text); }
   .chip:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .primary { background: #6366f1; color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  /* `.primary` buttons use the global treatment (app.css). */
   .result { font-size: 12px; font-weight: 600; align-self: center; }
-  .result.ok { color: #047857; }
-  .result.err { color: #dc2626; }
+  .result.ok { color: var(--success); }
+  .result.err { color: var(--danger); }
 
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .card { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 1px 4px rgba(15,23,42,0.05); }
+  .card { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow); }
   .card-label { font-size: 11px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; }
   .card-value { font-size: 20px; font-weight: 800; color: var(--text); }
 
   .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .chart-card { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 12px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(15,23,42,0.05); }
+  .chart-card { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); }
   .chart-title { font-size: 12px; font-weight: 700; color: var(--text-soft); }
   .chart-box { height: 200px; position: relative; margin-top: 8px; }
 
   .map { height: 380px; border-radius: 12px; border: 1px solid var(--border-card); margin-bottom: 16px; overflow: hidden; z-index: 0; }
 
-  .table-wrap { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 12px; overflow: auto; box-shadow: 0 1px 4px rgba(15,23,42,0.05); }
+  .table-wrap { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 12px; overflow: auto; box-shadow: var(--shadow); }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { padding: 8px 12px; text-align: left; white-space: nowrap; }
   th { position: sticky; top: 0; background: var(--bg); color: var(--text-soft); font-weight: 700; font-size: 12px; cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); }
@@ -560,7 +563,7 @@
   .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
   .modal-head h2 { font-size: 17px; font-weight: 800; color: var(--text); margin: 0 0 6px; }
   .status-pill { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; }
-  .modal-close { width: 32px; height: 32px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px; background: var(--bg); color: var(--text-muted); cursor: pointer; flex: 0 0 auto; }
+  .modal-close { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text-muted); cursor: pointer; flex: 0 0 auto; }
   .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 13px; color: var(--text-body); margin-bottom: 14px; }
   .detail-grid .dl { display: block; font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; }
   .modal-row { display: flex; gap: 16px; margin-bottom: 12px; }

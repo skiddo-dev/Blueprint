@@ -6,7 +6,7 @@
   let {
     value,
     label,
-    accent = '#6366f1',
+    accent,
     sub,
     tone = 'muted',
     spark,
@@ -14,7 +14,7 @@
   }: {
     value: string
     label: string
-    accent?: string
+    accent?: string // defaults to the brand primary (CSS) when unset
     sub?: string
     tone?: 'muted' | 'good' | 'bad' | 'warn'
     spark?: number[] // sampled series, oldest → newest; scaled to fit
@@ -38,7 +38,7 @@
   class="tile"
   class:link={!!href}
   href={href}
-  style:border-top-color={accent}
+  style:border-top-color={accent ?? null}
 >
   <div class="val">{value}</div>
   <div class="lbl">{label}</div>
@@ -47,7 +47,7 @@
       {#if sub}<span class="chip {tone}">{sub}</span>{/if}
       {#if points}
         <svg class="spark" width="64" height="22" viewBox="0 0 64 22" aria-hidden="true">
-          <polyline {points} fill="none" stroke={accent} stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+          <polyline {points} fill="none" stroke={accent ?? 'var(--primary)'} stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
         </svg>
       {/if}
     </div>
@@ -57,8 +57,8 @@
 <style>
   .tile {
     display: block; text-decoration: none;
-    background: var(--card-bg); border: 1px solid var(--border-card); border-top: 3px solid #6366f1;
-    border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+    background: var(--card-bg); border: 1px solid var(--border-card); border-top: 3px solid var(--primary);
+    border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow);
   }
   .tile.link { transition: box-shadow 0.12s, transform 0.12s; }
   .tile.link:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
@@ -71,10 +71,7 @@
     font-variant-numeric: tabular-nums;
   }
   .chip.muted { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border-soft); }
-  .chip.good { background: #d1fae5; color: #047857; }
-  .chip.bad { background: #fee2e2; color: #dc2626; }
-  .chip.warn { background: #fef3c7; color: #b45309; }
-  :global(:root[data-theme='dark']) .chip.good { background: #064e3b; color: #6ee7b7; }
-  :global(:root[data-theme='dark']) .chip.bad { background: #3f1d1d; color: #fca5a5; }
-  :global(:root[data-theme='dark']) .chip.warn { background: #422006; color: #fcd34d; }
+  .chip.good { background: var(--success-bg); color: var(--success); }
+  .chip.bad { background: var(--danger-bg); color: var(--danger); }
+  .chip.warn { background: var(--warning-bg); color: var(--warning); }
 </style>

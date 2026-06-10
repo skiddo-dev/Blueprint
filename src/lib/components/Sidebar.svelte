@@ -64,7 +64,7 @@
       })
       const d = await r.json()
       if (!r.ok) { importResult = d.message ?? `Import failed (${r.status}).`; return }
-      importResult = `✅ ${d.created} created${d.skipped ? `, ${d.skipped} skipped` : ''}.`
+      importResult = `✓ ${d.created} created${d.skipped ? `, ${d.skipped} skipped` : ''}.`
       if (d.created) { csvText = ''; onImported?.() }
     } catch (e) {
       importResult = `Error: ${e}`
@@ -123,7 +123,7 @@
     <div class="completion">
       <div class="completion-labels">
         <span>Completion</span>
-        <span style:color="#10b981" style:font-weight="600">{pct}%</span>
+        <span class="completion-pct">{pct}%</span>
       </div>
       <div class="progress-track">
         <div class="progress-fill" style:width="{pct}%"></div>
@@ -311,11 +311,12 @@
     height: 5px;
   }
   .progress-fill {
-    background: #10b981;
+    background: var(--success-vivid);
     border-radius: 4px;
     height: 5px;
     transition: width 0.4s ease;
   }
+  .completion-pct { color: var(--success-vivid); font-weight: 600; }
 
   details { border: none; }
   .expander-title {
@@ -325,7 +326,7 @@
     padding: 6px 2px;
     cursor: pointer;
   }
-  .expander-title.danger { color: #dc2626; }
+  .expander-title.danger { color: var(--danger); }
   .expander-body {
     display: flex;
     flex-direction: column;
@@ -345,8 +346,8 @@
   .user-role { font-size: 10px; color: var(--text-faint); }
 
   .req-badge {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--danger-bg);
+    color: var(--danger);
     border-radius: 999px;
     padding: 0 6px;
     font-size: 10px;

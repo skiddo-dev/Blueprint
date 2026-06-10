@@ -499,9 +499,9 @@
   .po-row { margin-bottom: 6px; }
   .po-chip {
     display: inline-block;
-    background: #ecfdf5;
-    color: #047857;
-    border: 1px solid #a7f3d0;
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid var(--success-border);
     border-radius: 4px;
     padding: 2px 8px;
     font-size: 11px;
@@ -516,7 +516,7 @@
     gap: 4px;
   }
   .store-tag {
-    background: #1e3a8a;
+    background: var(--store-chip);
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -529,7 +529,7 @@
     min-height: 0;          /* override the global 44px button min-height */
     cursor: pointer;
   }
-  .store-tag:hover { background: #1e40af; }
+  .store-tag:hover { background: var(--store-chip-hover); }
   /* The store currently filtering the board. */
   .store-tag.active {
     background: var(--primary);
@@ -561,15 +561,15 @@
   .aging-chip {
     font-size: 11px;
     font-weight: 600;
-    color: #92670e;
-    border: 1px solid #fde68a;
+    color: #92670e; /* deliberately calm ink; only the border is themed */
+    border: 1px solid var(--warning-border);
     border-radius: 20px;
     padding: 2px 8px;
     white-space: nowrap;
   }
   .aging-chip.alert {
     color: #b06a72;
-    border-color: #fecaca;
+    border-color: var(--danger-border);
   }
   /* Co-assignee chip: same pill as the primary, plus an inline remove ✕. */
   .co-chip { display: inline-flex; align-items: center; gap: 4px; }
@@ -584,7 +584,7 @@
     opacity: 0.6;
     min-height: 0;
   }
-  .co-remove:hover { opacity: 1; color: #ef4444; }
+  .co-remove:hover { opacity: 1; color: var(--danger); }
   /* "＋👤" add-person picker — a select dressed as a dashed chip; the native
      dropdown does the rest (works the same on touch). Overrides the generic
      full-width select rule below. */
@@ -716,8 +716,8 @@
      no fill and no bold weight, so it doesn't shout (especially full-width on
      mobile). */
   input[type="date"].overdue {
-    border-color: #fecaca;
-    color: #b06a72;
+    border-color: var(--danger-border);
+    color: #b06a72; /* deliberately calm ink (see the aging chips) */
   }
   select:focus, input:focus, textarea:focus {
     border-color: var(--primary);
@@ -768,7 +768,7 @@
     line-height: 1;
     min-height: unset;
   }
-  .delete-btn:hover { color: #ef4444; background: #fee2e2; }
+  .delete-btn:hover { color: var(--danger); background: var(--danger-bg); }
 
   @media (max-width: 768px) {
     .card:hover { transform: none; box-shadow: var(--shadow); }

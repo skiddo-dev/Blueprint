@@ -134,6 +134,6 @@
   .new-grid .grow { flex: 1; min-width: 200px; }
   .depr-bar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--border-soft); }
   .depr-bar label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
-  .note { color: #047857; font-size: 13px; align-self: center; }
+  .note { color: var(--success); font-size: 13px; align-self: center; }
   .pad { padding: 0 16px 12px; }
 </style>

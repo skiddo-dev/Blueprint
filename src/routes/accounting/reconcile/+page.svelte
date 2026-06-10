@@ -185,16 +185,16 @@
   .summary > div { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow); }
   .summary .k { font-size: 11px; color: var(--text-muted); font-weight: 600; }
   .summary .v { font-size: 16px; font-weight: 700; color: var(--text); }
-  .summary .diff.ok { border-color: #6ee7b7; background: #ecfdf5; }
-  .summary .diff.ok .v { color: #047857; }
-  .summary .diff.bad { border-color: #fcd9b6; background: #fffbeb; }
-  .summary .diff.bad .v { color: #b45309; }
+  .summary .diff.ok { border-color: var(--success-border); background: var(--success-bg); }
+  .summary .diff.ok .v { color: var(--success); }
+  .summary .diff.bad { border-color: var(--warning-border); background: var(--warning-bg); }
+  .summary .diff.bad .v { color: var(--warning); }
 
   tbody tr { cursor: pointer; }
   tbody tr:hover { background: var(--bg); }
   tbody tr.ticked { background: var(--primary-bg); }
   .chk { width: 32px; }
-  .num.neg { color: #b45309; }
+  .num.neg { color: var(--warning); }
 
   .actions { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
   .hint { color: var(--text-muted); font-size: 13px; }

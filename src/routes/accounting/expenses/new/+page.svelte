@@ -148,5 +148,5 @@
   .scan-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed var(--border); }
   .scan { cursor: pointer; }
   .scan.busy { opacity: 0.6; }
-  .scan-note { font-size: 12.5px; color: #047857; }
+  .scan-note { font-size: 12.5px; color: var(--success); }
 </style>

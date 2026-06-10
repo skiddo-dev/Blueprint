@@ -425,7 +425,7 @@
   .sheet-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.42);
+    background: var(--backdrop);
     z-index: 60;
   }
   .sheet {
@@ -495,9 +495,9 @@
   .src { font-size: 12px; color: var(--text-faint); }
   .po-chip {
     display: inline-block;
-    background: #ecfdf5;
-    color: #047857;
-    border: 1px solid #a7f3d0;
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid var(--success-border);
     border-radius: 4px;
     padding: 2px 8px;
     font-size: 11px;
@@ -507,7 +507,7 @@
 
   .store-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
   .store-tag {
-    background: #1e3a8a;
+    background: var(--store-chip);
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -519,7 +519,7 @@
     min-height: 0;
     cursor: pointer;
   }
-  .store-tag:hover { background: #1e40af; }
+  .store-tag:hover { background: var(--store-chip-hover); }
 
   .fields {
     display: grid;
@@ -557,7 +557,7 @@
     opacity: 0.6;
     min-height: 0;
   }
-  .co-remove:hover { opacity: 1; color: #ef4444; }
+  .co-remove:hover { opacity: 1; color: var(--danger); }
   .co-add {
     width: auto;
     min-height: 0;
@@ -643,7 +643,7 @@
     opacity: 0;
   }
   .cl-row:hover .cl-del, .cl-del:focus-visible { opacity: 1; }
-  .cl-del:hover { color: #ef4444; background: #fee2e2; }
+  .cl-del:hover { color: var(--danger); background: var(--danger-bg); }
 
   .email-body {
     font-size: 12px;
@@ -687,8 +687,8 @@
     font-size: 13px;
   }
   input[type="date"].overdue {
-    border-color: #fecaca;
-    color: #b06a72;
+    border-color: var(--danger-border);
+    color: #b06a72; /* deliberately calm ink (see the aging chips) */
   }
   select:focus, input:focus, textarea:focus {
     border-color: var(--primary);
@@ -705,8 +705,8 @@
   }
   .danger {
     background: transparent;
-    border: 1px solid #fecaca;
-    color: #dc2626;
+    border: 1px solid var(--danger-border);
+    color: var(--danger);
     border-radius: 8px;
     padding: 7px 14px;
     font-size: 12px;
@@ -714,7 +714,7 @@
     cursor: pointer;
     min-height: 0;
   }
-  .danger:hover { background: #fee2e2; }
+  .danger:hover { background: var(--danger-bg); }
 
   @media (max-width: 768px) {
     /* Full-screen sheet on phones; finger-sized controls, 16px to stop iOS zoom. */

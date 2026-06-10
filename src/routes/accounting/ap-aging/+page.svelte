@@ -50,6 +50,5 @@
 <style>
   .aging-top { margin-bottom: 18px; }
   /* Overdue variant of the shared .chip. */
-  .chip.overdue { background: #fef3c7; color: #b45309; }
-  :global(:root[data-theme='dark']) .chip.overdue { background: #422006; color: #fcd34d; }
+  .chip.overdue { background: var(--warning-bg); color: var(--warning); }
 </style>

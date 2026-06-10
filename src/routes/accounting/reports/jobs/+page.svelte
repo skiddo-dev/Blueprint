@@ -58,5 +58,5 @@
 
 <style>
   tr.unassigned td { color: var(--text-muted); font-style: italic; }
-  td.loss { color: #dc2626; font-weight: 600; }
+  td.loss { color: var(--danger); font-weight: 600; }
 </style>

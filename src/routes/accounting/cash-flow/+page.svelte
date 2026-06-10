@@ -53,7 +53,7 @@
   .row { display: flex; justify-content: space-between; gap: 24px; padding: 5px 0; color: var(--text-body); }
   .row.muted { color: var(--text-faint); }
   .num { font-variant-numeric: tabular-nums; }
-  .num.neg { color: #b45309; }
+  .num.neg { color: var(--warning); }
   .subtotal { font-weight: 600; color: var(--text); border-top: 1px solid var(--border-soft); margin-top: 2px; }
   .begin { font-weight: 600; color: var(--text); border-bottom: 1px solid var(--border-soft); padding-bottom: 8px; }
   .net { font-weight: 800; font-size: 16px; color: var(--text); border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; }

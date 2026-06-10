@@ -2,6 +2,7 @@
   import { QUOTE_CONTACTS, QUOTE_WORK_TYPES } from '$lib/constants'
   import { quoteCostRows } from '$lib/quoteCost'
   import PageShell from '$lib/components/PageShell.svelte'
+  import Icon from '$lib/components/Icon.svelte'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -269,9 +270,10 @@
 
     <div class="actions">
       {#if downloadUrl}
-        <a href={downloadUrl} download={filename} class="dl-btn">⬇ Download proposal PDF</a>
+        <a href={downloadUrl} download={filename} class="btn-primary"><Icon name="download" size={14} /> Download proposal PDF</a>
       {/if}
-      <button class="primary" onclick={generate} disabled={generating || pricingInvalid}>
+      <!-- Once a PDF is ready, downloading is the primary action; regenerate demotes. -->
+      <button class={downloadUrl ? 'secondary' : 'primary'} onclick={generate} disabled={generating || pricingInvalid}>
         {generating ? 'Generating…' : downloadUrl ? 'Regenerate proposal' : 'Generate proposal PDF'}
       </button>
     </div>
@@ -354,7 +356,7 @@
   }
   .money input { padding-left: 24px; text-align: right; font-variant-numeric: tabular-nums; }
 
-  .field-error { margin-top: 10px; font-size: 12.5px; color: #dc2626; }
+  .field-error { margin-top: 10px; font-size: 12.5px; color: var(--danger); }
 
   /* Mini rendering of the PDF's cost box (kept paper-white in both themes). */
   .preview { display: flex; flex-direction: column; gap: 6px; }
@@ -371,17 +373,10 @@
   .preview-empty { font-size: 12px; font-style: italic; color: #6b7280; text-align: center; }
   .preview-caption { font-size: 11.5px; color: var(--text-faint); }
 
-  .error { color: #dc2626; font-size: 13px; margin-top: 14px; }
+  .error { color: var(--danger); font-size: 13px; background: var(--danger-bg); border-radius: 8px; padding: 8px 12px; margin-top: 14px; }
 
   .actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
-  .dl-btn {
-    display: inline-block; padding: 8px 16px;
-    background: #059669; color: #fff;
-    border-radius: 7px; font-size: 13px; font-weight: 600;
-    text-decoration: none;
-    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.35);
-  }
-  .dl-btn:hover { background: #047857; }
+  /* The download anchor uses the global .btn-primary treatment (app.css). */
 
   .how-it-works { margin-top: 16px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; background: var(--card-bg); }
   .how-it-works summary { font-size: 13px; font-weight: 600; color: var(--text-soft); }

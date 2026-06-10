@@ -44,6 +44,26 @@ html, body {
   /* Back-compat alias (older rules reference --muted) */
   --muted: var(--text-muted);
 
+  /* Semantic status colors — success / warning / danger. Base is the ink
+     (text/icon), -bg the soft chip fill, -border the chip outline; -subtle is
+     the faint row tint (overdue tables). Vivid data colors (charts, status
+     dots) stay literal in constants.ts / chart configs by design. */
+  --success: #047857;
+  --success-bg: #d1fae5;
+  --success-border: #a7f3d0;
+  --success-vivid: #10b981; /* progress fills / "done" accents */
+  --warning: #b45309;
+  --warning-bg: #fef3c7;
+  --warning-border: #fde68a;
+  --danger: #dc2626;
+  --danger-bg: #fee2e2;
+  --danger-bg-subtle: #fef2f2;
+  --danger-border: #fecaca;
+
+  /* Fixed accents — same in both themes (white-on-navy store chips). */
+  --store-chip: #1e3a8a;
+  --store-chip-hover: #1e40af;
+
   /* Effects (themed) — referenced so dark mode can soften/strengthen them. */
   --shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
   --shadow-hover: 0 6px 20px rgba(15, 23, 42, 0.11);
@@ -81,6 +101,18 @@ html, body {
   --backdrop: rgba(0, 0, 0, 0.6);
   --chip-bg: #3730a3;
   --scrollbar-thumb: #475569;
+
+  --success: #6ee7b7;
+  --success-bg: #064e3b;
+  --success-border: #065f46;
+  --success-vivid: #34d399;
+  --warning: #fcd34d;
+  --warning-bg: #422006;
+  --warning-border: #92400e;
+  --danger: #fca5a5;
+  --danger-bg: #3f1d1d;
+  --danger-bg-subtle: #2d1818;
+  --danger-border: #7f1d1d;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -99,21 +131,51 @@ button {
   /* Remove the 300ms tap delay / double-tap-to-zoom on controls. */
   touch-action: manipulation;
 }
-button.primary {
+/* THE primary-action treatment, app-wide. `button.primary` for buttons,
+   `.btn-primary` for anchors styled as buttons (accounting, downloads). */
+button.primary, .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
   color: #fff;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
   box-shadow: 0 2px 8px rgba(99,102,241,0.35);
 }
-button.primary:hover {
+button.primary:hover:not(:disabled), .btn-primary:hover:not(:disabled) {
   box-shadow: 0 4px 14px rgba(99,102,241,0.45);
   transform: translateY(-1px);
 }
-button.secondary {
+button.secondary, .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background: var(--card-bg);
-  border-color: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-body);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
 }
-button.secondary:hover { background: var(--bg); }
+button.secondary:hover:not(:disabled), .btn-secondary:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: var(--primary);
+}
+button.primary:disabled, button.secondary:disabled,
+.btn-primary:disabled, .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 button.ghost {
   background: transparent;
   border-color: transparent;
@@ -163,7 +225,8 @@ details summary::-webkit-details-marker { display: none; }
   }
   /* Neutralize the global hover "lift" transforms (scoped component lifts are
      handled in-component). */
-  button.primary:hover, button.secondary:hover { transform: none !important; }
+  button.primary:hover, button.secondary:hover,
+  .btn-primary:hover, .btn-secondary:hover { transform: none !important; }
 }
 :focus-visible {
   outline: 2px solid var(--primary);
@@ -202,7 +265,7 @@ details summary::-webkit-details-marker { display: none; }
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
-  padding: 1.2rem 1rem;
+  padding: 1.2rem 1.4rem; /* matches PageShell so the board sits at the same inset */
 }
 
 /* Shared mobile top bar (the `☰` menu bar). Every page renders a `.mobile-topbar`

@@ -280,7 +280,7 @@
     gap: 4px;
   }
   .store-tag {
-    background: #1e3a8a;
+    background: var(--store-chip);
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -293,7 +293,7 @@
     min-height: 0;          /* override the global 44px button min-height */
     cursor: pointer;
   }
-  .store-tag:hover { background: #1e40af; }
+  .store-tag:hover { background: var(--store-chip-hover); }
   .store-tag.active {
     background: var(--primary);
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
@@ -341,9 +341,10 @@
     padding: 2px 8px;
     white-space: nowrap;
   }
-  /* Overdue: same calm rose treatment the old date input used — visible, not shouty. */
+  /* Overdue: same calm rose treatment the old date input used — visible, not
+     shouty (the ink stays desaturated on purpose; only the border is themed). */
   .due-chip.overdue {
-    border-color: #fecaca;
+    border-color: var(--danger-border);
     color: #b06a72;
     background: transparent;
     font-weight: 600;
@@ -355,14 +356,14 @@
     font-weight: 600;
     color: #92670e;
     background: transparent;
-    border: 1px solid #fde68a;
+    border: 1px solid var(--warning-border);
     border-radius: 20px;
     padding: 2px 8px;
     white-space: nowrap;
   }
   .aging-chip.alert {
     color: #b06a72;
-    border-color: #fecaca;
+    border-color: var(--danger-border);
   }
   .quote-chip {
     display: inline-flex;
@@ -387,9 +388,9 @@
   }
   .po-chip {
     display: inline-block;
-    background: #ecfdf5;
-    color: #047857;
-    border: 1px solid #a7f3d0;
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid var(--success-border);
     border-radius: 4px;
     padding: 2px 8px;
     font-size: 11px;
@@ -416,7 +417,7 @@
   .created { font-size: 11px; color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }
   .counts { display: inline-flex; gap: 5px; flex-shrink: 0; }
   .count { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
-  .count.cl-complete { color: #10b981; font-weight: 600; }
+  .count.cl-complete { color: var(--success-vivid); font-weight: 600; }
 
   @media (max-width: 768px) {
     .card:hover { transform: none; box-shadow: var(--shadow); }

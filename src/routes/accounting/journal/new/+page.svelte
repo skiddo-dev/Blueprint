@@ -187,7 +187,7 @@
   .line select, .line input { width: 100%; }
   input.num { text-align: right; }
   .remove { background: var(--card-bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text-muted); height: 34px; cursor: pointer; }
-  .remove:hover:not(:disabled) { border-color: #fca5a5; color: #dc2626; }
+  .remove:hover:not(:disabled) { border-color: var(--danger-border); color: var(--danger); }
   .remove:disabled { opacity: 0.4; cursor: not-allowed; }
   .add { margin-top: 4px; background: none; border: 1px dashed var(--border); border-radius: 7px; color: var(--primary-text); padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
   .add:hover { border-color: var(--primary); }
@@ -198,8 +198,8 @@
   }
   .totals-label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
   .totals .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .totals .diff { grid-column: 4 / 6; font-size: 13px; color: #b45309; font-weight: 600; }
-  .totals.balanced .diff { color: #047857; }
+  .totals .diff { grid-column: 4 / 6; font-size: 13px; color: var(--warning); font-weight: 600; }
+  .totals.balanced .diff { color: var(--success); }
 
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
   .recurring-box { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 10px; }

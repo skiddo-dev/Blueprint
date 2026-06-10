@@ -132,7 +132,7 @@
   .line { margin-bottom: 8px; }
   input.num { text-align: right; }
   .remove { background: var(--card-bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text-muted); height: 34px; cursor: pointer; }
-  .remove:hover:not(:disabled) { border-color: #fca5a5; color: #dc2626; }
+  .remove:hover:not(:disabled) { border-color: var(--danger-border); color: var(--danger); }
   .remove:disabled { opacity: 0.4; cursor: not-allowed; }
   .add { margin-top: 4px; background: none; border: 1px dashed var(--border); border-radius: 7px; color: var(--primary-text); padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
   .add:hover { border-color: var(--primary); }

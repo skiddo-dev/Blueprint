@@ -27,10 +27,11 @@ export function isTheme(v: unknown): v is Theme {
 // <meta name="theme-color"> value per resolved theme (browser UI chrome tint).
 export const THEME_COLOR: Record<Resolved, string> = { light: '#6366f1', dark: '#0b1220' }
 
-/** Chart.js axis-text + gridline colors per theme. Chart.js draws to a canvas
- *  and can't read CSS vars, so these mirror the --text-muted / --border tokens. */
-export function chartInk(resolved: Resolved): { tick: string; grid: string } {
+/** Chart.js axis-text + gridline + segment-border colors per theme. Chart.js
+ *  draws to a canvas and can't read CSS vars, so these mirror the
+ *  --text-muted / --border / --card-bg tokens. */
+export function chartInk(resolved: Resolved): { tick: string; grid: string; card: string } {
   return resolved === 'dark'
-    ? { tick: '#94a3b8', grid: 'rgba(148, 163, 184, 0.16)' }
-    : { tick: '#64748b', grid: '#e2e8f0' }
+    ? { tick: '#94a3b8', grid: 'rgba(148, 163, 184, 0.16)', card: '#1e293b' }
+    : { tick: '#64748b', grid: '#e2e8f0', card: '#ffffff' }
 }

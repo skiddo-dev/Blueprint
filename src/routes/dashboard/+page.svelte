@@ -7,6 +7,10 @@
   import { csvCell } from '$lib/sanitize'
   import Chart from '$lib/components/Chart.svelte'
   import PageShell from '$lib/components/PageShell.svelte'
+  import StatTile from '$lib/components/accounting/StatTile.svelte'
+  import Icon from '$lib/components/Icon.svelte'
+  import { theme } from '$lib/theme.svelte'
+  import { chartInk } from '$lib/theme'
   import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
   import { page } from '$app/state'
   import { replaceState } from '$app/navigation'
@@ -409,7 +413,8 @@
     datasets: [{
       data: QUOTE_STATUSES.map(s => stages.value.get(s) ?? 0),
       backgroundColor: QUOTE_STATUSES.map(s => QUOTE_STATUS_META[s].color),
-      borderColor: '#fff', borderWidth: 2,
+      // Segment separators match the card surface (canvas can't read CSS vars).
+      borderColor: chartInk(theme.resolved).card, borderWidth: 2,
     }],
   })
 
@@ -495,7 +500,9 @@
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'top', align: 'end', labels: { color: '#475569', font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true } },
+      // No explicit label color: legend text follows the themed Chart.js
+      // defaults set by Chart.svelte (light/dark aware).
+      legend: { position: 'top', align: 'end', labels: { font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true } },
       tooltip: { callbacks: { label: (c: TooltipItem<'bar'>) => ` ${c.dataset.label}: ${c.parsed.y}` } },
     },
     scales: {
@@ -509,7 +516,7 @@
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'top', align: 'end', labels: { color: '#475569', font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true } },
+      legend: { position: 'top', align: 'end', labels: { font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true } },
       tooltip: {
         callbacks: {
           label: (c: TooltipItem<'bar' | 'line'>) =>
@@ -531,7 +538,7 @@
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'top', align: 'end', labels: { color: '#475569', font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true } },
+      legend: { position: 'top', align: 'end', labels: { font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true } },
       tooltip: {
         callbacks: {
           label: (c: TooltipItem<'bar' | 'line'>) =>
@@ -553,7 +560,7 @@
     plugins: {
       legend: {
         position: 'bottom',
-        labels: { color: '#475569', font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true, padding: 12 },
+        labels: { font: { size: 11 }, boxWidth: 10, boxHeight: 10, usePointStyle: true, padding: 12 },
       },
       tooltip: { callbacks: { label: (c: TooltipItem<'doughnut'>) => ` ${c.label}: ${c.parsed}` } },
     },
@@ -621,80 +628,74 @@
         <div class="filter-meta">
           <span>{fq.length} of {totalQuotes} quotes</span>
           {#if filtersActive}<button class="chip" onclick={resetFilters}>Reset</button>{/if}
-          <button class="chip" onclick={copyShareLink}>{copied ? '✓ Copied' : '🔗 Copy link'}</button>
-          <button class="chip" onclick={exportCsv}>⬇ Export CSV</button>
+          <button class="chip" onclick={copyShareLink}><Icon name={copied ? 'check' : 'link'} size={12} /> {copied ? 'Copied' : 'Copy link'}</button>
+          <button class="chip" onclick={exportCsv}><Icon name="download" size={12} /> Export CSV</button>
         </div>
       </div>
 
       <!-- Metrics -->
-      <h2 class="section-heading">💰 Quote Summary</h2>
+      <h2 class="section-heading"><Icon name="quote" size={16} /> Quote Summary</h2>
       <div class="metrics-grid">
         {#each metrics as m}
-          <div class="metric" style:border-top-color={m.accent}>
-            <div class="metric-val">{m.value}</div>
-            <div class="metric-lbl">{m.label}</div>
-          </div>
+          <StatTile value={m.value} label={m.label} accent={m.accent} />
         {/each}
-        <div class="metric" style:border-top-color="#14b8a6">
-          <div class="metric-val">{projectedFY ? money(projectedFY) : '—'}</div>
-          <div class="metric-lbl">{curYear} Projected (FY)</div>
-        </div>
+        <StatTile value={projectedFY ? money(projectedFY) : '—'} label="{curYear} Projected (FY)" accent="#14b8a6" />
       </div>
 
       <hr style="margin: 22px 0 18px" />
-      <h2 class="section-heading">📈 Insights</h2>
+      <h2 class="section-heading"><Icon name="trend-up" size={16} /> Insights</h2>
 
       <section class="charts-grid">
         <article class="chart-card">
-          <h3>🏆 Win Rate by Estimator <span class="muted">(≥{minSample} decided)</span></h3>
+          <h3>Win Rate by Estimator <span class="muted">(≥{minSample} decided)</span></h3>
           <div class="canvas-wrap"><Chart type="bar" data={winByEstimatorData} options={winPctOpts} /></div>
         </article>
 
         <article class="chart-card">
-          <h3>🎯 Win Rate by Work Type <span class="muted">(≥{minSample} decided)</span></h3>
+          <h3>Win Rate by Work Type <span class="muted">(≥{minSample} decided)</span></h3>
           <div class="canvas-wrap"><Chart type="bar" data={winByTypeData} options={winPctOpts} /></div>
         </article>
 
         <article class="chart-card">
-          <h3>📐 Won vs Lost by Deal Size</h3>
+          <h3>Won vs Lost by Deal Size</h3>
           <div class="canvas-wrap"><Chart type="bar" data={dealSizeData} options={dealSizeOpts} /></div>
           <p class="chart-note">Median won {money(medianWon)} · lost {money(medianLost)} — larger bids convert worse</p>
         </article>
 
         <article class="chart-card">
-          <h3>💰 Quote Pipeline by Stage</h3>
+          <h3>Quote Pipeline by Stage</h3>
           <div class="canvas-wrap"><Chart type="doughnut" data={pipelineData} options={moneyDoughnutOpts} /></div>
         </article>
 
         <article class="chart-card span-all">
-          <h3>📈 Growth: Quoted vs Won by Year <span class="muted">(win-rate line)</span></h3>
+          <h3>Growth: Quoted vs Won by Year <span class="muted">(win-rate line)</span></h3>
           <div class="canvas-wrap tall"><Chart type="bar" data={yoyData} options={yoyOpts} /></div>
         </article>
 
         <article class="chart-card span-all">
-          <h3>📊 Value Concentration by Estimator <span class="muted">(Pareto — cumulative %)</span></h3>
+          <h3>Value Concentration by Estimator <span class="muted">(Pareto — cumulative %)</span></h3>
           <div class="canvas-wrap tall"><Chart type="bar" data={paretoData} options={paretoOpts} /></div>
         </article>
 
         <article class="chart-card">
-          <h3>🏬 Top Stores by Value <span class="muted">(repeat accounts)</span></h3>
+          <h3>Top Stores by Value <span class="muted">(repeat accounts)</span></h3>
           <div class="canvas-wrap"><Chart type="bar" data={topStoresData} options={hMoneyBarOpts} /></div>
         </article>
 
         <article class="chart-card">
-          <h3>🗓️ Quotes by Month <span class="muted">(seasonality)</span></h3>
+          <h3>Quotes by Month <span class="muted">(seasonality)</span></h3>
           <div class="canvas-wrap"><Chart type="bar" data={seasonalityData} options={countBarOpts} /></div>
         </article>
 
         <article class="chart-card">
-          <h3>💵 Total Quote Value by Type</h3>
+          <h3>Total Quote Value by Type</h3>
           <div class="canvas-wrap"><Chart type="bar" data={valueByTypeData} options={moneyBarOpts} /></div>
         </article>
       </section>
 
       <!-- Estimator scorecards -->
       <hr style="margin: 24px 0 16px" />
-      <h2 class="section-heading">🥇 Estimator Scorecards</h2>
+      <h2 class="section-heading"><Icon name="users" size={16} /> Estimator Scorecards</h2>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Estimator</th><th>Quotes</th><th>Win %</th><th>Avg Deal</th><th>Top Type</th><th>Value</th></tr></thead>
@@ -716,11 +717,11 @@
       <!-- Account intelligence -->
       <hr style="margin: 24px 0 16px" />
       <div class="tracker-head">
-        <h2 class="section-heading" style="margin: 0">🏬 Account Intelligence</h2>
+        <h2 class="section-heading" style="margin: 0"><Icon name="prospects" size={16} /> Account Intelligence</h2>
         <span class="muted-note" style="margin: 0">
           Repeat (3+) win {repeatWin.decided ? Math.round(repeatWin.rate * 100) + '%' : '—'} ·
           first-time {firstTimeWin.decided ? Math.round(firstTimeWin.rate * 100) + '%' : '—'}
-          {#if atRiskCount} · <span class="risk-text">⚠ {atRiskCount} at-risk</span>{/if}
+          {#if atRiskCount} · <span class="risk-text"><Icon name="warning" size={11} /> {atRiskCount} at-risk</span>{/if}
         </span>
       </div>
       <div class="table-wrap">
@@ -729,7 +730,7 @@
           <tbody>
             {#each accounts.slice(0, 15) as a}
               <tr>
-                <td>#{a.store}{#if a.atRisk} <span class="risk-badge" title="≥3 decided, win rate under 40%">⚠</span>{/if}</td>
+                <td>#{a.store}{#if a.atRisk} <span class="risk-badge" title="≥3 decided, win rate under 40%"><Icon name="warning" size={12} /></span>{/if}</td>
                 <td>{a.n}</td>
                 <td>{money(a.value)}</td>
                 <td class:risk-text={a.atRisk}>{a.decided ? `${Math.round(a.rate * 100)}%` : '—'}</td>
@@ -743,8 +744,8 @@
       {#if poNeedsReview.length}
         <!-- PO-based data hygiene -->
         <hr style="margin: 24px 0 16px" />
-        <h2 class="section-heading">🧾 Needs Review <span class="muted">(PO present, not marked Won)</span></h2>
-        {#if trackerError}<p class="error">❌ {trackerError}</p>{/if}
+        <h2 class="section-heading"><Icon name="eye" size={16} /> Needs Review <span class="muted">(PO present, not marked Won)</span></h2>
+        {#if trackerError}<p class="error">{trackerError}</p>{/if}
         <div class="table-wrap">
           <table>
             <thead><tr><th>Date</th><th>Store</th><th>Work Type</th><th>Amount</th><th>PO</th><th></th></tr></thead>
@@ -767,7 +768,7 @@
       <!-- Quote tracker (win/loss toggle) -->
       <hr style="margin: 24px 0 16px" />
       <div class="tracker-head">
-        <h2 class="section-heading" style="margin: 0">🧾 Quote Tracker</h2>
+        <h2 class="section-heading" style="margin: 0"><Icon name="checklist" size={16} /> Quote Tracker</h2>
         <div class="filter-row">
           {#each filterOptions as f}
             <button class="chip" class:active={quoteFilter === f} onclick={() => (quoteFilter = f)}>
@@ -776,7 +777,7 @@
           {/each}
         </div>
       </div>
-      {#if trackerError}<p class="error">❌ {trackerError}</p>{/if}
+      {#if trackerError}<p class="error">{trackerError}</p>{/if}
       <p class="muted-note">
         Mark a quote Won/Lost to feed the win-rate. Showing {shownQuotes.length}
         {quoteFilter === 'all' ? '' : quoteFilter} quote{shownQuotes.length === 1 ? '' : 's'} (newest first, max 200).
@@ -824,7 +825,7 @@
 
       <!-- Raw table -->
       <hr style="margin: 24px 0 16px" />
-      <h2 class="section-heading">📋 Raw Task Data</h2>
+      <h2 class="section-heading"><Icon name="list" size={16} /> Raw Task Data</h2>
       <div class="table-wrap">
         <table>
           <thead>
@@ -856,7 +857,7 @@
       </div>
 
       <form action="/api/tasks/export" method="GET" style="margin-top: 12px">
-        <button class="secondary" type="submit">📥 Download CSV</button>
+        <button class="secondary" type="submit"><Icon name="download" size={14} /> Download CSV</button>
       </form>
     {/if}
 </PageShell>
@@ -865,35 +866,32 @@
   hr { border: none; border-top: 1px solid var(--border-soft); }
   .page-title { font-size: 22px; font-weight: 800; color: var(--text); }
   .page-sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
-  .section-heading { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+  .section-heading { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+  .section-heading :global(svg) { color: var(--primary); flex-shrink: 0; }
   .empty { color: var(--text-faint); font-size: 14px; }
 
   .filter-bar {
     display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-end;
     background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 10px;
-    padding: 12px 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+    padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow);
   }
   .filter-group { display: flex; flex-direction: column; gap: 3px; min-width: 220px; flex: 1; }
   .filter-label { font-size: 12px; color: var(--text-muted); }
   .filter-label strong { color: var(--text); font-weight: 700; }
-  .filter-group input[type="range"] { width: 100%; accent-color: #4f46e5; margin: 0; height: 18px; }
+  .filter-group input[type="range"] { width: 100%; accent-color: var(--primary-dark); margin: 0; height: 18px; }
   .filter-group select { width: 100%; font-size: 12px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 7px; background: var(--card-bg); color: var(--text); }
   .filter-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-faint); flex-wrap: wrap; }
-  .risk-badge { color: #b91c1c; font-weight: 700; }
-  .risk-text { color: #b91c1c; font-weight: 600; }
+  .risk-badge { color: var(--danger); font-weight: 700; }
+  .risk-badge :global(svg), .risk-text :global(svg) { vertical-align: -1.5px; }
+  .risk-text { color: var(--danger); font-weight: 600; }
 
+  /* KPI tiles are the shared StatTile component (same card as accounting). */
   .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-  .metric {
-    background: var(--card-bg); border: 1px solid var(--border-card); border-top: 3px solid #6366f1;
-    border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 4px rgba(15,23,42,0.05);
-  }
-  .metric-val { font-size: 20px; font-weight: 700; color: var(--text); }
-  .metric-lbl { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
 
   .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
   .chart-card {
     background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 12px; padding: 16px 16px 8px;
-    box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+    box-shadow: var(--shadow);
   }
   .chart-card.span-all { grid-column: 1 / -1; }
   .chart-card h3 { font-size: 13px; font-weight: 600; color: var(--text-body); margin-bottom: 12px; }
@@ -904,18 +902,18 @@
 
   .tracker-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
   .filter-row { display: flex; gap: 6px; }
-  .chip { font-size: 12px; padding: 4px 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text-soft); border-radius: 999px; cursor: pointer; }
-  .chip.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 4px 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text-soft); border-radius: 999px; cursor: pointer; }
+  .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
   .muted-note { font-size: 11px; color: var(--text-faint); margin: 4px 2px 10px; }
-  .error { color: #dc2626; font-size: 13px; margin: 6px 2px; }
+  .error { color: var(--danger); font-size: 13px; background: var(--danger-bg); border-radius: 8px; padding: 8px 12px; margin: 6px 0 10px; }
   .status-select { font-size: 12px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
   .invoice-link { font-size: 12px; font-weight: 600; color: var(--primary-text); text-decoration: none; white-space: nowrap; }
   .invoice-link:hover { text-decoration: underline; }
-  .status-select.status-won { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
-  .status-select.status-lost { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+  .status-select.status-won { color: var(--success); border-color: var(--success-border); background: var(--success-bg); }
+  .status-select.status-lost { color: var(--danger); border-color: var(--danger-border); background: var(--danger-bg-subtle); }
   .status-select:disabled { opacity: 0.5; cursor: wait; }
-  .mark-won { font-size: 12px; padding: 3px 10px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #047857; border-radius: 6px; cursor: pointer; }
-  .mark-won:hover { background: #a7f3d0; }
+  .mark-won { font-size: 12px; padding: 3px 10px; border: 1px solid var(--success-border); background: var(--success-bg); color: var(--success); border-radius: 6px; cursor: pointer; }
+  .mark-won:hover { border-color: var(--success); }
   .mark-won:disabled { opacity: 0.5; cursor: wait; }
 
   .table-wrap { overflow-x: auto; }
@@ -928,7 +926,7 @@
   .store-cell { white-space: nowrap; }
   .store-mini {
     display: inline-block;
-    background: #1e3a8a; color: #fff;
+    background: var(--store-chip); color: #fff;
     border-radius: 4px; padding: 1px 6px; margin-right: 3px;
     font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
   }
