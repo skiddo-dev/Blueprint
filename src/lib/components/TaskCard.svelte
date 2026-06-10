@@ -12,14 +12,14 @@
     task,
     onOpen,
     onStoreFilter,
-    activeStore = null,
+    activeStores = [],
     hidden = false,
     isAdmin = false,
   }: {
     task: Task
     onOpen: (id: string) => void
     onStoreFilter?: (n: string) => void
-    activeStore?: string | null
+    activeStores?: string[]
     hidden?: boolean
     isAdmin?: boolean
   } = $props()
@@ -99,7 +99,7 @@
         <button
           type="button"
           class="store-tag"
-          class:active={n === activeStore}
+          class:active={activeStores.includes(n)}
           onclick={(e) => { e.stopPropagation(); onStoreFilter?.(n) }}
           title="Filter the board by store #{n}"
         >#{n}</button>

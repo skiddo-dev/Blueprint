@@ -2,8 +2,9 @@
   import { dragHandleZone, TRIGGERS } from 'svelte-dnd-action'
   import TaskCard from './TaskCard.svelte'
   import type { Task, TaskStatus } from '$lib/types'
+  import type { BoardFilters } from '$lib/boardFilters'
+  import { defaultFilters, taskMatchesFilters, anyFilterActive } from '$lib/boardFilters'
   import { STATUS_META } from '$lib/constants'
-  import { extractStoreNumbers } from '$lib/storeNumbers'
   import { isOwnedBy } from '$lib/ownership'
   import { rankBetween } from '$lib/rank'
 
@@ -17,7 +18,7 @@
     status,
     items = $bindable(),
     currentUserEmail = '',
-    storeFilter = null,
+    filters = defaultFilters(),
     view = 'mine',
     myName = '',
     isAdmin = false,
@@ -29,7 +30,7 @@
     status: TaskStatus
     items: Task[]
     currentUserEmail?: string
-    storeFilter?: string | null
+    filters?: BoardFilters
     view?: 'mine' | 'all'
     myName?: string
     isAdmin?: boolean
@@ -42,17 +43,17 @@
   const meta = $derived(STATUS_META[status])
   const flipDurationMs = 200
 
-  // View (My Work / All) + store-filter visibility. Non-matching cards are
-  // hidden via CSS (kept in the dnd `items` list so the bound array — and
-  // drag/drop — stays intact).
-  const taskStores = (t: Task) => t.store_numbers ?? extractStoreNumbers(t.title)
+  // View (My Work / All) + filter visibility. Non-matching cards are hidden
+  // via CSS (kept in the dnd `items` list so the bound array — and drag/drop —
+  // stays intact).
+  const today = new Date().toISOString().slice(0, 10)
   // 'mine' = owned by me, keyed on identity (email) with a display-name fallback
   // — same rule as the server and the board (see $lib/ownership). Matching on
   // assigned_to === myName alone hid every card from its own owner.
   const inView = (t: Task) =>
     view === 'all' ? true : isOwnedBy(t, { email: currentUserEmail, name: myName })
   const matches = (t: Task) =>
-    inView(t) && (!storeFilter || taskStores(t).includes(storeFilter))
+    inView(t) && taskMatchesFilters(t, filters, today)
   const visibleCount = $derived(items.filter(matches).length)
 
   function handleConsider(e: CustomEvent) {
@@ -116,7 +117,7 @@
           {isAdmin}
           {onOpen}
           {onStoreFilter}
-          activeStore={storeFilter}
+          activeStores={filters.stores}
           hidden={!matches(task)}
         />
       {/each}
@@ -124,8 +125,8 @@
 
     {#if visibleCount === 0}
       <div class="empty-zone">
-        {storeFilter
-          ? `No #${storeFilter} here`
+        {anyFilterActive(filters)
+          ? 'No matching tasks'
           : view === 'mine'
             ? 'None assigned to you'
             : 'No tasks'}

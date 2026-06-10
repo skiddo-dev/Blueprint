@@ -13,6 +13,10 @@ const ASSIGNEES = [
 // Fake PM inboxes so the admin-only "flagged in" chip renders in mock mode.
 const MOCK_INBOXES = ['ben@raves.com', 'andrew@raves.com', 'kris@raves.com', 'mike@raves.com']
 
+// A small store pool with deliberate overlap so the #store tags and the store
+// filter have something realistic to chew on in mock mode.
+const MOCK_STORES = ['412', '257', '380', '441', '129']
+
 const TEMPLATES: Array<[string, string, string]> = [
   ['Site Inspection Required', 'Requires immediate attention from site supervisor', 'Follow up with vendor on delivery date'],
   ['Equipment Delivery Scheduled', 'Pending approval from project manager', 'Schedule work within permit validity period'],
@@ -89,6 +93,10 @@ export function generateMockTasks(count = 35): Task[] {
       quote_assignee: pick(QUOTE_PEOPLE),
       quote_status: pick(QUOTE_STATUSES),
       po,
+      // Most cards carry one store, a few two, some none — mirrors real flagged mail.
+      store_numbers: i % 6 === 0 ? [] : i % 4 === 0
+        ? [MOCK_STORES[i % MOCK_STORES.length], MOCK_STORES[(i + 2) % MOCK_STORES.length]].sort()
+        : [MOCK_STORES[i % MOCK_STORES.length]],
       assigned_to: pick(ASSIGNEES),
       // A slice of tasks carries co-assignees so the 👥 chips render in mock mode.
       co_assignees: i % 5 === 0 ? ['Dean', 'Vickie'] : i % 7 === 0 ? ['Riley'] : [],
