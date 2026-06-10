@@ -103,6 +103,15 @@
     try { localStorage.setItem('blueprint:boardView', v) } catch { /* ignore */ }
   }
 
+  // Card density: compact summary faces (the V2 default — click opens the
+  // detail sheet) or the classic detailed faces with inline editing and the
+  // tool-chip panels right on the card. Remembered per browser.
+  let cardView = $state<'compact' | 'detailed'>('compact')
+  function setCardView(v: 'compact' | 'detailed') {
+    cardView = v
+    try { localStorage.setItem('blueprint:cardView', v) } catch { /* ignore */ }
+  }
+
   // Deep-link from global search: `/?task=<id>` reveals + flashes that card and
   // opens its detail sheet. Show All Tasks, clear the store filter, switch to
   // the card's column (mobile), then scroll it into view and pulse a highlight
@@ -207,6 +216,8 @@
   onMount(async () => {
     const savedView = localStorage.getItem('blueprint:boardView')
     if (savedView === 'mine' || savedView === 'all') view = savedView
+    const savedCardView = localStorage.getItem('blueprint:cardView')
+    if (savedCardView === 'compact' || savedCardView === 'detailed') cardView = savedCardView
     // Restore the saved filters, tolerating older/garbled shapes (merge over
     // defaults so a missing field never leaves the UI half-initialized).
     try {
@@ -502,14 +513,24 @@
     </a>
   </div>
 {:else}
-<div class="view-toggle" role="group" aria-label="Board view">
-  <button class="vt-btn" class:active={view === 'mine'} aria-pressed={view === 'mine'} onclick={() => setView('mine')}>
-    🙋 My Work
-    {#if myOverdue > 0}<span class="vt-overdue">{myOverdue} overdue</span>{/if}
-  </button>
-  <button class="vt-btn" class:active={view === 'all'} aria-pressed={view === 'all'} onclick={() => setView('all')}>
-    📋 All Tasks
-  </button>
+<div class="toggles-row">
+  <div class="view-toggle" role="group" aria-label="Board view">
+    <button class="vt-btn" class:active={view === 'mine'} aria-pressed={view === 'mine'} onclick={() => setView('mine')}>
+      🙋 My Work
+      {#if myOverdue > 0}<span class="vt-overdue">{myOverdue} overdue</span>{/if}
+    </button>
+    <button class="vt-btn" class:active={view === 'all'} aria-pressed={view === 'all'} onclick={() => setView('all')}>
+      📋 All Tasks
+    </button>
+  </div>
+  <div class="view-toggle" role="group" aria-label="Card density">
+    <button class="vt-btn" class:active={cardView === 'compact'} aria-pressed={cardView === 'compact'} title="Compact cards — click a card for details" onclick={() => setCardView('compact')}>
+      ▦ Compact
+    </button>
+    <button class="vt-btn" class:active={cardView === 'detailed'} aria-pressed={cardView === 'detailed'} title="Detailed cards — edit everything inline" onclick={() => setCardView('detailed')}>
+      ▤ Detailed
+    </button>
+  </div>
 </div>
 
 <FilterBar
@@ -566,10 +587,22 @@
         {view}
         myName={userName}
         isAdmin={role === 'admin'}
+        {cardView}
+        {assignees}
+        {mentionCandidates}
+        currentUserName={userName}
         onMoved={handleMoved}
         onDragStateChange={(d) => (dragging = d)}
         onStoreFilter={toggleStore}
         onOpen={(id) => (openTaskId = id)}
+        onFieldUpdate={handleFieldUpdate}
+        onDelete={handleDelete}
+        onComment={handleComment}
+        onEditComment={handleEditComment}
+        onDeleteComment={handleDeleteComment}
+        onReact={handleReact}
+        onUploadAttachment={handleUploadAttachment}
+        onDeleteAttachment={handleDeleteAttachment}
       />
     </div>
   {/each}
@@ -602,7 +635,14 @@
     align-items: center;
   }
 
-  /* Segmented My Work / All toggle */
+  /* Segmented toggles (My Work / All + card density), side by side. */
+  .toggles-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
   .view-toggle {
     display: inline-flex;
     gap: 2px;
@@ -610,7 +650,6 @@
     border: 1px solid var(--border);
     border-radius: 9px;
     padding: 2px;
-    margin-bottom: 12px;
   }
   .vt-btn {
     display: inline-flex;
