@@ -46,6 +46,7 @@
     ] },
     { label: 'Payables', items: [
       { href: '/accounting/bills', ico: '🧾', label: 'Bills' },
+      { href: '/accounting/purchase-orders', ico: '📑', label: 'POs' },
       { href: '/accounting/vendors', ico: '🏗️', label: 'Vendors' },
       { href: '/accounting/ap-aging', ico: '📉', label: 'A/P Aging' },
     ] },

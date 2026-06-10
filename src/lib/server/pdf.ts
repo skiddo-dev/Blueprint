@@ -281,6 +281,29 @@ export async function generateBillPdf(bill: Bill): Promise<Buffer> {
   })
 }
 
+/** Printable purchase order — sent to the vendor; non-posting until billed. */
+export async function generatePurchaseOrderPdf(po: import('$lib/accounting/purchaseOrders').PurchaseOrder): Promise<Buffer> {
+  return renderDoc({
+    title: 'PURCHASE ORDER',
+    number: docNumber(po.year, po.number),
+    partyLabel: 'Vendor',
+    partyName: po.vendor_name,
+    meta: [
+      ['PO date', po.date],
+      ...(po.expected_date ? [['Expected', po.expected_date] as [string, string]] : []),
+      ...(po.job ? [['Job', po.job] as [string, string]] : []),
+    ],
+    columns: [
+      { label: 'Account', width: 0.18 },
+      { label: 'Description', width: 0.52 },
+      { label: 'Amount', width: 0.30, align: 'right' },
+    ],
+    rows: po.lines.map((l) => [l.account_id, l.description, usd(l.amount)]),
+    totals: [{ label: 'Total', value: usd(po.total), bold: true }],
+    status: po.status,
+  })
+}
+
 /** A customer statement: every open invoice with its age, and the total due —
  *  the document you attach to a collections email. */
 export async function generateCustomerStatement(opts: {

@@ -99,6 +99,7 @@ export interface Invoice {
   balance: Cents          // total − paid
   status: 'open' | 'partial' | 'paid' | 'void'
   po?: string
+  po_id?: string          // linked PurchaseOrder._id when converted from a PO
   quote_id?: string       // the won quote this invoice was created from, if any
   memo?: string
   created_by?: string

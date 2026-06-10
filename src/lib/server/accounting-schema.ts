@@ -32,6 +32,7 @@ export async function ensureAccountingIndexes(d: Db): Promise<void> {
     col(d, 'bills').createIndex({ status: 1, due_date: 1 }),   // A/P aging scan
     col(d, 'bills').createIndex({ vendor_id: 1 }),
     col(d, 'billPayments').createIndex({ bill_id: 1 }),        // payments for a bill
+    col(d, 'bills').createIndex({ po_id: 1 }),                 // billed-so-far rollup per purchase order
     col(d, 'reconciliations').createIndex({ account_id: 1, statement_date: -1 }), // bank rec history
 
     col(d, 'auditLog').createIndex({ entity_type: 1, entity_id: 1, at: -1 }), // per-document activity feed
@@ -56,6 +57,7 @@ export async function ensureAccountingConstraints(d: Db): Promise<void> {
     ),
     col(d, 'invoices').createIndex({ year: 1, number: 1 }, { unique: true }), // sequential per year
     col(d, 'bills').createIndex({ year: 1, number: 1 }, { unique: true }),    // sequential per year
+    col(d, 'purchaseOrders').createIndex({ year: 1, number: 1 }, { unique: true }), // sequential per year
   ])
 }
 
