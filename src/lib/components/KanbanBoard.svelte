@@ -8,8 +8,8 @@
   import FilterBar from './FilterBar.svelte'
   import StoreLanes from './StoreLanes.svelte'
   import type { Task, TaskStatus, AppSession } from '$lib/types'
-  import { KANBAN_STATUSES, STATUS_META, SUPERVISORS } from '$lib/constants'
-  import { defaultFilters, taskMatchesFilters, taskStores, anyFilterActive } from '$lib/boardFilters'
+  import { KANBAN_STATUSES, STATUS_META, SUPERVISORS, WIP_LIMITS } from '$lib/constants'
+  import { defaultFilters, taskMatchesFilters, taskStores, anyFilterActive, activeFilterCount } from '$lib/boardFilters'
   import { remoteChangedIds } from '$lib/boardSync'
   import { parseMentions } from '$lib/mentions'
   import { toggleReactor } from '$lib/reactions'
@@ -220,6 +220,19 @@
     lens = v
     try { localStorage.setItem('blueprint:boardLens', v) } catch { /* ignore */ }
   }
+
+  // Phones collapse the advanced controls (density + lens toggles, the filter
+  // bar) behind one "View" button — V2 had stacked nine rows of chrome above
+  // the first card. Desktop always shows everything (the button is hidden and
+  // the wrappers render as display:contents). The badge counts every
+  // non-default setting so a hidden active filter is never a mystery.
+  let controlsOpen = $state(false)
+  let viewBadge = $derived(
+    activeFilterCount(filters) +
+    (cardView !== 'compact' ? 1 : 0) +
+    (lens !== 'none' ? 1 : 0) +
+    (showArchived ? 1 : 0),
+  )
   // The lens consumes the post-view+filter board flat (lanes regroup it).
   let visibleTasks = $derived(KANBAN_STATUSES.flatMap(s => columns[s].filter(matchesView)))
 
@@ -740,31 +753,46 @@
       📋 All Tasks
     </button>
   </div>
-  <div class="view-toggle" role="group" aria-label="Card density">
-    <button class="vt-btn" class:active={cardView === 'compact'} aria-pressed={cardView === 'compact'} title="Compact cards — click a card for details" onclick={() => setCardView('compact')}>
-      ▦ Compact
-    </button>
-    <button class="vt-btn" class:active={cardView === 'detailed'} aria-pressed={cardView === 'detailed'} title="Detailed cards — edit everything inline" onclick={() => setCardView('detailed')}>
-      ▤ Detailed
-    </button>
-  </div>
-  <div class="view-toggle" role="group" aria-label="Board lens">
-    <button class="vt-btn" class:active={lens === 'none'} aria-pressed={lens === 'none'} title="Classic status board" onclick={() => setLens('none')}>
-      📊 Board
-    </button>
-    <button class="vt-btn" class:active={lens === 'store'} aria-pressed={lens === 'store'} title="One lane per store — everything happening at each site" onclick={() => setLens('store')}>
-      📍 By store
-    </button>
+  <!-- Mobile-only: everything below the My Work toggle folds behind this. -->
+  <button
+    type="button"
+    class="controls-btn"
+    aria-expanded={controlsOpen}
+    onclick={() => (controlsOpen = !controlsOpen)}
+  >
+    ⚙️ View{#if viewBadge}<span class="cb-badge">{viewBadge}</span>{/if}
+    {controlsOpen ? '▴' : '▾'}
+  </button>
+
+  <div class="adv-controls" class:open={controlsOpen}>
+    <div class="view-toggle" role="group" aria-label="Card density">
+      <button class="vt-btn" class:active={cardView === 'compact'} aria-pressed={cardView === 'compact'} title="Compact cards — click a card for details" onclick={() => setCardView('compact')}>
+        ▦ Compact
+      </button>
+      <button class="vt-btn" class:active={cardView === 'detailed'} aria-pressed={cardView === 'detailed'} title="Detailed cards — edit everything inline" onclick={() => setCardView('detailed')}>
+        ▤ Detailed
+      </button>
+    </div>
+    <div class="view-toggle" role="group" aria-label="Board lens">
+      <button class="vt-btn" class:active={lens === 'none'} aria-pressed={lens === 'none'} title="Classic status board" onclick={() => setLens('none')}>
+        📊 Board
+      </button>
+      <button class="vt-btn" class:active={lens === 'store'} aria-pressed={lens === 'store'} title="One lane per store — everything happening at each site" onclick={() => setLens('store')}>
+        📍 By store
+      </button>
+    </div>
   </div>
 </div>
 
-<FilterBar
-  bind:filters
-  bind:showArchived={() => showArchived, setShowArchived}
-  {storeOptions}
-  assigneeOptions={assignees}
-  {matchCount}
-/>
+<div class="adv-controls" class:open={controlsOpen}>
+  <FilterBar
+    bind:filters
+    bind:showArchived={() => showArchived, setShowArchived}
+    {storeOptions}
+    assigneeOptions={assignees}
+    {matchCount}
+  />
+</div>
 
 {#if showArchived}
   <div class="archived-banner">
@@ -800,16 +828,21 @@
   <nav class="col-tabs" aria-label="Switch board column">
     {#each KANBAN_STATUSES as status}
       {@const m = STATUS_META[status]}
+      {@const wipLimit = WIP_LIMITS[status]}
+      {@const overWip = wipLimit !== undefined && columns[status].length > wipLimit}
       <button
         class="col-tab"
         class:active={status === activeStatus}
         style:--tab-color={m.color}
         aria-pressed={status === activeStatus}
+        title={overWip ? `Over the soft WIP limit — ${columns[status].length} cards, limit ${wipLimit}` : undefined}
         onclick={() => (activeStatus = status)}
       >
         <span class="tab-dot" style:background={m.color}></span>
         {status}
-        <span class="tab-count">{columns[status].filter(matchesView).length}</span>
+        <!-- The column header is hidden on phones (the pill IS the header), so
+             the over-WIP signal moves into the count badge. -->
+        <span class="tab-count" class:over-wip={overWip}>{columns[status].filter(matchesView).length}</span>
       </button>
     {/each}
   </nav>
@@ -905,6 +938,22 @@
     border: 1px solid var(--border);
     border-radius: 9px;
     padding: 2px;
+  }
+
+  /* Advanced controls (density + lens + filter bar): always visible on
+     desktop — the wrappers vanish via display:contents and the toggle button
+     doesn't exist. Phones fold them behind the ⚙️ View button (see the
+     mobile block below). */
+  .controls-btn { display: none; }
+  .adv-controls { display: contents; }
+  .cb-badge {
+    background: var(--primary);
+    color: #fff;
+    border-radius: 999px;
+    padding: 0 7px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 5px;
   }
   .vt-btn {
     display: inline-flex;
@@ -1088,6 +1137,32 @@
     .board-toolbar {
       padding-top: max(0.5rem, env(safe-area-inset-top));
     }
+    /* The page identity is obvious on a phone — drop the tagline row. */
+    .board-sub { display: none; }
+
+    /* Fold the advanced controls behind the ⚙️ View button so the first card
+       is reachable without scrolling past rows of chrome. The badge counts
+       non-default settings, so an active-but-hidden filter stays visible. */
+    .controls-btn {
+      display: inline-flex;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-soft);
+      border-radius: 9px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 0;
+      cursor: pointer;
+    }
+    .adv-controls { display: none; }
+    .adv-controls.open {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex-basis: 100%;
+    }
 
     /* Show only the selected column. */
     .col-wrap { display: none; }
@@ -1144,5 +1219,8 @@
       text-align: center;
     }
     .col-tab.active .tab-count { background: var(--tab-color); color: #fff; }
+    /* Over the soft WIP limit — same amber as the desktop header pill. */
+    .tab-count.over-wip { background: #fef3c7; color: #92400e; }
+    .col-tab.active .tab-count.over-wip { background: #fef3c7; color: #92400e; }
   }
 </style>
