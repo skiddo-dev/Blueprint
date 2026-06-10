@@ -9,6 +9,7 @@ vi.mock('$lib/server/db', () => ({
   getUserEmailByName: vi.fn(async () => 'dana@x.com'),
   deleteTask: vi.fn(async () => true),
   resolveCoAssignees: vi.fn(async () => ({ co_assignees: [], co_assignee_emails: [] })),
+  topRankForStatus: vi.fn(async () => 'top1'),
   normName: (s: string | null | undefined) => (s ?? '').trim().toLowerCase(),
 }))
 
@@ -40,6 +41,7 @@ describe('PATCH /api/tasks/[id] — field allowlist (mass-assignment guard)', ()
     expect(patchTask).toHaveBeenCalledWith('t1', {
       status: 'Done',
       status_changed_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      rank: 'top1', // a dropdown move lands the card at the top of its new column
     })
 
     // Re-selecting the same status must NOT reset status_changed_at — a stale
@@ -88,8 +90,10 @@ describe('PATCH /api/tasks/[id] — assigning starts the task', () => {
       assigned_to: 'Dana',
       assignee_email: 'dana@x.com',
       status: 'In Progress',
-      // Auto-start is a column change, so the aging clock restarts with it.
+      // Auto-start is a column change: aging clock restarts, card surfaces at
+      // the top of In Progress.
       status_changed_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      rank: 'top1',
     })
   })
 

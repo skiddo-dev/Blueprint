@@ -365,10 +365,17 @@ function normalizeTask(t: Record<string, unknown>): Task {
   } as Task
 }
 
+// Board order: rank ascending within a status column (the client groups by
+// status, so a flat rank sort is per-column order). Docs without a rank — only
+// possible in the brief window before migration 0005 runs — sort as null, i.e.
+// first, with created_at desc breaking ties: newest-at-top, the same place a
+// fresh card's top-of-column rank would put it.
+const TASK_SORT = { rank: 1, created_at: -1 } as const
+
 export async function getTasks(): Promise<Task[]> {
   if (USE_MOCK) return generateMockTasks()
   const d = await getDb()
-  const tasks = await col(d, 'tasks').find().sort({ created_at: -1 }).toArray()
+  const tasks = await col(d, 'tasks').find().sort(TASK_SORT).toArray()
   return tasks.map(normalizeTask)
 }
 
@@ -396,7 +403,7 @@ export async function getTasksForUser(email: string | null | undefined, name: st
     assignee_email: { $in: [null, ''] },
     $or: [{ assigned_to: nameP }, { created_by: nameP }, { co_assignees: nameP }],
   })
-  const tasks = await col(d, 'tasks').find({ $or: or }).sort({ created_at: -1 }).toArray()
+  const tasks = await col(d, 'tasks').find({ $or: or }).sort(TASK_SORT).toArray()
   return tasks.map(normalizeTask)
 }
 
