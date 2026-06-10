@@ -20,7 +20,40 @@
   let saving = $state(false)
   let error = $state('')
 
+  // Receipt scan: AI-prefill from a photo/PDF; the file itself uploads onto the
+  // posted entry AFTER the user confirms and posts (orphan-free).
+  let scanFile = $state<File | null>(null)
+  let scanning = $state(false)
+  let scanNote = $state('')
+
   const canSubmit = $derived(!saving && accountId !== '' && paidFrom !== '' && amount.trim() !== '')
+
+  async function scanReceipt(e: Event) {
+    const input = e.currentTarget as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+    scanning = true
+    scanNote = ''
+    error = ''
+    try {
+      const form = new FormData()
+      form.set('file', file)
+      const r = await fetch('/api/accounting/receipt-scan', { method: 'POST', body: form })
+      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      const { prefill } = await r.json()
+      if (prefill.payee) payee = prefill.payee
+      if (prefill.amount) amount = prefill.amount
+      if (prefill.date) date = prefill.date
+      if (prefill.memo && !memo) memo = prefill.memo
+      scanFile = file
+      scanNote = `Read ${file.name} — check the draft, then post; the receipt attaches to the entry.`
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err)
+    } finally {
+      scanning = false
+      input.value = ''
+    }
+  }
 
   async function submit() {
     saving = true
@@ -32,6 +65,17 @@
         body: JSON.stringify({ date, payee, account_id: accountId, paid_from: paidFrom, amount, job: job.trim() || undefined, memo }),
       })
       if (!r.ok) throw new Error(await r.text())
+      const entry = await r.json()
+      if (scanFile && entry?._id) {
+        const form = new FormData()
+        form.set('owner_type', 'journal-entry')
+        form.set('owner_id', entry._id)
+        form.set('file', scanFile)
+        // Best-effort: a failed upload shouldn't strand the posted expense.
+        await fetch('/api/accounting/attachments', { method: 'POST', body: form }).catch(() => null)
+        await goto(`/accounting/expenses/${entry._id}`)
+        return
+      }
       await goto(`/accounting/register/${paidFrom}`)
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -48,6 +92,13 @@
   <p class="report-hint">Money spent without a vendor bill — fuel, supplies, a permit paid on the spot. Posts one balanced entry: the expense account up, the bank account down.</p>
 
   <section class="card">
+    <div class="scan-row">
+      <label class="btn-secondary scan" class:busy={scanning}>
+        {scanning ? 'Reading receipt…' : '📷 Scan receipt'}
+        <input type="file" accept="image/*,.pdf" onchange={scanReceipt} disabled={scanning} hidden />
+      </label>
+      {#if scanNote}<span class="scan-note">✓ {scanNote}</span>{/if}
+    </div>
     <div class="grid">
       <label class="field">Date<input type="date" bind:value={date} /></label>
       <label class="field grow">Paid to
@@ -93,4 +144,8 @@
   .grid .grow { flex: 1; min-width: 180px; }
   .field input, .field select { width: 100%; }
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+  .scan-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed var(--border); }
+  .scan { cursor: pointer; }
+  .scan.busy { opacity: 0.6; }
+  .scan-note { font-size: 12.5px; color: #047857; }
 </style>

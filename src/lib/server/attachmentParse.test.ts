@@ -15,11 +15,11 @@ beforeEach(() => {
   createMock.mockReset()
 })
 
-const EMPTY = { doc_type: null, po: null, amount: null, store_numbers: [], summary: '', pertinent: false, confidence: 0 }
+const EMPTY = { doc_type: null, po: null, amount: null, vendor: null, doc_date: null, store_numbers: [], summary: '', pertinent: false, confidence: 0 }
 
 const modelReply = (fields: Record<string, unknown>) => ({
   choices: [{ message: { content: JSON.stringify({
-    doc_type: null, po: null, amount: null, store_numbers: [], summary: '', pertinent: false, confidence: 0, ...fields,
+    doc_type: null, po: null, amount: null, vendor: null, doc_date: null, store_numbers: [], summary: '', pertinent: false, confidence: 0, ...fields,
   }) } }],
 })
 
