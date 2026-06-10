@@ -60,7 +60,7 @@
     <div class="head-row">
       <div>
         <h1>💸 Infra Spend</h1>
-        <p class="sub">Live billing from MongoDB Atlas, Azure &amp; OpenAI</p>
+        <p class="sub">Live billing from MongoDB Atlas, Azure, OpenAI &amp; GitHub</p>
       </div>
       <button class="btn-secondary" type="button" onclick={refresh} disabled={refreshing}>
         {refreshing ? 'Refreshing…' : '↻ Refresh'}

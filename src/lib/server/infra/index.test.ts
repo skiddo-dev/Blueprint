@@ -3,7 +3,7 @@ import { buildProvidersFromSettled, isFresh } from './index'
 import { emptyProvider } from './shared'
 import type { ProviderSpend, InfraSnapshot } from './types'
 
-// FETCHERS order in index.ts is [atlas, azure, openai]; results map positionally.
+// FETCHERS order in index.ts is [atlas, azure, openai, github]; results map positionally.
 const ok = (provider: ProviderSpend['provider'], label: string): ProviderSpend => ({
   ...emptyProvider(provider, label, {}),
   monthToDateCents: 999,
@@ -15,13 +15,15 @@ describe('buildProvidersFromSettled', () => {
       { status: 'fulfilled', value: ok('atlas', 'MongoDB Atlas') },
       { status: 'rejected', reason: new Error('boom') },
       { status: 'fulfilled', value: ok('openai', 'OpenAI') },
+      { status: 'fulfilled', value: ok('github', 'GitHub') },
     ]
     const providers = buildProvidersFromSettled(results)
-    expect(providers.map((p) => p.provider)).toEqual(['atlas', 'azure', 'openai'])
+    expect(providers.map((p) => p.provider)).toEqual(['atlas', 'azure', 'openai', 'github'])
     expect(providers[0].monthToDateCents).toBe(999)
     expect(providers[1].provider).toBe('azure')
     expect(providers[1].error).toBe('boom')
     expect(providers[2].monthToDateCents).toBe(999)
+    expect(providers[3].monthToDateCents).toBe(999)
   })
 })
 

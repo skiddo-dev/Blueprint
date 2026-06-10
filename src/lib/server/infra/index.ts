@@ -2,13 +2,14 @@ import { getMeta, setMeta, tryAcquireLease, releaseLease } from '$lib/server/db'
 import { log } from '$lib/server/log'
 import { fetchAtlasSpend } from './atlas-billing'
 import { fetchAzureSpend } from './azure-costs'
+import { fetchGitHubSpend } from './github-billing'
 import { fetchOpenAiSpend } from './openai-costs'
 import { emptyProvider } from './shared'
 import type { InfraProvider, InfraSnapshot, ProviderSpend } from './types'
 
 export type { InfraSnapshot, ProviderSpend, SpendLine, SpendPoint } from './types'
 
-// Orchestrates the three provider clients into one cached snapshot. Billing APIs
+// Orchestrates the provider clients into one cached snapshot. Billing APIs
 // are slow and rate-limited, so the combined result is cached in the `meta`
 // collection and only re-fetched past a TTL or on an explicit refresh. A
 // distributed lease keeps the (≤2) replicas from stampeding the APIs at once.
@@ -22,6 +23,7 @@ const FETCHERS: { provider: InfraProvider; label: string; fetch: (now: Date) => 
   { provider: 'atlas', label: 'MongoDB Atlas', fetch: fetchAtlasSpend },
   { provider: 'azure', label: 'Azure', fetch: fetchAzureSpend },
   { provider: 'openai', label: 'OpenAI', fetch: fetchOpenAiSpend },
+  { provider: 'github', label: 'GitHub', fetch: fetchGitHubSpend },
 ]
 
 /** Pure: turn settled fetch results into provider cards. The fetchers already

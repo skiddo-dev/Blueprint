@@ -1,14 +1,15 @@
 // Shared shapes for the admin "Infra Spend" view. Every provider client
 // normalizes its vendor-specific billing payload into one `ProviderSpend`, and
-// the orchestrator (index.ts) bundles the three into an `InfraSnapshot` that is
+// the orchestrator (index.ts) bundles them into an `InfraSnapshot` that is
 // cached in the `meta` collection and rendered by /infra.
 //
 // Money is integer CENTS throughout (USD minor units) — never a float. Each
 // client converts its vendor amount to cents at the boundary (Atlas already
-// reports cents; OpenAI and Azure report decimal-dollar floats → dollarsToCents()
-// in ./shared). Kept self-contained so this view has no cross-feature coupling.
+// reports cents; OpenAI, Azure and GitHub report decimal-dollar floats →
+// dollarsToCents() in ./shared). Kept self-contained so this view has no
+// cross-feature coupling.
 
-export type InfraProvider = 'openai' | 'atlas' | 'azure'
+export type InfraProvider = 'openai' | 'atlas' | 'azure' | 'github'
 
 export interface SpendPoint {
   /** Month label, e.g. "2026-06". */
