@@ -105,3 +105,98 @@ export function trialBalance(entries: JournalEntry[]): {
     totalCredit: cents(rows.reduce((a, r) => a + r.credit, 0)),
   }
 }
+
+// ── Account register + general ledger (V4) ───────────────────────────────────
+// Pure folds over date-ordered posted entries; the server supplies the entries
+// (lines.account_id index) and the opening balance (aggregation to the day
+// before the window).
+
+export type RegisterRow = {
+  entry_id: string
+  date: string
+  memo?: string
+  source: JournalEntry['source']
+  source_ref?: string
+  debit: Cents
+  credit: Cents
+  balance: Cents // running balance, presented in the account's normal direction
+}
+
+/** Fold the entries touching one account into register rows with a running
+ *  balance. `opening` is the account's NET (debit − credit) balance before the
+ *  first entry; rows present the balance in the account's `normal` direction
+ *  (a healthy bank register and a healthy A/P register both read positive).
+ *  An entry's multiple lines on the same account merge into one row. */
+export function accountRegister(
+  entries: JournalEntry[],
+  accountId: string,
+  opening: Cents,
+  normal: 'debit' | 'credit' = 'debit',
+): { rows: RegisterRow[]; closing: Cents } {
+  const dir = normal === 'credit' ? -1 : 1
+  let net: number = opening
+  const rows: RegisterRow[] = []
+  for (const e of entries) {
+    let debit = 0
+    let credit = 0
+    for (const l of e.lines) {
+      if (l.account_id !== accountId) continue
+      debit += l.debit
+      credit += l.credit
+    }
+    if (debit === 0 && credit === 0) continue
+    net = net + debit - credit
+    rows.push({
+      entry_id: e._id,
+      date: e.date,
+      ...(e.memo !== undefined ? { memo: e.memo } : {}),
+      source: e.source,
+      ...(e.source_ref !== undefined ? { source_ref: e.source_ref } : {}),
+      debit: cents(debit),
+      credit: cents(credit),
+      balance: cents(net * dir),
+    })
+  }
+  return { rows, closing: cents(net * dir) }
+}
+
+export type GeneralLedgerGroup = {
+  account_id: string
+  name: string
+  rows: { entry_id: string; date: string; memo?: string; source: JournalEntry['source']; debit: Cents; credit: Cents }[]
+  totalDebit: Cents
+  totalCredit: Cents
+  net: Cents // debit − credit over the period
+}
+
+/** Group a period's entries per account, with per-account totals — the classic
+ *  General Ledger report. Accounts with no activity are omitted; groups come
+ *  back in account-code order. */
+export function generalLedger(
+  entries: JournalEntry[],
+  accounts: { _id: string; name: string }[],
+): GeneralLedgerGroup[] {
+  const names = new Map(accounts.map((a) => [a._id, a.name]))
+  const groups = new Map<string, GeneralLedgerGroup>()
+  for (const e of entries) {
+    for (const l of e.lines) {
+      let g = groups.get(l.account_id)
+      if (!g) {
+        g = { account_id: l.account_id, name: names.get(l.account_id) ?? l.account_id, rows: [], totalDebit: cents(0), totalCredit: cents(0), net: cents(0) }
+        groups.set(l.account_id, g)
+      }
+      g.rows.push({
+        entry_id: e._id,
+        date: e.date,
+        ...(e.memo !== undefined ? { memo: e.memo } : {}),
+        source: e.source,
+        debit: l.debit,
+        credit: l.credit,
+      })
+      g.totalDebit = cents(g.totalDebit + l.debit)
+      g.totalCredit = cents(g.totalCredit + l.credit)
+      g.net = cents(g.net + l.debit - l.credit)
+    }
+  }
+  return [...groups.values()].sort((a, b) => (a.account_id < b.account_id ? -1 : 1))
+}

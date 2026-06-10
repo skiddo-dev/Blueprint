@@ -30,8 +30,10 @@
   const path = $derived(page.url.pathname)
   // Overview matches only the exact hub path; every other section also matches
   // its sub-routes (e.g. /accounting/invoices highlights on /…/invoices/new).
+  const STATEMENT_PATHS = ['/accounting/income-statement', '/accounting/balance-sheet', '/accounting/cash-flow']
   function isActive(href: string): boolean {
     if (href === '/accounting') return path === href
+    if (href === '/accounting/reports' && STATEMENT_PATHS.some((p) => path.startsWith(p))) return true
     return path === href || path.startsWith(href + '/')
   }
 
@@ -48,9 +50,7 @@
       { href: '/accounting/ap-aging', ico: '📉', label: 'A/P Aging' },
     ] },
     { label: 'Reports', items: [
-      { href: '/accounting/income-statement', ico: '📊', label: 'Income Statement' },
-      { href: '/accounting/balance-sheet', ico: '🏦', label: 'Balance Sheet' },
-      { href: '/accounting/cash-flow', ico: '💵', label: 'Cash Flow' },
+      { href: '/accounting/reports', ico: '📊', label: 'Reports' },
     ] },
     { label: 'Banking', items: [
       { href: '/accounting/reconcile', ico: '✅', label: 'Reconcile' },
