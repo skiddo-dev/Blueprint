@@ -3,6 +3,7 @@
   import { page } from '$app/state'
   import KanbanColumn from './KanbanColumn.svelte'
   import NewTaskModal from './NewTaskModal.svelte'
+  import CardDetailSheet from './CardDetailSheet.svelte'
   import type { Task, TaskStatus, AppSession } from '$lib/types'
   import { KANBAN_STATUSES, STATUS_META, SUPERVISORS } from '$lib/constants'
   import { extractStoreNumbers } from '$lib/storeNumbers'
@@ -57,6 +58,18 @@
   // pill switcher below; desktop shows them all side by side).
   let activeStatus = $state<TaskStatus>('To Do')
 
+  // ── Detail sheet ─────────────────────────────────────────────────────
+  // Which card's sheet is open. The sheet reads the LIVE task from `columns`
+  // (not a snapshot) so poll updates and optimistic edits flow straight in;
+  // if the task vanishes (deleted here or elsewhere), the sheet closes itself
+  // by virtue of openTask going null.
+  let openTaskId = $state<string | null>(null)
+  let openTask = $derived(
+    openTaskId
+      ? KANBAN_STATUSES.flatMap(s => columns[s]).find(t => t._id === openTaskId) ?? null
+      : null,
+  )
+
   // Store-number filter (set by tapping a #store tag on a card; toggles off when
   // the same store is tapped again). Cards are hidden in KanbanColumn via CSS.
   let storeFilter = $state<string | null>(null)
@@ -80,17 +93,18 @@
     try { localStorage.setItem('blueprint:boardView', v) } catch { /* ignore */ }
   }
 
-  // Deep-link from global search: `/?task=<id>` reveals + flashes that card. Show
-  // All Tasks, clear the store filter, switch to the card's column (mobile), then
-  // scroll it into view and pulse a highlight ring. Re-runs whenever the URL's
-  // `task` param changes (works even when already on the board).
+  // Deep-link from global search: `/?task=<id>` reveals + flashes that card and
+  // opens its detail sheet. Show All Tasks, clear the store filter, switch to
+  // the card's column (mobile), then scroll it into view and pulse a highlight
+  // ring. Re-runs whenever the URL's `task` param changes (works even when
+  // already on the board).
   $effect(() => {
     const id = page.url.searchParams.get('task')
     if (!id) return
     setView('all')
     storeFilter = null
     for (const s of KANBAN_STATUSES) {
-      if (columns[s].some(t => t._id === id)) { activeStatus = s; break }
+      if (columns[s].some(t => t._id === id)) { activeStatus = s; openTaskId = id; break }
     }
     tick().then(() => {
       const el = document.getElementById('task-' + id)
@@ -391,6 +405,27 @@
   />
 {/if}
 
+{#if openTask}
+  <CardDetailSheet
+    task={openTask}
+    {assignees}
+    {mentionCandidates}
+    currentUserName={userName}
+    currentUserEmail={myEmail}
+    isAdmin={role === 'admin'}
+    onClose={() => (openTaskId = null)}
+    onFieldUpdate={handleFieldUpdate}
+    onDelete={handleDelete}
+    onStoreFilter={setStoreFilter}
+    onComment={handleComment}
+    onEditComment={handleEditComment}
+    onDeleteComment={handleDeleteComment}
+    onReact={handleReact}
+    onUploadAttachment={handleUploadAttachment}
+    onDeleteAttachment={handleDeleteAttachment}
+  />
+{/if}
+
 {#if !online}
   <div class="offline-banner">📡 You’re offline — the board may be out of date, and changes won’t save until you reconnect.</div>
 {/if}
@@ -506,9 +541,6 @@
       <KanbanColumn
         {status}
         bind:items={columns[status]}
-        {assignees}
-        {mentionCandidates}
-        currentUserName={userName}
         currentUserEmail={myEmail}
         {storeFilter}
         {view}
@@ -516,15 +548,8 @@
         isAdmin={role === 'admin'}
         onMoved={handleMoved}
         onDragStateChange={(d) => (dragging = d)}
-        onFieldUpdate={handleFieldUpdate}
-        onDelete={handleDelete}
         onStoreFilter={setStoreFilter}
-        onComment={handleComment}
-        onEditComment={handleEditComment}
-        onDeleteComment={handleDeleteComment}
-        onReact={handleReact}
-        onUploadAttachment={handleUploadAttachment}
-        onDeleteAttachment={handleDeleteAttachment}
+        onOpen={(id) => (openTaskId = id)}
       />
     </div>
   {/each}
