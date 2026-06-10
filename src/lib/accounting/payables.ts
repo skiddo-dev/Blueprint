@@ -2,7 +2,7 @@
 // we owe. Bill status and aging reuse the AR helpers (the paid-vs-total and
 // days-past-due math is identical); only the journal lines differ (which side
 // A/P and Cash land on).
-import { type Cents, cents, sum as sumCents } from '$lib/money'
+import { type Cents, cents, sum as sumCents, allocate } from '$lib/money'
 import type { BillLine, JournalLine } from './types'
 
 // Ledger accounts the AP flow posts to (codes from the seeded chart of accounts).
@@ -34,4 +34,14 @@ export function billPaymentJournalLines(amount: Cents): JournalLine[] {
     { account_id: ACCT_AP.ap, debit: amount, credit: cents(0) },
     { account_id: ACCT_AP.cash, debit: cents(0), credit: amount },
   ]
+}
+
+/** A vendor credit against a bill: Dr A/P (we owe less) / Cr the bill's expense
+ *  accounts pro-rata to their original amounts, penny-safe via allocation. */
+export function vendorCreditJournalLines(amount: Cents, billLines: BillLine[]): JournalLine[] {
+  const shares = allocate(amount, billLines.map((l) => l.amount))
+  const credits: JournalLine[] = billLines
+    .map((l, i) => ({ account_id: l.account_id, debit: cents(0), credit: shares[i] }))
+    .filter((l) => l.credit > 0)
+  return [{ account_id: ACCT_AP.ap, debit: amount, credit: cents(0) }, ...credits]
 }

@@ -19,6 +19,8 @@ export async function ensureAccountingIndexes(d: Db): Promise<void> {
     col(d, 'journalEntries').createIndex({ date: -1 }),         // ledger listing
     col(d, 'journalEntries').createIndex({ period: 1 }),        // period reports / close
     col(d, 'journalEntries').createIndex({ 'lines.account_id': 1 }), // trial balance + per-account ledger
+    col(d, 'creditMemos').createIndex({ invoice_id: 1 }),   // credits listed on the invoice detail
+    col(d, 'vendorCredits').createIndex({ bill_id: 1 }),    // mirrors for A/P
     // ── Accounts receivable (Phase 2) ──
     col(d, 'customers').createIndex({ name_lower: 1 }),        // find-or-create by name
     col(d, 'invoices').createIndex({ status: 1, due_date: 1 }), // A/R aging scan

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { cents } from '$lib/money'
 import { isBalanced } from './ledger'
-import { ACCT_AP, billTotal, billJournalLines, billPaymentJournalLines } from './payables'
+import { ACCT_AP, billTotal, billJournalLines, billPaymentJournalLines, vendorCreditJournalLines } from './payables'
 import type { BillLine } from './types'
 
 const line = (account_id: string, amount: number, description = ''): BillLine => ({
@@ -42,5 +42,22 @@ describe('billPaymentJournalLines', () => {
       { account_id: ACCT_AP.cash, debit: 0, credit: 50000 },
     ])
     expect(isBalanced(journal)).toBe(true)
+  })
+})
+
+describe('vendorCreditJournalLines', () => {
+  const line = (account_id: string, amount: number): BillLine => ({ account_id, description: '', amount: cents(amount) })
+  it('debits A/P and credits the expense accounts pro-rata, balanced to the penny', () => {
+    const lines = vendorCreditJournalLines(cents(3000), [line('5000', 6000), line('5010', 3000)])
+    expect(lines[0]).toEqual({ account_id: '2000', debit: 3000, credit: 0 })
+    expect(lines.slice(1)).toEqual([
+      { account_id: '5000', debit: 0, credit: 2000 },
+      { account_id: '5010', debit: 0, credit: 1000 },
+    ])
+  })
+  it('odd-penny allocation still balances', () => {
+    const lines = vendorCreditJournalLines(cents(1000), [line('5000', 333), line('5010', 333), line('5040', 334)])
+    const cr = lines.reduce((s, l) => s + l.credit, 0)
+    expect(cr).toBe(1000)
   })
 })

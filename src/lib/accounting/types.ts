@@ -17,7 +17,7 @@ export interface Account {
 }
 
 // ── Double-entry journal ───────────────────────────────────────────────────────
-export type JournalSource = 'manual' | 'invoice' | 'payment' | 'bill' | 'bill-payment' | 'closing'
+export type JournalSource = 'manual' | 'invoice' | 'payment' | 'bill' | 'bill-payment' | 'closing' | 'credit-memo' | 'vendor-credit' | 'expense'
 
 // One leg of an entry. Exactly one of debit/credit is > 0; the other is 0.
 export interface JournalLine {
@@ -92,6 +92,7 @@ export interface Invoice {
   tax: Cents
   total: Cents
   paid: Cents
+  credited?: Cents       // total credit memos applied (reduce balance, not paid)
   balance: Cents          // total − paid
   status: 'open' | 'partial' | 'paid' | 'void'
   po?: string
@@ -145,6 +146,7 @@ export interface Bill {
   lines: BillLine[]
   total: Cents            // sum of line amounts
   paid: Cents
+  credited?: Cents       // total credit memos applied (reduce balance, not paid)
   balance: Cents
   status: 'open' | 'partial' | 'paid' | 'void'
   vendor_invoice_no?: string // the vendor's own invoice number
@@ -176,4 +178,34 @@ export interface TrialBalanceRow {
   debit: Cents
   credit: Cents
   net: Cents             // debit − credit
+}
+
+// A credit memo issued against an invoice (and its A/P mirror against a bill).
+// v1 credits apply on creation — no unapplied credit balances to track.
+export interface CreditMemo {
+  _id: string
+  invoice_id: string
+  customer_id: string
+  customer_name: string
+  year: number
+  number: number         // per-year sequence from the counters collection
+  date: string           // ISO YYYY-MM-DD
+  amount: Cents          // ≤ the invoice balance at issue time
+  memo?: string
+  created_by?: string
+  created_at: string
+}
+
+export interface VendorCredit {
+  _id: string
+  bill_id: string
+  vendor_id: string
+  vendor_name: string
+  year: number
+  number: number
+  date: string
+  amount: Cents
+  memo?: string
+  created_by?: string
+  created_at: string
 }
