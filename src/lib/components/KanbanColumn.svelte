@@ -376,6 +376,10 @@
 
   @media (max-width: 768px) {
     .column { min-width: 100%; width: 100%; }
+    /* The mobile pill switcher already names the column and carries its count
+       (and the over-WIP tint) — repeating it as a header here just pushed the
+       first card further down the screen. */
+    .col-header { display: none; }
     /* 16px stops iOS zoom; finger-sized quick-add. */
     .qa-row input { font-size: 16px; min-height: 44px; }
     .qa-btn { padding: 9px 12px; }
