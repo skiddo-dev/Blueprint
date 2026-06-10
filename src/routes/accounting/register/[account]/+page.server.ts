@@ -3,13 +3,7 @@ import type { PageServerLoad } from './$types'
 import { getAccounts, getLedgerBalances, listPostedEntries } from '$lib/server/accounting'
 import { accountRegister } from '$lib/accounting/ledger'
 import { cents } from '$lib/money'
-
-/** The day before an ISO date, for the opening-balance cutoff. */
-function dayBefore(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - 1)
-  return d.toISOString().slice(0, 10)
-}
+import { dayBefore } from '$lib/accounting/format'
 
 // Admin-only (page guard in hooks.server.ts). One account's transaction history
 // with a running balance — QuickBooks' "account register". Defaults to all

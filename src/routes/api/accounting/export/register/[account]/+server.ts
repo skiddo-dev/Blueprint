@@ -6,14 +6,7 @@ import { accountRegister } from '$lib/accounting/ledger'
 import { registerCsv } from '$lib/accounting/reportCsv'
 import { contentDisposition } from '$lib/sanitize'
 import { cents } from '$lib/money'
-
-/** The day before an ISO date, for the opening-balance cutoff (mirrors the
- *  register page). */
-function dayBefore(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - 1)
-  return d.toISOString().slice(0, 10)
-}
+import { dayBefore } from '$lib/accounting/format'
 
 // Admin-only CSV of one account's register — mirrors the register page load:
 // all activity by default, ?from=&to= narrow the window (the opening balance
