@@ -225,6 +225,30 @@ export async function getPeriodBalances(): Promise<PeriodBalance[]> {
   }))
 }
 
+/** Posted entries, optionally filtered to one account and/or a date range,
+ *  oldest first — feeds the account register and the General Ledger / Journal
+ *  reports. The books are small; a generous cap keeps a runaway query bounded. */
+export async function listPostedEntries(
+  opts: { account?: string; from?: string; to?: string } = {},
+): Promise<JournalEntry[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const match: Record<string, unknown> = { status: 'posted' }
+  if (opts.account) match['lines.account_id'] = opts.account
+  if (opts.from || opts.to) {
+    const range: Record<string, string> = {}
+    if (opts.from) range.$gte = opts.from
+    if (opts.to) range.$lte = opts.to
+    match.date = range
+  }
+  const rows = await col('journalEntries', d)
+    .find(match)
+    .sort({ date: 1, created_at: 1 })
+    .limit(5000)
+    .toArray()
+  return rows.map((e) => ({ ...e, _id: String(e._id) })) as JournalEntry[]
+}
+
 // ── Period close ──────────────────────────────────────────────────────────────
 /** The date the books are locked through (no entry may post on/before it), or
  *  null if open. Stored as a single `meta` doc. */

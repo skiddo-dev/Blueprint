@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { cents, type Cents } from '$lib/money'
-import {
-  entryTotals, isBalanced, validateEntry, periodOf, buildReversingEntry, trialBalance,
-} from './ledger'
+import { entryTotals, isBalanced, validateEntry, periodOf, buildReversingEntry, trialBalance, accountRegister, generalLedger } from './ledger'
 import type { JournalEntry, JournalLine } from './types'
 
 // Helpers to build lines/entries tersely in tests.
@@ -125,5 +123,65 @@ describe('trialBalance', () => {
 
   it('is empty for no entries', () => {
     expect(trialBalance([])).toEqual({ rows: [], totalDebit: 0, totalCredit: 0 })
+  })
+})
+
+describe('accountRegister', () => {
+  const entry = (id: string, date: string, lines: [string, number, number][], memo?: string): JournalEntry => ({
+    _id: id, date, period: date.slice(0, 7), source: 'manual', lines: lines.map(([account_id, debit, credit]) => ({ account_id, debit: cents(debit), credit: cents(credit) })), status: 'posted', created_at: date,
+    ...(memo !== undefined ? { memo } : {}),
+  })
+
+  it('folds a running balance in the account normal direction and merges multi-line hits', () => {
+    const entries = [
+      entry('e1', '2026-01-05', [['1000', 5000, 0], ['4000', 0, 5000]], 'sale'),
+      entry('e2', '2026-01-10', [['1000', 0, 2000], ['6100', 2000, 0]], 'rent'),
+      entry('e3', '2026-01-15', [['1000', 1000, 0], ['1000', 500, 0], ['4000', 0, 1500]], 'two cash lines'),
+      entry('e4', '2026-01-20', [['6100', 300, 0], ['2000', 0, 300]], 'no cash involvement'),
+    ]
+    const { rows, closing } = accountRegister(entries, '1000', cents(1000), 'debit')
+    expect(rows.map((r) => r.balance)).toEqual([6000, 4000, 5500]) // opening 1000 → +5000 → −2000 → +1500
+    expect(rows[2].debit).toBe(1500) // merged lines
+    expect(rows.find((r) => r.memo === 'no cash involvement')).toBeUndefined()
+    expect(closing).toBe(5500)
+  })
+
+  it('presents credit-normal accounts positive when in credit', () => {
+    const entries = [entry('e1', '2026-01-05', [['6100', 700, 0], ['2000', 0, 700]])]
+    const { rows, closing } = accountRegister(entries, '2000', cents(0), 'credit')
+    expect(rows[0].balance).toBe(700)
+    expect(closing).toBe(700)
+  })
+
+  it('empty input returns opening as closing', () => {
+    expect(accountRegister([], '1000', cents(250), 'debit')).toEqual({ rows: [], closing: 250 })
+  })
+})
+
+describe('generalLedger', () => {
+  const accounts = [
+    { _id: '1000', name: 'Cash' },
+    { _id: '4000', name: 'Revenue' },
+  ]
+  it('groups lines per account in code order with totals', () => {
+    const entries: JournalEntry[] = [
+      { _id: 'e1', date: '2026-01-05', period: '2026-01', source: 'manual', status: 'posted', created_at: '', lines: [
+        { account_id: '4000', debit: cents(0), credit: cents(900) },
+        { account_id: '1000', debit: cents(900), credit: cents(0) },
+      ] },
+      { _id: 'e2', date: '2026-01-09', period: '2026-01', source: 'manual', status: 'posted', created_at: '', lines: [
+        { account_id: '1000', debit: cents(0), credit: cents(400) },
+        { account_id: '9999', debit: cents(400), credit: cents(0) },
+      ] },
+    ]
+    const groups = generalLedger(entries, accounts)
+    expect(groups.map((g) => g.account_id)).toEqual(['1000', '4000', '9999'])
+    const cash = groups[0]
+    expect(cash.name).toBe('Cash')
+    expect(cash.rows).toHaveLength(2)
+    expect(cash.totalDebit).toBe(900)
+    expect(cash.totalCredit).toBe(400)
+    expect(cash.net).toBe(500)
+    expect(groups[2].name).toBe('9999') // unknown account falls back to its code
   })
 })

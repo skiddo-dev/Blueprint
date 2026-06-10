@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { cents } from '$lib/money'
-import { incomeStatement, balanceSheet, isPeriodClosed, monthlyActivity, type Balance } from './statements'
+import { incomeStatement, balanceSheet, isPeriodClosed, monthlyActivity, comparativePnl, type Balance } from './statements'
 import type { Account } from './types'
 
 // A small chart covering each type + a contra account in each direction.
@@ -125,5 +125,42 @@ describe('monthlyActivity', () => {
   it('ignores rows for unknown accounts and returns [] for no rows', () => {
     expect(monthlyActivity([], acc)).toEqual([])
     expect(monthlyActivity([row('2026-01', '9999', 100, 0)], acc)).toEqual([])
+  })
+})
+
+describe('comparativePnl', () => {
+  const acc: Account[] = [
+    { _id: '4000', code: '4000', name: 'Contract Revenue', type: 'income', normal: 'credit', active: true },
+    { _id: '4900', code: '4900', name: 'Sales Discounts', type: 'income', normal: 'debit', contra: true, active: true },
+    { _id: '5000', code: '5000', name: 'Job Materials', type: 'expense', normal: 'debit', subtype: 'cogs', active: true },
+    { _id: '1000', code: '1000', name: 'Cash', type: 'asset', normal: 'debit', active: true },
+  ]
+  const pb = (period: string, account_id: string, debit: number, credit: number) =>
+    ({ period, account_id, debit: cents(debit), credit: cents(credit) })
+
+  it('lays out account rows × month columns with section and net totals', () => {
+    const rows = [
+      pb('2026-01', '4000', 0, 10000),
+      pb('2026-01', '4900', 500, 0),     // contra nets against January revenue
+      pb('2026-01', '5000', 4000, 0),
+      pb('2026-02', '4000', 0, 8000),
+      pb('2026-02', '1000', 8000, 0),    // asset — excluded from the P&L
+      pb('2025-12', '4000', 0, 999),     // outside the window — ignored
+    ]
+    const pnl = comparativePnl(rows, acc, ['2026-01', '2026-02'])
+    expect(pnl.months).toEqual(['2026-01', '2026-02'])
+    const rev4000 = pnl.revenue.rows.find((r) => r.account_id === '4000')
+    expect(rev4000?.cells).toEqual([10000, 8000])
+    expect(rev4000?.total).toBe(18000)
+    expect(pnl.revenue.totals).toEqual([9500, 8000]) // contra −500 in Jan
+    expect(pnl.expenses.totals).toEqual([4000, 0])
+    expect(pnl.net.cells).toEqual([5500, 8000])
+    expect(pnl.net.total).toBe(13500)
+  })
+
+  it('returns empty sections for no activity', () => {
+    const pnl = comparativePnl([], acc, ['2026-01'])
+    expect(pnl.revenue.rows).toEqual([])
+    expect(pnl.net.cells).toEqual([0])
   })
 })

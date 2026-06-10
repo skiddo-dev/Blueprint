@@ -166,8 +166,8 @@
         <tbody>
           {#each tb.rows as r (r.account_id)}
             <tr>
-              <td class="mono">{r.account_id}</td>
-              <td>{r.name ?? '—'}</td>
+              <td class="mono"><a class="reg-link" href="/accounting/register/{r.account_id}">{r.account_id}</a></td>
+              <td><a class="reg-link" href="/accounting/register/{r.account_id}">{r.name ?? '—'}</a></td>
               <td class="num">{r.net > 0 ? usd(r.net) : ''}</td>
               <td class="num">{r.net < 0 ? usd(-r.net) : ''}</td>
             </tr>
@@ -226,4 +226,6 @@
   .lock-status { font-size: 14px; color: var(--text-body); margin: 0 0 12px; }
   .lock-hint { font-size: 12px; color: var(--text-muted); margin: 10px 0 0; }
   .lock-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .reg-link { color: inherit; text-decoration: none; }
+  .reg-link:hover { color: var(--primary-text); text-decoration: underline; }
 </style>
