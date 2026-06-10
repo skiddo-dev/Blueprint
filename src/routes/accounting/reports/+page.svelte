@@ -16,6 +16,7 @@
     { href: '/accounting/reports/general-ledger', ico: '📚', name: 'General ledger', blurb: 'Every posting grouped by account with period totals.' },
     { href: '/accounting/reports/journal', ico: '🧾', name: 'Journal', blurb: 'Every entry in date order with its debits and credits.' },
     { href: '/accounting/reports/1099', ico: '📋', name: '1099 payments', blurb: 'Cash paid per 1099 vendor for the year — who needs a form in January.' },
+    { href: '/accounting/reports/budget-vs-actual', ico: '🎯', name: 'Budget vs actual', blurb: 'How the year tracks against the plan, account by account.' },
   ]
 </script>
 

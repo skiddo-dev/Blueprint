@@ -115,6 +115,26 @@ export function ten99Csv(rows: { name: string; tax_id?: string; paymentCount: nu
   return out.join('\n')
 }
 
+export function budgetVsActualCsv(
+  rows: { account_id: string; name: string; type: string; actualYtd: number; budgetYtd: number; varianceYtd: number }[],
+  totals: { netActualYtd: number; netBudgetYtd: number },
+  year: number,
+  through: number,
+): string {
+  const out = [
+    row([csvCell(`Budget vs Actual ${year} (through month ${through})`), '', '', '']),
+    row(['Account', 'Name', 'Actual YTD', 'Budget YTD']),
+  ]
+  // Variance carried as the 5th column on data rows; header row kept to 4 + 1 for clarity
+  out[1] = row(['Account', 'Name', 'Actual YTD', 'Budget YTD', 'Variance'])
+  out[0] = row([csvCell(`Budget vs Actual ${year} (through month ${through})`), '', '', '', ''])
+  for (const r of rows) {
+    out.push(row([csvCell(r.account_id), csvCell(r.name), moneyCell(r.actualYtd), moneyCell(r.budgetYtd), moneyCell(r.varianceYtd)]))
+  }
+  out.push(row(['Net income', '', moneyCell(totals.netActualYtd), moneyCell(totals.netBudgetYtd), moneyCell(totals.netActualYtd - totals.netBudgetYtd)]))
+  return out.join('\n')
+}
+
 export function registerCsv(
   rows: RegisterRow[],
   account: Pick<Account, '_id' | 'name'>,
