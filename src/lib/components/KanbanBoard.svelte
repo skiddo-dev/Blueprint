@@ -4,9 +4,10 @@
   import KanbanColumn from './KanbanColumn.svelte'
   import NewTaskModal from './NewTaskModal.svelte'
   import CardDetailSheet from './CardDetailSheet.svelte'
+  import FilterBar from './FilterBar.svelte'
   import type { Task, TaskStatus, AppSession } from '$lib/types'
   import { KANBAN_STATUSES, STATUS_META, SUPERVISORS } from '$lib/constants'
-  import { extractStoreNumbers } from '$lib/storeNumbers'
+  import { defaultFilters, taskMatchesFilters, taskStores, anyFilterActive } from '$lib/boardFilters'
   import { parseMentions } from '$lib/mentions'
   import { toggleReactor } from '$lib/reactions'
   import { isOwnedBy } from '$lib/ownership'
@@ -70,17 +71,26 @@
       : null,
   )
 
-  // Store-number filter (set by tapping a #store tag on a card; toggles off when
-  // the same store is tapped again). Cards are hidden in KanbanColumn via CSS.
-  let storeFilter = $state<string | null>(null)
-  function setStoreFilter(n: string) {
-    storeFilter = storeFilter === n ? null : n
+  // ── Filters ──────────────────────────────────────────────────────────
+  // One composable filter state (assignees / stores / due / quote / source /
+  // text — see $lib/boardFilters) drives the FilterBar, per-column CSS hiding,
+  // and the pill counts. Tapping a #store tag on a card toggles that store in
+  // the store filter. Remembered per browser, like the view toggle.
+  let filters = $state(defaultFilters())
+  let filtersLoaded = $state(false) // don't persist until the saved set is restored
+  function toggleStore(n: string) {
+    filters.stores = filters.stores.includes(n)
+      ? filters.stores.filter(s => s !== n)
+      : [...filters.stores, n]
   }
-  const taskStores = (t: Task) => t.store_numbers ?? extractStoreNumbers(t.title)
-  let filterCount = $derived(
-    storeFilter
-      ? KANBAN_STATUSES.reduce((acc, s) => acc + columns[s].filter(t => taskStores(t).includes(storeFilter!)).length, 0)
-      : 0,
+  $effect(() => {
+    const json = JSON.stringify(filters) // deep read — tracks every filter field
+    if (!filtersLoaded) return
+    try { localStorage.setItem('blueprint:boardFilters', json) } catch { /* ignore */ }
+  })
+  // Filter-bar options reflect what's actually on the board.
+  let storeOptions = $derived(
+    [...new Set(KANBAN_STATUSES.flatMap(s => columns[s].flatMap(taskStores)))].sort(),
   )
 
   // ── "My Work" view (default) ─────────────────────────────────────────
@@ -102,7 +112,7 @@
     const id = page.url.searchParams.get('task')
     if (!id) return
     setView('all')
-    storeFilter = null
+    filters = defaultFilters()
     for (const s of KANBAN_STATUSES) {
       if (columns[s].some(t => t._id === id)) { activeStatus = s; openTaskId = id; break }
     }
@@ -125,13 +135,16 @@
   const isMine = (t: Task) => isOwnedBy(t, { email: myEmail, name: userName })
   const isOverdue = (t: Task) =>
     !!t.date && t.date < today && t.status !== 'Done' && t.status !== 'Cancelled'
-  // Which tasks the current view shows (before the store filter).
+  // Which tasks the current view shows (before the filters).
   const inView = (t: Task) =>
     view === 'all' ? true : isMine(t)
-  // Visible under the current view + store filter — used for the column-nav pill
-  // counts so they reflect what's actually shown.
+  // Visible under the current view + filters — used for the column-nav pill
+  // counts and the filter bar's match ribbon so they reflect what's shown.
   const matchesView = (t: Task) =>
-    inView(t) && (!storeFilter || taskStores(t).includes(storeFilter))
+    inView(t) && taskMatchesFilters(t, filters, today)
+  let matchCount = $derived(
+    KANBAN_STATUSES.reduce((n, s) => n + columns[s].filter(matchesView).length, 0),
+  )
   let myOverdue = $derived(
     KANBAN_STATUSES.reduce((n, s) => n + columns[s].filter(t => isMine(t) && isOverdue(t)).length, 0),
   )
@@ -194,6 +207,13 @@
   onMount(async () => {
     const savedView = localStorage.getItem('blueprint:boardView')
     if (savedView === 'mine' || savedView === 'all') view = savedView
+    // Restore the saved filters, tolerating older/garbled shapes (merge over
+    // defaults so a missing field never leaves the UI half-initialized).
+    try {
+      const saved = localStorage.getItem('blueprint:boardFilters')
+      if (saved) filters = { ...defaultFilters(), ...JSON.parse(saved) }
+    } catch { /* ignore */ }
+    filtersLoaded = true
     online = navigator.onLine
     try {
       const r = await fetch('/api/tasks/signature')
@@ -416,7 +436,7 @@
     onClose={() => (openTaskId = null)}
     onFieldUpdate={handleFieldUpdate}
     onDelete={handleDelete}
-    onStoreFilter={setStoreFilter}
+    onStoreFilter={toggleStore}
     onComment={handleComment}
     onEditComment={handleEditComment}
     onDeleteComment={handleDeleteComment}
@@ -492,6 +512,13 @@
   </button>
 </div>
 
+<FilterBar
+  bind:filters
+  assigneeOptions={assignees}
+  {storeOptions}
+  {matchCount}
+/>
+
 <!-- Mobile-only top bar: a menu button (opens the sidebar drawer) + a column
      switcher. Phones stack the board to one column at a time (a 6-column
      horizontal scroll is unusable on a narrow screen), so the pills jump
@@ -518,14 +545,7 @@
   </nav>
 </div>
 
-{#if storeFilter}
-  <div class="store-filter-bar">
-    <span class="sf-label">📍 Store <strong>#{storeFilter}</strong> · {filterCount} task{filterCount === 1 ? '' : 's'}</span>
-    <button class="sf-clear" onclick={() => (storeFilter = null)}>✕ Clear filter</button>
-  </div>
-{/if}
-
-{#if viewMine && myTotal === 0 && !storeFilter}
+{#if viewMine && myTotal === 0 && !anyFilterActive(filters)}
   <div class="mywork-empty">
     Nothing’s assigned to you right now.
     <button class="link-btn" onclick={() => setView('all')}>Show all tasks →</button>
@@ -542,13 +562,13 @@
         {status}
         bind:items={columns[status]}
         currentUserEmail={myEmail}
-        {storeFilter}
+        {filters}
         {view}
         myName={userName}
         isAdmin={role === 'admin'}
         onMoved={handleMoved}
         onDragStateChange={(d) => (dragging = d)}
-        onStoreFilter={setStoreFilter}
+        onStoreFilter={toggleStore}
         onOpen={(id) => (openTaskId = id)}
       />
     </div>
@@ -682,32 +702,6 @@
     font-size: 13px;
     margin-bottom: 10px;
   }
-
-  .store-filter-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
-    background: var(--primary-bg);
-    border: 1px solid var(--primary);
-    color: var(--primary-text);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 13px;
-    margin-bottom: 10px;
-  }
-  .sf-label strong { font-weight: 800; }
-  .sf-clear {
-    background: var(--card-bg);
-    border: 1px solid var(--primary);
-    color: var(--primary-text);
-    border-radius: 6px;
-    padding: 4px 10px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-  .sf-clear:hover { background: var(--primary-bg); }
 
   .board-columns {
     display: flex;
