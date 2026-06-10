@@ -14,12 +14,12 @@ import type { ClientSession } from 'mongodb'
 import { env } from '$env/dynamic/private'
 import { getDb } from './db'
 import { withTxn } from './txn'
-import { postEntry, postReversal } from './accounting'
+import { postEntry, postReversal, getAccounts } from './accounting'
 import { writeAudit } from './audit'
 import { usd } from '$lib/accounting/format'
 import { cents, type Cents } from '$lib/money'
 import {
-  invoiceTotals, invoiceStatus, invoiceJournalLines, paymentJournalLines, dueDate, buildAging,
+  ACCT, invoiceTotals, invoiceStatus, invoiceJournalLines, paymentJournalLines, dueDate, buildAging,
   type InvoiceLineInput,
   creditMemoJournalLines,
 } from '$lib/accounting/invoicing'
@@ -225,15 +225,26 @@ export async function getInvoicePayments(invoiceId: string): Promise<Payment[]> 
 
 // ── Payments ──────────────────────────────────────────────────────────────────
 /** Record a payment against an invoice: insert it, reduce the invoice balance,
- *  advance its status, and post Dr Cash / Cr A/R — all in one transaction. */
+ *  advance its status, and post Dr <deposit_to> / Cr A/R — all in one
+ *  transaction. `deposit_to` defaults to 1000 (straight to the bank); pass
+ *  1050 Undeposited Funds when batching checks for a later deposit.
+ *
+ *  NOTE for any future payment-void flow: a payment with `deposit_id` set is
+ *  inside a posted Deposit — void the deposit first or the 1050 trail breaks. */
 export async function recordPayment(
   invoiceId: string,
   amount: Cents,
   date: string,
-  opts: { method?: string; created_by?: string } = {},
+  opts: { method?: string; deposit_to?: string; created_by?: string } = {},
 ): Promise<{ payment: Payment; invoice: Invoice }> {
   if (amount <= 0) throw new Error('Payment amount must be positive')
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('date must be ISO YYYY-MM-DD')
+  const depositTo = opts.deposit_to ?? ACCT.cash
+  if (depositTo !== ACCT.cash) {
+    const acct = (await getAccounts()).find((a) => a._id === depositTo)
+    const ok = acct?.active && (acct.subtype === 'bank' || acct.subtype === 'undeposited')
+    if (!ok) throw new Error('deposit_to must be an active bank account or Undeposited Funds (1050)')
+  }
 
   return withTxn(async (session) => {
     const d = await getDb()
@@ -253,6 +264,7 @@ export async function recordPayment(
       amount,
       date,
       ...(opts.method ? { method: opts.method } : {}),
+      ...(depositTo !== ACCT.cash ? { deposit_to: depositTo } : {}),
       ...(opts.created_by ? { created_by: opts.created_by } : {}),
       created_at: now,
     }
@@ -268,7 +280,7 @@ export async function recordPayment(
         memo: `Payment — Invoice #${inv.number}`,
         source: 'payment',
         source_ref: payment._id,
-        lines: paymentJournalLines(amount),
+        lines: paymentJournalLines(amount, depositTo),
         created_by: opts.created_by,
       },
       { session },

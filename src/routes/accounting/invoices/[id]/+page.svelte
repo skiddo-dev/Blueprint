@@ -29,6 +29,7 @@
   let payAmount = $state('')
   let payDate = $state(today)
   let payMethod = $state('')
+  let payDepositTo = $state('1000')
   let saving = $state(false)
   let error = $state('')
 
@@ -78,7 +79,7 @@
       const r = await fetch(`/api/accounting/invoices/${inv._id}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: payAmount, date: payDate, method: payMethod }),
+        body: JSON.stringify({ amount: payAmount, date: payDate, method: payMethod, deposit_to: payDepositTo }),
       })
       if (!r.ok) throw new Error(await r.text())
       payAmount = ''
@@ -153,7 +154,14 @@
       <div class="pay-form">
         <label>Amount<input type="text" inputmode="decimal" bind:value={payAmount} placeholder="0.00" /></label>
         <label>Date<input type="date" bind:value={payDate} /></label>
-        <label class="grow">Method<input type="text" bind:value={payMethod} placeholder="check / ACH" /></label>
+        <label>Method<input type="text" bind:value={payMethod} placeholder="check / ACH" /></label>
+        <label class="grow">Deposit to
+          <select bind:value={payDepositTo}>
+            {#each data.depositTargets as t (t._id)}
+              <option value={t._id}>{t._id} · {t.name}</option>
+            {/each}
+          </select>
+        </label>
         <button class="btn-primary" type="button" onclick={recordPayment} disabled={saving || !payAmount.trim()}>
           {saving ? 'Recording…' : 'Record payment'}
         </button>

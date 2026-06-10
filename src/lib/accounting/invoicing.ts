@@ -6,8 +6,9 @@ import type { JournalLine } from './types'
 
 // Ledger accounts the AR flow posts to (codes from the seeded chart of accounts).
 export const ACCT = {
-  cash: '1000',     // Cash — Operating
-  ar: '1100',       // Accounts Receivable
+  cash: '1000',        // Cash — Operating
+  undeposited: '1050', // Undeposited Funds — checks in hand, not yet at the bank
+  ar: '1100',          // Accounts Receivable
   revenue: '4000',  // Contract Revenue
   salesTax: '2200', // Sales Tax Payable
   salesDiscounts: '4900', // Sales Discounts & Credits (contra revenue — credit memos)
@@ -54,9 +55,9 @@ export function invoiceJournalLines(o: { total: Cents; subtotal: Cents; tax: Cen
 }
 
 /** Receiving a payment: Dr Cash / Cr A/R. */
-export function paymentJournalLines(amount: Cents): JournalLine[] {
+export function paymentJournalLines(amount: Cents, depositTo: string = ACCT.cash): JournalLine[] {
   return [
-    { account_id: ACCT.cash, debit: amount, credit: cents(0) },
+    { account_id: depositTo, debit: amount, credit: cents(0) },
     { account_id: ACCT.ar, debit: cents(0), credit: amount },
   ]
 }

@@ -30,7 +30,11 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
       params.id,
       amount,
       String(body.date ?? new Date().toISOString().slice(0, 10)).trim(),
-      { method: body.method ? String(body.method) : undefined, created_by: (user.email as string) ?? (user.displayName as string) },
+      {
+        method: body.method ? String(body.method) : undefined,
+        deposit_to: body.deposit_to ? String(body.deposit_to) : undefined,
+        created_by: (user.email as string) ?? (user.displayName as string),
+      },
     )
     return json(result, { status: 201 })
   } catch (e) {
