@@ -82,6 +82,7 @@ export async function postEntry(
     ...(input.memo !== undefined ? { memo: input.memo } : {}),
     source: input.source,
     ...(input.source_ref ? { source_ref: input.source_ref } : {}),
+    ...(input.job ? { job: input.job.trim() } : {}),
     lines: input.lines,
     status: 'posted',
     ...(input.created_by !== undefined ? { created_by: input.created_by } : {}),

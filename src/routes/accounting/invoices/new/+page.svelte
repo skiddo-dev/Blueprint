@@ -22,6 +22,7 @@
   let taxRate = $state(0)
   let po = $state('')
   let quoteId = $state('')
+  let job = $state('')
   let memo = $state('')
 
   type Line = { description: string; quantity: string; unit_price: string }
@@ -58,6 +59,7 @@
     if (!q) return
     lines = [{ description: q.description || 'Contract work', quantity: '1', unit_price: String(q.amount ?? '') }]
     if (q.po) po = q.po
+    if (!job.trim() && q.description) job = q.description
   }
 
   // Prefill from a ?quote=<id> link (the dashboard "Create invoice" shortcut).
@@ -87,6 +89,7 @@
           tax_rate: Number(taxRate) || 0,
           po,
           quote_id: quoteId || undefined,
+          job: job.trim() || undefined,
           memo,
           lines: lines.map((l) => ({ description: l.description, quantity: Number(l.quantity) || 1, unit_price: l.unit_price })),
         }),
@@ -135,6 +138,10 @@
       <label>Net days<input type="number" min="0" bind:value={netDays} /></label>
       <label>Due date<input type="text" value={due} readonly class="readonly" /></label>
       <label>PO (optional)<input type="text" bind:value={po} placeholder="PO #" /></label>
+      <label>Job (optional)
+        <input type="text" list="job-list" bind:value={job} placeholder="job / project" />
+        <datalist id="job-list">{#each data.jobs as j (j)}<option value={j}></option>{/each}</datalist>
+      </label>
     </div>
 
     <div class="lines">

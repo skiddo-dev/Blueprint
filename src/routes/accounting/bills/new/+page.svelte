@@ -20,6 +20,7 @@
   let netDays = $state(30)
   let vendorInvoiceNo = $state('')
   let po = $state('')
+  let job = $state('')
   let memo = $state('')
 
   type Line = { account_id: string; description: string; amount: string }
@@ -59,6 +60,7 @@
           net_days: Number(netDays) || 30,
           vendor_invoice_no: vendorInvoiceNo,
           po,
+          job: job.trim() || undefined,
           memo,
           lines: lines.map((l) => ({ account_id: l.account_id, description: l.description, amount: l.amount })),
         }),
@@ -92,6 +94,10 @@
       <label>Due date<input type="text" value={due} readonly class="readonly" /></label>
       <label>Vendor inv #<input type="text" bind:value={vendorInvoiceNo} placeholder="optional" /></label>
       <label>PO<input type="text" bind:value={po} placeholder="optional" /></label>
+      <label>Job
+        <input type="text" list="job-list" bind:value={job} placeholder="optional" />
+        <datalist id="job-list">{#each data.jobs as j (j)}<option value={j}></option>{/each}</datalist>
+      </label>
     </div>
 
     <div class="lines">

@@ -15,6 +15,7 @@
   // svelte-ignore state_referenced_locally
   let paidFrom = $state(data.bankAccounts[0]?._id ?? '')
   let amount = $state('')
+  let job = $state('')
   let memo = $state('')
   let saving = $state(false)
   let error = $state('')
@@ -28,7 +29,7 @@
       const r = await fetch('/api/accounting/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, payee, account_id: accountId, paid_from: paidFrom, amount, memo }),
+        body: JSON.stringify({ date, payee, account_id: accountId, paid_from: paidFrom, amount, job: job.trim() || undefined, memo }),
       })
       if (!r.ok) throw new Error(await r.text())
       await goto(`/accounting/register/${paidFrom}`)
@@ -68,7 +69,13 @@
       </label>
       <label class="field">Amount<input type="text" inputmode="decimal" bind:value={amount} placeholder="0.00" /></label>
     </div>
-    <label class="field">Memo (optional)<input type="text" bind:value={memo} placeholder="What was it for?" /></label>
+    <div class="grid">
+      <label class="field grow">Job (optional)
+        <input type="text" list="job-list" bind:value={job} placeholder="job / project" />
+        <datalist id="job-list">{#each data.jobs as j (j)}<option value={j}></option>{/each}</datalist>
+      </label>
+      <label class="field grow">Memo (optional)<input type="text" bind:value={memo} placeholder="What was it for?" /></label>
+    </div>
 
     {#if error}<p class="error">{error}</p>{/if}
 

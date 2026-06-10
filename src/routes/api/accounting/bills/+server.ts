@@ -44,6 +44,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       net_days: Number.isFinite(Number(body.net_days)) ? Number(body.net_days) : 30,
       vendor_invoice_no: body.vendor_invoice_no ? String(body.vendor_invoice_no) : undefined,
       po: body.po ? String(body.po) : undefined,
+      job: body.job ? String(body.job) : undefined,
       memo: body.memo ? String(body.memo) : undefined,
       created_by: (user.email as string) ?? (user.displayName as string),
       lines: body.lines.map((l: Record<string, unknown>) => ({

@@ -38,6 +38,7 @@ export interface JournalEntry {
   memo?: string
   source: JournalSource
   source_ref?: string    // id of the originating doc (invoice/payment/…); idempotency key
+  job?: string           // job/project tag on document-less postings (quick expenses)
   lines: JournalLine[]
   status: 'posted' | 'void'
   reverses?: string      // _id of the entry this one reverses
@@ -48,6 +49,7 @@ export interface JournalEntry {
 
 // What postEntry accepts; the server fills _id / period / status / created_at.
 export interface JournalEntryInput {
+  job?: string
   date: string
   memo?: string
   source: JournalSource
@@ -93,6 +95,7 @@ export interface Invoice {
   total: Cents
   paid: Cents
   credited?: Cents       // total credit memos applied (reduce balance, not paid)
+  job?: string           // free-text job/project tag — feeds the job P&L report
   balance: Cents          // total − paid
   status: 'open' | 'partial' | 'paid' | 'void'
   po?: string
@@ -147,6 +150,7 @@ export interface Bill {
   total: Cents            // sum of line amounts
   paid: Cents
   credited?: Cents       // total credit memos applied (reduce balance, not paid)
+  job?: string           // free-text job/project tag — feeds the job P&L report
   balance: Cents
   status: 'open' | 'partial' | 'paid' | 'void'
   vendor_invoice_no?: string // the vendor's own invoice number

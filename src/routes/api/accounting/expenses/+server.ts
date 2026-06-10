@@ -41,6 +41,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       date: String(body.date ?? new Date().toISOString().slice(0, 10)).trim(),
       memo: memo || `Expense — ${expense.name}`,
       source: 'expense',
+      ...(body.job ? { job: String(body.job) } : {}),
       lines: [
         { account_id: expense._id, debit: amount, credit: cents(0) },
         { account_id: bank._id, debit: cents(0), credit: amount },
