@@ -33,6 +33,14 @@
    grouped rows when the page is narrower. Consistent on every accounting page. */
 .acct-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 18px; }
 @media (max-width: 768px) { .acct-nav { margin-top: 12px; } }
+
+/* Accrual | Cash basis toggle on the statements. */
+.acct .basis-toggle { display: inline-flex; gap: 6px; margin-bottom: 10px; }
+.acct .basis-toggle .pill {
+  padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px;
+  font-size: 12.5px; font-weight: 600; color: var(--text-muted); text-decoration: none;
+}
+.acct .basis-toggle .pill.active { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
 .acct-nav .group { display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; }
 .acct-nav .group:not(:first-child)::before {
   content: ''; align-self: center; width: 1px; height: 20px; background: var(--border); margin: 0 1px;

@@ -14,7 +14,7 @@
   let asOf = $state(data.asOf)
   $effect(() => { asOf = data.asOf })
 
-  function apply() { goto(`/accounting/balance-sheet?asOf=${asOf}`) }
+  function apply() { goto(`/accounting/balance-sheet?asOf=${asOf}${data.basis === 'cash' ? '&basis=cash' : ''}`) }
 
   const iso = (d: Date) => d.toISOString().slice(0, 10)
   function pick(which: 'today' | 'last-month-end' | 'last-year-end') {
@@ -34,11 +34,16 @@
     <span class="badge" class:ok={st.balanced} class:bad={!st.balanced}>
       {st.balanced ? '✓ Balanced' : '✕ Out of balance'}
     </span>
-    <a class="btn-secondary" href={`/api/accounting/export/balance-sheet?asOf=${data.asOf}`}>⬇ CSV</a>
+    <a class="btn-secondary" href={`/api/accounting/export/balance-sheet?asOf=${data.asOf}${data.basis === 'cash' ? '&basis=cash' : ''}`}>⬇ CSV</a>
     <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
   {/snippet}
 
   <p class="report-hint">A snapshot of what the business owns and owes on a single date — assets on one side, liabilities plus equity on the other. The two sides must match.</p>
+  <div class="basis-toggle" role="group" aria-label="Accounting basis">
+    <a class="pill" class:active={data.basis !== 'cash'} href={`/accounting/balance-sheet?asOf=${data.asOf}`}>Accrual</a>
+    <a class="pill" class:active={data.basis === 'cash'} href={`/accounting/balance-sheet?asOf=${data.asOf}&basis=cash`}
+       title="A/R and A/P drop out; cash net income rides equity">Cash</a>
+  </div>
   <div class="toolbar">
     <div class="quick-picks" role="group" aria-label="Quick as-of picks">
       <button class="btn-secondary" type="button" onclick={() => pick('today')}>Today</button>
