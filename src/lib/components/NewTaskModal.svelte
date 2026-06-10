@@ -17,12 +17,27 @@
 
   let title = $state('')
   let assignedTo = $state('Unassigned')
+  let coAssignees = $state<string[]>([])
   let status = $state<TaskStatus>('To Do')
   let dueDate = $state('')
   let quote = $state('')
   let notes = $state('')
   let saving = $state(false)
   let error = $state('')
+
+  // People who can still be added alongside the primary assignee.
+  let coCandidates = $derived(
+    assignees.filter(a => a !== 'Unassigned' && a !== assignedTo && !coAssignees.includes(a)),
+  )
+  // Making a co-assignee the primary removes them from the co-list.
+  $effect(() => {
+    if (coAssignees.includes(assignedTo)) coAssignees = coAssignees.filter(n => n !== assignedTo)
+  })
+  function addCoAssignee(e: Event & { currentTarget: HTMLSelectElement }) {
+    const name = e.currentTarget.value
+    e.currentTarget.value = ''
+    if (name) coAssignees = [...coAssignees, name]
+  }
 
   async function submit() {
     if (!title.trim()) { error = 'Title is required.'; return }
@@ -37,6 +52,7 @@
           quote: quote.trim() || null,
           quote_status: quote.trim() ? 'Draft' : null,
           assigned_to: assignedTo,
+          co_assignees: coAssignees,
           notes,
           date: dueDate || null,
           status,
@@ -105,6 +121,32 @@
           {/each}
         </select>
       </label>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Also assign</span>
+      <div class="co-row">
+        {#each coAssignees as name (name)}
+          <span class="co-chip">
+            👥 {name}
+            <button
+              type="button"
+              class="co-remove"
+              onclick={() => (coAssignees = coAssignees.filter(n => n !== name))}
+              aria-label="Remove {name}"
+              title="Remove {name}"
+            >✕</button>
+          </span>
+        {/each}
+        {#if coCandidates.length}
+          <select class="co-add" aria-label="Add another person" onchange={addCoAssignee}>
+            <option value="" selected>＋ Add person…</option>
+            {#each coCandidates as a}
+              <option value={a}>{a}</option>
+            {/each}
+          </select>
+        {/if}
+      </div>
     </div>
 
     <div class="row-2">
@@ -179,6 +221,50 @@
   label { display: flex; flex-direction: column; gap: 4px; }
   label span { font-size: 12px; font-weight: 500; color: var(--text-body); }
   .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* "Also assign" — chips for each extra person + a dashed add-person picker.
+     A .field div (not a <label>) so a stray click can't focus the select. */
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field-label { font-size: 12px; font-weight: 500; color: var(--text-body); }
+  .co-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .co-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--chip-bg);
+    color: var(--primary-text);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .co-remove {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0 1px;
+    font-size: 11px;
+    line-height: 1;
+    color: var(--primary-text);
+    opacity: 0.6;
+    min-height: 0;
+  }
+  .co-remove:hover { opacity: 1; color: #ef4444; }
+  .co-add {
+    width: auto;
+    min-height: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-soft);
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .co-add:hover { border-color: var(--primary); color: var(--primary-text); }
   .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -208,6 +294,9 @@
       min-width: 44px;
       min-height: 44px;
     }
+    /* 16px stops iOS Safari from zooming the page when the picker opens. */
+    .co-add { font-size: 16px; min-height: 36px; }
+    .co-remove { font-size: 13px; padding: 2px 5px; }
   }
 
   /* On the narrowest phones, stack the paired fields so 16px inputs don't crowd. */

@@ -21,20 +21,30 @@ export interface Identity {
  * Whether `task` belongs to `who` — the SINGLE ownership rule shared by the
  * server authz check (canAccessTask) and the board's "My Work" filter, so the
  * two can't drift. Ownership is keyed on IDENTITY (login email) the moment a
- * task carries one: a task is yours if your email matches its assignee_email or
- * created_by_email. Only un-backfilled tasks (no identity yet) fall back to the
- * legacy display-name match against assigned_to/created_by — which is exactly
- * why "My Work" must not match on name alone: assigned_to holds the dropdown
- * name ("Ben"), not the user's Entra displayName ("ben@ravesinc.com").
+ * task carries one: a task is yours if your email matches its assignee_email,
+ * one of its co_assignee_emails, or created_by_email. Only un-backfilled tasks
+ * (no identity yet) fall back to the legacy display-name match against
+ * assigned_to/co_assignees/created_by — which is exactly why "My Work" must not
+ * match on name alone: assigned_to holds the dropdown name ("Ben"), not the
+ * user's Entra displayName ("ben@ravesinc.com").
  */
 export function isOwnedBy(
-  task: Pick<Task, 'assigned_to' | 'created_by' | 'assignee_email' | 'created_by_email'>,
+  task: Pick<Task, 'assigned_to' | 'co_assignees' | 'created_by' | 'assignee_email' | 'co_assignee_emails' | 'created_by_email'>,
   who: Identity,
 ): boolean {
-  if (task.assignee_email || task.created_by_email) {
+  const coEmails = task.co_assignee_emails ?? []
+  if (task.assignee_email || task.created_by_email || coEmails.length) {
     const email = normName(who.email)
-    return !!email && (email === normName(task.assignee_email) || email === normName(task.created_by_email))
+    return !!email && (
+      email === normName(task.assignee_email) ||
+      email === normName(task.created_by_email) ||
+      coEmails.some(c => normName(c) === email)
+    )
   }
   const name = normName(who.name)
-  return !!name && (normName(task.assigned_to) === name || normName(task.created_by) === name)
+  return !!name && (
+    normName(task.assigned_to) === name ||
+    normName(task.created_by) === name ||
+    (task.co_assignees ?? []).some(c => normName(c) === name)
+  )
 }

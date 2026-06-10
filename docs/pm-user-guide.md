@@ -78,8 +78,9 @@ you'll see a shortcut to jump to **All Tasks**.
 ## 3. Working with a task card
 
 Each card shows, top to bottom: the **title**, any **store-number tags**, a **PO
-chip** (if present), the **source** (📩 from an email, or ✏️ created manually) and
-**assignee**, a short **summary**, and the editable controls below.
+chip** (if present), the **source** (📩 from an email, or ✏️ created manually), the
+**🗓 date it was created** (hover for the exact time), the **assignee(s)**, a short
+**summary**, and the editable controls below.
 
 Every edit you make **saves automatically** — there's no Save button.
 
@@ -100,6 +101,10 @@ Every edit you make **saves automatically** — there's no Save button.
   from your **My Work** view.* **Putting a real person on a "To Do" task
   automatically moves it to "In Progress"** — assigning someone means work has
   started. (Tasks already past To Do, or set back to Unassigned, are left alone.)
+- **More than one person?** Use the dashed **＋👤** chip next to the assignee to
+  put **additional people** on the same task — each shows as a **👥 chip** (remove
+  with its **✕**). Everyone on the task sees it in their **My Work**. The dropdown
+  assignee stays the primary; promoting a 👥 person to primary clears their chip.
 - **Due date** — pick a date. An overdue, still-open task shows the date in a
   muted rose with an "Overdue" tooltip (and feeds the **My Work** overdue badge).
 - **Quote** — if a task has a quote, click the **💰** chip to open it and set the
@@ -134,7 +139,9 @@ Every edit you make **saves automatically** — there's no Save button.
 ### Delete a task
 
 Click the small **✕** in the card's bottom-right corner. (Use this for cards you
-own — deleting is permanent.)
+own — deleting is permanent.) **Deleted means deleted:** a card that came from a
+flagged email will **not** come back on the next sync, even if the email is still
+flagged in Outlook — same for any later replies on that email's thread.
 
 ---
 
@@ -144,6 +151,8 @@ own — deleting is permanent.)
 2. Fill in:
    - **Title** *(required)* — what needs to get done.
    - **Assign to** — Unassigned or a supervisor.
+   - **Also assign** — optionally add **more people** to the same task with the
+     **＋ Add person…** picker (remove one with its chip's **✕**).
    - **Status** — which column it starts in (defaults to **To Do**).
    - **Due Date** — optional.
    - **Quote** — optional amount, e.g. `$12,000`.

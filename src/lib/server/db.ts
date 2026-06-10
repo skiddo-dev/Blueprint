@@ -5,6 +5,7 @@ import { generateMockTasks, generateMockProspects, generateMockQuotes } from './
 import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 import { requireInProd } from './config'
 import { ensureAccountingIndexes, ensureAccountingConstraints, seedChartOfAccounts } from './accounting-schema'
+import { tombstoneKeysForTask } from './syncLogic'
 import { log } from './log'
 
 let client: MongoClient | null = null
@@ -119,6 +120,7 @@ async function ensureIndexes(d: Db): Promise<void> {
       col(d, 'tasks').createIndex({ created_at: -1 }),             // getTasks / getTasksForUser sort
       col(d, 'tasks').createIndex({ created_by_email: 1 }),        // getTasksForUser (My Work) — identity match
       col(d, 'tasks').createIndex({ assignee_email: 1 }),          // getTasksForUser (My Work) — identity match
+      col(d, 'tasks').createIndex({ co_assignee_emails: 1 }),      // getTasksForUser (My Work) — co-assignee identity match (multikey)
       col(d, 'attachments').createIndex({ task_id: 1 }),           // deleteTask cascade + per-task attachment lookups
       col(d, 'attachments').createIndex({ source: 1, created_at: 1 }), // retention sweep — find expired email attachments cheaply
       col(d, 'quotes').createIndex({ created_at: -1 }),            // getQuotes sort
@@ -339,23 +341,25 @@ export async function getTasksForUser(email: string | null | undefined, name: st
   const target = normName(name)
   if (USE_MOCK) {
     return generateMockTasks().filter(
-      t => normName(t.assigned_to) === target || normName(t.created_by) === target,
+      t => normName(t.assigned_to) === target || normName(t.created_by) === target ||
+        (t.co_assignees ?? []).some(c => normName(c) === target),
     )
   }
   const d = await getDb()
-  // Identity match (login email) against either owner field — the indexed paths.
-  // Plus a transition fallback: tasks that carry NO identity yet (un-backfilled)
-  // still surface via the legacy case-insensitive, whitespace-tolerant name match
-  // (escaped so regex metacharacters in a name are treated literally).
+  // Identity match (login email) against any owner field — primary assignee,
+  // co-assignees, or creator. Plus a transition fallback: tasks that carry NO
+  // identity yet (un-backfilled) still surface via the legacy case-insensitive,
+  // whitespace-tolerant name match (escaped so regex metacharacters in a name
+  // are treated literally; an array field matches when any element does).
   const e = normName(email)
   const nameP = { $regex: `^\\s*${escapeRegex(name.trim())}\\s*$`, $options: 'i' }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const or: any[] = []
-  if (e) or.push({ created_by_email: e }, { assignee_email: e })
+  if (e) or.push({ created_by_email: e }, { assignee_email: e }, { co_assignee_emails: e })
   or.push({
     created_by_email: { $in: [null, ''] },
     assignee_email: { $in: [null, ''] },
-    $or: [{ assigned_to: nameP }, { created_by: nameP }],
+    $or: [{ assigned_to: nameP }, { created_by: nameP }, { co_assignees: nameP }],
   })
   const tasks = await col(d, 'tasks').find({ $or: or }).sort({ created_at: -1 }).toArray()
   return tasks.map(normalizeTask)
@@ -423,9 +427,40 @@ export async function patchTask(
 
 export async function deleteTask(taskId: string): Promise<boolean> {
   const d = await getDb()
+  // An email-synced card leaves tombstones (message + thread keys) so the next
+  // sweep won't re-create it while the source email is still flagged in Outlook
+  // — deleting a synced card means "done with this", not "re-import it".
+  const task = await col(d, 'tasks').findOne(
+    { _id: taskId },
+    { projection: { exchange_id: 1, conversation_id: 1, title: 1 } },
+  )
+  if (task) {
+    const keys = tombstoneKeysForTask(task as { exchange_id?: string; conversation_id?: string })
+    if (keys.length) {
+      const deleted_at = new Date().toISOString()
+      await col(d, 'sync_tombstones').bulkWrite(
+        keys.map(k => ({
+          updateOne: {
+            filter: { _id: k },
+            update: { $set: { title: (task.title as string) ?? '', deleted_at } },
+            upsert: true,
+          },
+        })),
+      )
+    }
+  }
   await col(d, 'attachments').deleteMany({ task_id: taskId })
   const result = await col(d, 'tasks').deleteOne({ _id: taskId })
   return result.deletedCount > 0
+}
+
+/** Every tombstone key (deleted email-synced cards) — loaded once per sync sweep
+ *  so the sweep can skip emails whose card was deliberately deleted. */
+export async function getSyncTombstoneKeys(): Promise<Set<string>> {
+  if (USE_MOCK) return new Set()
+  const d = await getDb()
+  const docs = await col(d, 'sync_tombstones').find({}, { projection: { _id: 1 } }).toArray()
+  return new Set(docs.map(t => String(t._id)))
 }
 
 // ── Comment edit / delete / react ────────────────────────────────────────────
@@ -771,6 +806,29 @@ export async function getUserEmailByName(name: string): Promise<string | null> {
   // Provisioned users win; otherwise fall back to an ADMIN_EMAILS admin so their
   // assignments still carry identity even without a users doc.
   return u ? String(u._id).toLowerCase() : resolveAdminEmailByName(name, env.ADMIN_EMAILS)
+}
+
+/** Normalize a co-assignee list (trim, dedupe, drop blanks / the "Unassigned"
+ *  sentinel / the primary assignee) and resolve each name to a login email where
+ *  one exists. Shared by task create and the co_assignees PATCH so both write
+ *  the same shape; names without an app user simply get no identity email (same
+ *  rule as the primary assignee). */
+export async function resolveCoAssignees(
+  names: string[],
+  primary?: string | null,
+): Promise<{ co_assignees: string[]; co_assignee_emails: string[] }> {
+  const p = normName(primary)
+  const seen = new Set<string>()
+  const clean: string[] = []
+  for (const raw of names) {
+    const name = (raw ?? '').trim()
+    const key = normName(name)
+    if (!key || key === 'unassigned' || key === p || seen.has(key)) continue
+    seen.add(key)
+    clean.push(name)
+  }
+  const emails = (await Promise.all(clean.map(getUserEmailByName))).filter((e): e is string => !!e)
+  return { co_assignees: clean, co_assignee_emails: [...new Set(emails)] }
 }
 
 export async function upsertUser(email: string, role: string, name: string): Promise<void> {

@@ -37,4 +37,20 @@ describe('isOwnedBy', () => {
     expect(isOwnedBy(task({ assigned_to: '' }), { email: '', name: '' })).toBe(false)
     expect(isOwnedBy(task({ assignee_email: 'ben@x.com' }), { email: '', name: '' })).toBe(false)
   })
+
+  it('matches a co-assignee by email, case-insensitively', () => {
+    const t = task({ assignee_email: 'dana@x.com', co_assignee_emails: ['ben@ravesinc.com'] })
+    expect(isOwnedBy(t, { email: 'Ben@RavesInc.com', name: 'whatever' })).toBe(true)
+  })
+
+  it('co_assignee_emails alone counts as identity — no name fallback past it', () => {
+    const t = task({ co_assignee_emails: ['ben@x.com'], co_assignees: ['Ben'], assigned_to: 'Dana' })
+    expect(isOwnedBy(t, { email: 'ben@x.com' })).toBe(true)
+    expect(isOwnedBy(t, { email: 'intruder@x.com', name: 'Dana' })).toBe(false)
+  })
+
+  it('falls back to a co-assignee name match for un-backfilled tasks', () => {
+    expect(isOwnedBy(task({ assigned_to: 'Dana', co_assignees: ['Bob'] }), { name: ' bob ' })).toBe(true)
+    expect(isOwnedBy(task({ assigned_to: 'Dana', co_assignees: ['Bob'] }), { name: 'mike' })).toBe(false)
+  })
 })

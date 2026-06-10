@@ -82,6 +82,36 @@ export function resolveMailboxes(opts: {
   return out
 }
 
+// ── Deleted-card tombstones ───────────────────────────────────────────────────
+// Deleting an email-synced card means "I'm done with this" — NOT "re-import it
+// on the next sweep". Since the source email usually stays flagged in Outlook,
+// the delete records tombstone keys and the sync skips matching emails forever.
+
+/** The tombstone keys a deleted synced card leaves behind: the exact message AND
+ *  the whole thread. Both are needed — replies refresh a card's exchange_id, so
+ *  the thread's earlier messages (still flagged) carry ids the card no longer
+ *  has, and only the conversation key blocks those. */
+export function tombstoneKeysForTask(task: {
+  exchange_id?: string | null
+  conversation_id?: string | null
+}): string[] {
+  const keys: string[] = []
+  if (task.exchange_id) keys.push(`exch:${task.exchange_id}`)
+  if (task.conversation_id) keys.push(`conv:${task.conversation_id}`)
+  return keys
+}
+
+/** True when this email — or its whole thread — was deleted from the board
+ *  before, i.e. the sync must skip it instead of re-creating the card. */
+export function isEmailTombstoned(
+  email: { id: string; conversation_id?: string | null },
+  tombstoneKeys: ReadonlySet<string>,
+): boolean {
+  if (!tombstoneKeys.size) return false
+  if (tombstoneKeys.has(`exch:${email.id}`)) return true
+  return !!email.conversation_id && tombstoneKeys.has(`conv:${email.conversation_id}`)
+}
+
 export type EmailAction = 'new' | 'duplicate' | 'update'
 
 /** Decide what a freshly-fetched email means for the board:

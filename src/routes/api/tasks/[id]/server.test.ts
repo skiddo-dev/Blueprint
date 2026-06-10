@@ -8,11 +8,12 @@ vi.mock('$lib/server/db', () => ({
   patchTask: vi.fn(async () => true),
   getUserEmailByName: vi.fn(async () => 'dana@x.com'),
   deleteTask: vi.fn(async () => true),
+  resolveCoAssignees: vi.fn(async () => ({ co_assignees: [], co_assignee_emails: [] })),
   normName: (s: string | null | undefined) => (s ?? '').trim().toLowerCase(),
 }))
 
 import { PATCH } from './+server'
-import { updateTaskField, patchTask, getUserEmailByName, getTask } from '$lib/server/db'
+import { updateTaskField, patchTask, getUserEmailByName, getTask, resolveCoAssignees } from '$lib/server/db'
 
 // Admin session bypasses the ownership check, isolating the field-allowlist logic.
 const admin = { auth: async () => ({ user: { role: 'admin' } }) }
@@ -83,5 +84,37 @@ describe('PATCH /api/tasks/[id] — assigning starts the task', () => {
     vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'To Do' } as never)
     await PATCH(ev('t1', { field: 'assigned_to', value: 'Unassigned' }))
     expect(patchTask).toHaveBeenCalledWith('t1', { assigned_to: 'Unassigned', assignee_email: 'dana@x.com' })
+  })
+})
+
+describe('PATCH /api/tasks/[id] — co-assignees (multi-person assignment)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('writes the resolved co-assignee list + identities via patchTask', async () => {
+    vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'In Progress', assigned_to: 'Dana' } as never)
+    vi.mocked(resolveCoAssignees).mockResolvedValue({ co_assignees: ['Ben'], co_assignee_emails: ['ben@x.com'] })
+    const res = await PATCH(ev('t1', { field: 'co_assignees', value: ['Ben'] }))
+    expect(await res.json()).toEqual({ ok: true })
+    expect(resolveCoAssignees).toHaveBeenCalledWith(['Ben'], 'Dana')
+    expect(patchTask).toHaveBeenCalledWith('t1', { co_assignees: ['Ben'], co_assignee_emails: ['ben@x.com'] })
+    expect(updateTaskField).not.toHaveBeenCalled()
+  })
+
+  it('rejects a non-array co_assignees value', async () => {
+    await expect(PATCH(ev('t1', { field: 'co_assignees', value: 'Ben' }))).rejects.toMatchObject({ status: 400 })
+    expect(patchTask).not.toHaveBeenCalled()
+  })
+
+  it('promoting a co-assignee to primary re-resolves the co-list against the new primary', async () => {
+    vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'Done', co_assignees: ['Dana', 'Ben'] } as never)
+    vi.mocked(resolveCoAssignees).mockResolvedValue({ co_assignees: ['Ben'], co_assignee_emails: [] })
+    await PATCH(ev('t1', { field: 'assigned_to', value: 'Dana' }))
+    expect(resolveCoAssignees).toHaveBeenCalledWith(['Dana', 'Ben'], 'Dana')
+    expect(patchTask).toHaveBeenCalledWith('t1', {
+      assigned_to: 'Dana',
+      assignee_email: 'dana@x.com',
+      co_assignees: ['Ben'],
+      co_assignee_emails: [],
+    })
   })
 })

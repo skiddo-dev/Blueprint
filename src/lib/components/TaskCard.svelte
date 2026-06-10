@@ -94,6 +94,34 @@
       : `✏️ ${task.created_by || 'Manual'}`
   )
 
+  // ── Created date (when this to-do was opened) ───────────────────────────────
+  let createdShort = $derived.by(() => {
+    const d = new Date(task.created_at)
+    if (Number.isNaN(d.getTime())) return ''
+    const sameYear = d.getFullYear() === new Date().getFullYear()
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })
+  })
+  let createdFull = $derived.by(() => {
+    const d = new Date(task.created_at)
+    if (Number.isNaN(d.getTime())) return ''
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  })
+
+  // ── Co-assignees (a task can be assigned to several people) ────────────────
+  let coAssignees = $derived(task.co_assignees ?? [])
+  // Who can still be added: the roster minus the sentinel, the primary assignee,
+  // and people already on the task.
+  let coCandidates = $derived(
+    assignees.filter(a => a !== 'Unassigned' && a !== task.assigned_to && !coAssignees.includes(a)),
+  )
+  function addCoAssignee(e: Event & { currentTarget: HTMLSelectElement }) {
+    const name = e.currentTarget.value
+    e.currentTarget.value = ''
+    if (name) onFieldUpdate(task._id, 'co_assignees', [...coAssignees, name])
+  }
+  const removeCoAssignee = (name: string) =>
+    onFieldUpdate(task._id, 'co_assignees', coAssignees.filter(n => n !== name))
+
   // Which PM inbox this was flagged in (admin-only chip); show the local part,
   // full address in the tooltip.
   let inbox = $derived(task.source_mailbox ? task.source_mailbox.split('@')[0] : '')
@@ -307,13 +335,36 @@
     <div class="po-row"><span class="po-chip">🧾 PO {task.po}</span></div>
   {/if}
 
-  <!-- Source + assignee -->
+  <!-- Source + created date + assignees -->
   <div class="meta-row">
     <span class="source">{source}</span>
+    {#if createdShort}
+      <span class="created-chip" title="Created {createdFull}">🗓 {createdShort}</span>
+    {/if}
     {#if task.assigned_to && task.assigned_to !== 'Unassigned'}
       <span class="chip">👤 {task.assigned_to}</span>
     {:else}
       <span class="unassigned">Unassigned</span>
+    {/if}
+    {#each coAssignees as name (name)}
+      <span class="chip co-chip" title="Also assigned to {name}">
+        👥 {name}
+        <button
+          type="button"
+          class="co-remove"
+          onclick={() => removeCoAssignee(name)}
+          aria-label="Remove {name} from this task"
+          title="Remove {name}"
+        >✕</button>
+      </span>
+    {/each}
+    {#if coCandidates.length}
+      <select class="co-add" aria-label="Add another person" title="Assign another person" onchange={addCoAssignee}>
+        <option value="" selected>＋👤</option>
+        {#each coCandidates as a}
+          <option value={a}>{a}</option>
+        {/each}
+      </select>
     {/if}
     {#if isAdmin && task.source_mailbox}
       <span class="inbox-chip" title="Flagged in {task.source_mailbox}">📥 {inbox}</span>
@@ -695,6 +746,39 @@
     font-weight: 500;
   }
   .unassigned { font-size: 11px; color: var(--text-faint); }
+  .created-chip { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+  /* Co-assignee chip: same pill as the primary, plus an inline remove ✕. */
+  .co-chip { display: inline-flex; align-items: center; gap: 4px; }
+  .co-remove {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0 1px;
+    font-size: 10px;
+    line-height: 1;
+    color: var(--primary-text);
+    opacity: 0.6;
+    min-height: 0;
+  }
+  .co-remove:hover { opacity: 1; color: #ef4444; }
+  /* "＋👤" add-person picker — a select dressed as a dashed chip; the native
+     dropdown does the rest (works the same on touch). Overrides the generic
+     full-width select rule below. */
+  .co-add {
+    width: auto;
+    min-height: 0;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-soft);
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .co-add:hover { border-color: var(--primary); color: var(--primary-text); }
   /* Admin-only: which PM inbox this email was flagged in. */
   .inbox-chip {
     background: var(--border-soft);
@@ -1057,6 +1141,10 @@
 
     /* Roomier tap targets on touch: the footer chips and the quote disclosure. */
     .tool-chip { padding: 7px 12px; font-size: 12px; }
+    /* The add-person picker keeps its chip shape but gets a finger-sized target;
+       16px stops iOS Safari from zooming the page when the picker opens. */
+    .co-add { font-size: 16px; min-height: 36px; padding: 4px 10px; width: auto; }
+    .co-remove { font-size: 13px; padding: 2px 5px; }
     .quote-pop summary {
       padding-top: 8px;
       padding-bottom: 8px;

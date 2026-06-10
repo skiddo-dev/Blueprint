@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
-import { getTasks, getTasksForUser, getUserEmailByName, insertTask, deleteTask } from '$lib/server/db'
+import { getTasks, getTasksForUser, getUserEmailByName, insertTask, deleteTask, resolveCoAssignees } from '$lib/server/db'
 import { extractStoreNumbers } from '$lib/storeNumbers'
 import { newTaskSchema, readValidated } from '$lib/server/validation'
 import { statusOnAssign } from '$lib/taskRules'
@@ -37,6 +37,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   // client); resolve the assignee to an app-user email when the name maps to one.
   const created_by_email = (user.email as string | undefined)?.toLowerCase() ?? null
   const assignee_email = input.assigned_to ? await getUserEmailByName(input.assigned_to) : null
+  const coAssignees = await resolveCoAssignees(input.co_assignees ?? [], input.assigned_to)
   // Assigning at creation starts the task too: a "To Do" task with a real
   // assignee opens directly in "In Progress" (same rule as a board reassign).
   const nextStatus = statusOnAssign((input.status ?? 'To Do') as TaskStatus, input.assigned_to)
@@ -46,6 +47,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     store_numbers,
     created_by_email,
     assignee_email,
+    ...coAssignees,
   })
   const tasks = await getTasks()
   const created = tasks.find(t => t._id === id)

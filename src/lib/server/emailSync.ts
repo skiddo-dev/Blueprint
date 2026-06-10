@@ -1,9 +1,9 @@
 import { env } from '$env/dynamic/private'
-import { getTasks, getUsers, insertTask, saveAttachment, patchTask, tryAcquireLease, releaseLease, normName } from './db'
+import { getTasks, getUsers, insertTask, saveAttachment, patchTask, tryAcquireLease, releaseLease, normName, getSyncTombstoneKeys } from './db'
 import { fetchRecentEmails, getGraphToken, GraphAuthError } from './email'
 import { parseEmailWithLLM } from './llm'
 import { analyzeAttachment } from './attachmentParse'
-import { classifyEmail, buildNewTask, buildThreadPatch, buildAttachmentPatch, resolveMailboxes, flaggedOnOrAfterCutoff, EMAIL_SYNC_CUTOFF_DEFAULT } from './syncLogic'
+import { classifyEmail, buildNewTask, buildThreadPatch, buildAttachmentPatch, resolveMailboxes, flaggedOnOrAfterCutoff, isEmailTombstoned, EMAIL_SYNC_CUTOFF_DEFAULT } from './syncLogic'
 import type { SyncEmail, SyncMailbox } from './syncLogic'
 import type { Task, User } from '$lib/types'
 import { SUPERVISORS, QUOTE_PEOPLE } from '$lib/constants'
@@ -124,6 +124,9 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
     // Cutoff: ignore anything flagged on/before it (Graph already filters by this,
     // but guard here too in case the OData filter is ever bypassed).
     const cutoff = env.EMAIL_SYNC_CUTOFF ?? EMAIL_SYNC_CUTOFF_DEFAULT
+    // Deleted-card tombstones: emails whose card a PM deliberately deleted are
+    // skipped even while still flagged, so deleted cards never come back.
+    const tombstones = await getSyncTombstoneKeys()
 
     let newCount = 0
     let updatedCount = 0
@@ -146,6 +149,7 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
       for (const email of [...emails].reverse()) {
         const e = email as SyncEmail & { attachments?: unknown[] }
         if (!flaggedOnOrAfterCutoff(e.date, cutoff)) continue // flagged on/before the cutoff — out of scope
+        if (isEmailTombstoned(e, tombstones)) continue // its card was deleted — never resurrect it
         const { action, task } = classifyEmail(e, existing)
         if (action === 'duplicate') continue
 
