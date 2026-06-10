@@ -9,6 +9,7 @@
   import type { Task, TaskStatus, AppSession } from '$lib/types'
   import { KANBAN_STATUSES, STATUS_META, SUPERVISORS } from '$lib/constants'
   import { defaultFilters, taskMatchesFilters, taskStores, anyFilterActive } from '$lib/boardFilters'
+  import { remoteChangedIds } from '$lib/boardSync'
   import { parseMentions } from '$lib/mentions'
   import { toggleReactor } from '$lib/reactions'
   import { isOwnedBy } from '$lib/ownership'
@@ -108,6 +109,7 @@
   async function runBulk(action: 'status' | 'assign' | 'archive' | 'delete', value?: string) {
     if (!selectedIds.size || bulkBusy) return
     bulkBusy = true
+    for (const id of selectedIds) markLocal(id)
     try {
       const r = await fetch('/api/tasks/bulk', {
         method: 'POST',
@@ -148,6 +150,7 @@
       return
     }
     const created: Task = await r.json()
+    markLocal(created._id)
     columns[created.status] = [created, ...columns[created.status]]
   }
 
@@ -264,8 +267,30 @@
   let pollTimer: ReturnType<typeof setInterval>
   let saveToastTimer: ReturnType<typeof setTimeout>
 
+  // Which cards THIS client wrote recently — server-side changes to them within
+  // the grace window are ours echoing back, not a teammate's edit to flash.
+  const localEdits = new Map<string, number>()
+  const markLocal = (id: string) => localEdits.set(id, Date.now())
+
+  // Briefly tint cards another user just changed (class lives in app.css —
+  // global, since it's applied to elements inside child components).
+  function flashRemote(ids: string[]) {
+    if (!ids.length) return
+    tick().then(() => {
+      for (const id of ids) {
+        const el = document.getElementById('task-' + id)
+        if (!el) continue
+        el.classList.remove('remote-flash')
+        void el.offsetWidth // restart the animation if it's still running
+        el.classList.add('remote-flash')
+        setTimeout(() => el.classList.remove('remote-flash'), 1800)
+      }
+    })
+  }
+
   // Fetch the latest tasks if the server signature changed. Throws on a network
-  // error so callers can flag offline.
+  // error so callers can flag offline. Cards whose updated_at moved without a
+  // matching local write get the remote-change flash.
   async function refresh() {
     const r = await fetch('/api/tasks/signature')
     if (!r.ok) throw new Error(`signature ${r.status}`)
@@ -273,7 +298,12 @@
     if (sig !== currentSig) {
       currentSig = sig
       const r2 = await fetch(tasksUrl())
-      if (r2.ok) columns = group(await r2.json())
+      if (r2.ok) {
+        const fresh: Task[] = await r2.json()
+        const remote = remoteChangedIds(KANBAN_STATUSES.flatMap(s => columns[s]), fresh, localEdits, Date.now())
+        columns = group(fresh)
+        flashRemote(remote)
+      }
     }
   }
 
@@ -352,6 +382,7 @@
   // `columns` state is updated directly by the column via `bind:items`, so we
   // only handle the server write here.
   async function handleMoved(status: TaskStatus, taskId: string, rank: string) {
+    markLocal(taskId)
     await persist(fetch(`/api/tasks/${taskId}/move`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -361,6 +392,7 @@
 
   // ── Inline field update (optimistic) ────────────────────────────────
   async function handleFieldUpdate(id: string, field: string, value: unknown) {
+    markLocal(id)
     for (const s of KANBAN_STATUSES) {
       const idx = columns[s].findIndex(t => t._id === id)
       if (idx !== -1) {
@@ -386,6 +418,7 @@
   // Patch a single task in-place in the local columns (optimistic UI). Returns
   // false if the task isn't on the board (already removed).
   function patchLocal(id: string, patch: (t: Task) => Task): boolean {
+    markLocal(id) // every patchLocal caller is a local write — don't flash our own echo
     for (const s of KANBAN_STATUSES) {
       const idx = columns[s].findIndex(t => t._id === id)
       if (idx !== -1) {
@@ -522,6 +555,7 @@
 
   // ── Delete ────────────────────────────────────────────────────────────
   async function handleDelete(id: string) {
+    markLocal(id)
     for (const s of KANBAN_STATUSES) {
       columns[s] = columns[s].filter(t => t._id !== id)
     }
@@ -547,6 +581,7 @@
 
   // ── New task created ─────────────────────────────────────────────────
   function handleTaskCreated(task: Task) {
+    markLocal(task._id)
     showNewTask = false
     columns[task.status] = [task, ...columns[task.status]]
   }
