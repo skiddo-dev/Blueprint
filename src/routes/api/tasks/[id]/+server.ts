@@ -63,7 +63,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
       set.status_changed_at = new Date().toISOString()
       set.rank = await topRankForStatus(checked as string)
     }
-    const ok = await patchTask(params.id, set)
+    // A status change is also how an archived card comes back to the board.
+    const unset = current?.archived_at ? ['archived_at'] : undefined
+    const ok = await patchTask(params.id, set, undefined, unset)
     return json({ ok })
   }
   const ok = await updateTaskField(params.id, field, checked)

@@ -18,6 +18,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
     set.status = status
     set.status_changed_at = new Date().toISOString() // column change → restart the aging clock
   }
-  const ok = await patchTask(params.id, set)
+  // Dragging an archived card (the board's Archived view) restores it.
+  const unset = current.archived_at ? ['archived_at'] : undefined
+  const ok = await patchTask(params.id, set, undefined, unset)
   return json({ ok })
 }

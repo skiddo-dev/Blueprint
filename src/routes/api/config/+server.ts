@@ -14,6 +14,9 @@ import {
   PROSPECT_DEFAULTS,
   PROSPECT_STATUSES,
   PROSPECT_STATUS_META,
+  AGING_THRESHOLDS,
+  WIP_LIMITS,
+  ARCHIVE_AFTER_DAYS,
 } from '$lib/constants'
 
 // Single source of truth for the app's UI constants. `src/lib/constants.ts` is
@@ -43,6 +46,10 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
     supervisors: SUPERVISORS,
     quoteStatuses: QUOTE_STATUSES,
     quoteStatusMeta: QUOTE_STATUS_META,
+    // Flow signals (board V2): aging thresholds, soft WIP limits, archive window.
+    aging: AGING_THRESHOLDS,
+    wipLimits: WIP_LIMITS,
+    archiveAfterDays: ARCHIVE_AFTER_DAYS,
     prospect: {
       center: PROSPECT_CENTER,
       defaults: PROSPECT_DEFAULTS,

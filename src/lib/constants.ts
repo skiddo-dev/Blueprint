@@ -43,6 +43,25 @@ export const QUOTE_WORK_TYPES = [
 // users) and used as candidates for the email-extraction assignee.
 export const SUPERVISORS = ['Ben', 'Kris', 'Vlad', 'Bogdan', 'Frank Crew']
 
+// ── Flow signals (board V2) ──────────────────────────────────────────────────
+// Days a card may sit in one ACTIVE column before the board flags it as aging
+// (⏳ amber at warn, red at alert). Terminal columns and On Hold never age —
+// Done/Cancelled are finished, On Hold is parked on purpose.
+export const AGING_THRESHOLDS = { warnDays: 7, alertDays: 14 }
+
+// Soft work-in-progress limits per column. Purely advisory: the column header
+// shows an amber "WIP n/limit" pill when exceeded — nothing blocks a drop.
+// Columns without an entry are unlimited.
+export const WIP_LIMITS: Partial<Record<TaskStatus, number>> = {
+  'In Progress': 5,
+  'Review': 4,
+}
+
+// Done/Cancelled cards are auto-archived (hidden from the board, kept in the
+// database + global search) after sitting this long in their terminal column.
+// Any status change restores an archived card.
+export const ARCHIVE_AFTER_DAYS = 30
+
 // Quote/bid sales-pipeline stages. Only meaningful for tasks that have a quote;
 // an unset status on a quoted task is treated as 'Draft'.
 export const QUOTE_STATUSES = ['Draft', 'Sent', 'Won', 'Lost']

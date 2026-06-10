@@ -2,7 +2,7 @@ import { MongoClient, type Db } from 'mongodb'
 import { env } from '$env/dynamic/private'
 import type { Task, User, Quote, Prospect, TimelineEntry, Attachment } from '$lib/types'
 import { generateMockTasks, generateMockProspects, generateMockQuotes } from './mock'
-import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
+import { PROSPECT_CENTER, PROSPECT_DEFAULTS, ARCHIVE_AFTER_DAYS } from '$lib/constants'
 import { requireInProd } from './config'
 import { ensureAccountingIndexes, ensureAccountingConstraints, seedChartOfAccounts } from './accounting-schema'
 import { tombstoneKeysForTask } from './syncLogic'
@@ -372,17 +372,35 @@ function normalizeTask(t: Record<string, unknown>): Task {
 // fresh card's top-of-column rank would put it.
 const TASK_SORT = { rank: 1, created_at: -1 } as const
 
-export async function getTasks(): Promise<Task[]> {
-  if (USE_MOCK) return generateMockTasks()
+/** The board serves live cards by default; `archived: true` flips to the
+ *  archive (auto-archived stale Done/Cancelled — see archiveStaleClosedTasks). */
+export interface TaskQueryOpts { archived?: boolean }
+
+const archivedFilter = (opts?: TaskQueryOpts) =>
+  opts?.archived ? { archived_at: { $exists: true } } : { archived_at: { $exists: false } }
+
+export async function getTasks(opts?: TaskQueryOpts): Promise<Task[]> {
+  if (USE_MOCK) return mockTasksFor(opts)
   const d = await getDb()
-  const tasks = await col(d, 'tasks').find().sort(TASK_SORT).toArray()
+  const tasks = await col(d, 'tasks').find(archivedFilter(opts)).sort(TASK_SORT).toArray()
   return tasks.map(normalizeTask)
 }
 
-export async function getTasksForUser(email: string | null | undefined, name: string): Promise<Task[]> {
+// Mock mode: serve a stable archive slice (a few Done/Cancelled cards re-tagged
+// as archived) so the archived view renders offline too.
+function mockTasksFor(opts?: TaskQueryOpts): Task[] {
+  const all = generateMockTasks()
+  if (!opts?.archived) return all
+  return all
+    .filter(t => t.status === 'Done' || t.status === 'Cancelled')
+    .slice(0, 6)
+    .map(t => ({ ...t, archived_at: new Date().toISOString() }))
+}
+
+export async function getTasksForUser(email: string | null | undefined, name: string, opts?: TaskQueryOpts): Promise<Task[]> {
   const target = normName(name)
   if (USE_MOCK) {
-    return generateMockTasks().filter(
+    return mockTasksFor(opts).filter(
       t => normName(t.assigned_to) === target || normName(t.created_by) === target ||
         (t.co_assignees ?? []).some(c => normName(c) === target),
     )
@@ -403,7 +421,10 @@ export async function getTasksForUser(email: string | null | undefined, name: st
     assignee_email: { $in: [null, ''] },
     $or: [{ assigned_to: nameP }, { created_by: nameP }, { co_assignees: nameP }],
   })
-  const tasks = await col(d, 'tasks').find({ $or: or }).sort(TASK_SORT).toArray()
+  const tasks = await col(d, 'tasks')
+    .find({ $and: [archivedFilter(opts), { $or: or }] })
+    .sort(TASK_SORT)
+    .toArray()
   return tasks.map(normalizeTask)
 }
 
@@ -470,18 +491,57 @@ export async function updateTaskField(taskId: string, field: string, value: unkn
 
 /** Set multiple fields at once and optionally append a timeline entry, atomically.
  *  Used by the email sync to apply a thread-reply patch or merge a parsed
- *  attachment without a read-modify-write race. */
+ *  attachment without a read-modify-write race. `unset` removes fields in the
+ *  same write (e.g. clearing archived_at when a status change restores a card). */
 export async function patchTask(
   taskId: string,
   set: Record<string, unknown>,
   push?: TimelineEntry,
+  unset?: string[],
 ): Promise<boolean> {
   const d = await getDb()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const update: any = { $set: { ...set, updated_at: new Date().toISOString() } }
   if (push) update.$push = { timeline: push }
+  if (unset?.length) update.$unset = Object.fromEntries(unset.map(k => [k, '']))
   const result = await col(d, 'tasks').updateOne({ _id: taskId }, update)
   return result.modifiedCount > 0
+}
+
+// ── Auto-archive ──────────────────────────────────────────────────────────────
+// Done/Cancelled cards that finished long ago stop earning their board pixels:
+// after ARCHIVE_AFTER_DAYS in a terminal column they get archived_at stamped and
+// drop out of the default queries (still in Mongo, still in global search; the
+// board's Archived toggle lists them, and any status change restores them).
+// Ran lazily from GET /api/tasks, throttled via the meta collection so the
+// updateMany runs at most once an hour across all replicas — same pattern as
+// the infra-spend cache.
+const ARCHIVE_SWEEP_INTERVAL_MS = 60 * 60 * 1000
+
+export async function archiveStaleClosedTasks(): Promise<number> {
+  if (USE_MOCK) return 0
+  const d = await getDb()
+  const now = new Date()
+  const meta = await col(d, 'meta').findOne({ _id: 'archive_sweep' })
+  if (meta && now.getTime() - Date.parse(meta.last_run as string) < ARCHIVE_SWEEP_INTERVAL_MS) return 0
+  await col(d, 'meta').updateOne(
+    { _id: 'archive_sweep' },
+    { $set: { last_run: now.toISOString() } },
+    { upsert: true },
+  )
+  const cutoff = retentionCutoff(ARCHIVE_AFTER_DAYS, now)
+  const r = await col(d, 'tasks').updateMany(
+    {
+      status: { $in: ['Done', 'Cancelled'] },
+      archived_at: { $exists: false },
+      // $lt on a string field only matches strings — docs that somehow lack
+      // status_changed_at (pre-backfill) are left alone rather than archived.
+      status_changed_at: { $lt: cutoff },
+    },
+    { $set: { archived_at: now.toISOString(), updated_at: now.toISOString() } },
+  )
+  if (r.modifiedCount > 0) log.info('archive sweep', { archived: r.modifiedCount })
+  return r.modifiedCount
 }
 
 export async function deleteTask(taskId: string): Promise<boolean> {

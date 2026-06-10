@@ -39,6 +39,7 @@ export interface Task {
   status: TaskStatus
   rank?: string                // fractional sort key within the status column (see $lib/rank)
   status_changed_at?: string   // when the task last changed column — drives aging signals
+  archived_at?: string         // set when a stale Done/Cancelled card is auto-archived; any status change clears it
   exchange_id?: string
   conversation_id?: string     // Graph thread id — replies match back to this card
   email_date?: string          // source email's receivedDateTime (flag-time proxy; drives the sync cutoff)
