@@ -1,6 +1,6 @@
 import { MongoClient, type Db } from 'mongodb'
 import { env } from '$env/dynamic/private'
-import type { Task, User, Quote, Prospect, TimelineEntry, Attachment } from '$lib/types'
+import type { Task, User, Quote, Prospect, TimelineEntry, Attachment, ChecklistItem } from '$lib/types'
 import { generateMockTasks, generateMockProspects, generateMockQuotes } from './mock'
 import { PROSPECT_CENTER, PROSPECT_DEFAULTS, ARCHIVE_AFTER_DAYS } from '$lib/constants'
 import { requireInProd } from './config'
@@ -611,6 +611,56 @@ export async function updateComment(
 }
 
 /** Delete a comment AND any replies to it (entries whose parent_id === commentId). */
+// ── Checklist (punch list) ───────────────────────────────────────────────────
+// Embedded array on the task, same atomic-positional-update approach as
+// comments. Authz lives in the routes (task access is the only requirement).
+
+export async function addChecklistItem(taskId: string, item: ChecklistItem): Promise<boolean> {
+  const d = await getDb()
+  const res = await col(d, 'tasks').updateOne(
+    { _id: taskId },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    { $push: { checklist: item } as any, $set: { updated_at: now() } },
+  )
+  return res.modifiedCount > 0
+}
+
+export async function setChecklistItem(
+  taskId: string,
+  itemId: string,
+  patch: { text?: string; done?: boolean; doneBy?: string },
+): Promise<boolean> {
+  const d = await getDb()
+  const set: Record<string, unknown> = { updated_at: now() }
+  const unset: Record<string, ''> = {}
+  if (patch.text !== undefined) set['checklist.$.text'] = patch.text
+  if (patch.done !== undefined) {
+    set['checklist.$.done'] = patch.done
+    if (patch.done) {
+      set['checklist.$.done_by'] = patch.doneBy ?? ''
+      set['checklist.$.done_at'] = now()
+    } else {
+      unset['checklist.$.done_by'] = ''
+      unset['checklist.$.done_at'] = ''
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const update: any = { $set: set }
+  if (Object.keys(unset).length) update.$unset = unset
+  const res = await col(d, 'tasks').updateOne({ _id: taskId, 'checklist.id': itemId }, update)
+  return res.modifiedCount > 0
+}
+
+export async function deleteChecklistItem(taskId: string, itemId: string): Promise<boolean> {
+  const d = await getDb()
+  const res = await col(d, 'tasks').updateOne(
+    { _id: taskId },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    { $pull: { checklist: { id: itemId } } as any, $set: { updated_at: now() } },
+  )
+  return res.modifiedCount > 0
+}
+
 export async function deleteComment(taskId: string, commentId: string): Promise<boolean> {
   const d = await getDb()
   const res = await col(d, 'tasks').updateOne(
