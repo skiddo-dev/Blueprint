@@ -74,15 +74,15 @@
 
 <style>
   .aging-card {
-    background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 12px;
-    padding: 14px 16px; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+    background: var(--card-bg); border: 1px solid var(--border-card); border-radius: var(--radius-lg);
+    padding: 14px 16px; box-shadow: var(--shadow);
   }
   .head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
-  .head h3 { font-size: 13px; font-weight: 600; color: var(--text-body); margin: 0; }
+  .head h3 { font-size: var(--font-base); font-weight: 600; color: var(--text-body); margin: 0; }
   .right { display: inline-flex; align-items: baseline; gap: 10px; }
-  .total { font-size: 16px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-  .more { font-size: 12px; font-weight: 600; color: var(--primary-text); text-decoration: none; white-space: nowrap; }
+  .total { font-size: var(--font-lg); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .more { font-size: var(--font-sm); font-weight: 600; color: var(--primary-text); text-decoration: none; white-space: nowrap; }
   .more:hover { text-decoration: underline; }
   .canvas { position: relative; height: 150px; }
-  .empty { color: var(--text-muted); font-size: 14px; padding: 18px 2px; }
+  .empty { color: var(--text-muted); font-size: var(--font-md); padding: 18px 2px; }
 </style>

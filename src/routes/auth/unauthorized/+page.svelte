@@ -68,7 +68,7 @@
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
     padding: 40px 36px;
     text-align: center;
     max-width: 400px;
@@ -88,25 +88,25 @@
     margin-bottom: 12px;
   }
   .icon.ok { background: var(--success-bg); color: var(--success); }
-  h1 { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
-  p { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; }
+  h1 { font-size: var(--font-2xl); font-weight: 700; color: var(--text); margin-bottom: 10px; }
+  p { font-size: var(--font-md); color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; }
   textarea {
     width: 100%;
     box-sizing: border-box;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 10px 12px;
-    font-size: 13px;
+    font-size: var(--font-base);
     font-family: inherit;
     resize: vertical;
     margin-bottom: 12px;
     background: var(--bg);
     color: var(--text);
   }
-  .full-w { width: 100%; justify-content: center; padding: 12px; font-size: 14px; }
+  .full-w { width: 100%; justify-content: center; padding: 12px; font-size: var(--font-md); }
   .error {
     color: var(--danger);
-    font-size: 13px;
+    font-size: var(--font-base);
     text-align: left;
     margin-bottom: 12px;
   }
@@ -114,7 +114,7 @@
     background: none;
     border: none;
     color: var(--text-faint);
-    font-size: 13px;
+    font-size: var(--font-base);
     margin-top: 14px;
     text-decoration: underline;
     cursor: pointer;

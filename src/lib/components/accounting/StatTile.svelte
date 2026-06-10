@@ -58,16 +58,16 @@
   .tile {
     display: block; text-decoration: none;
     background: var(--card-bg); border: 1px solid var(--border-card); border-top: 3px solid var(--primary);
-    border-radius: 10px; padding: 14px 16px; box-shadow: var(--shadow);
+    border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow);
   }
   .tile.link { transition: box-shadow 0.12s, transform 0.12s; }
   .tile.link:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
-  .val { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.15; }
-  .lbl { font-size: 12px; color: var(--text-faint); margin-top: 3px; }
+  .val { font-size: var(--font-2xl); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .lbl { font-size: var(--font-sm); color: var(--text-faint); margin-top: 3px; }
   .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; min-height: 22px; }
   .spark { flex-shrink: 0; opacity: 0.9; }
   .chip {
-    font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 8px; white-space: nowrap;
+    font-size: var(--font-xs); font-weight: 600; border-radius: var(--radius-pill); padding: 2px 8px; white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
   .chip.muted { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border-soft); }

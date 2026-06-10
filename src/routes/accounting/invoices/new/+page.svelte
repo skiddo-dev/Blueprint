@@ -237,7 +237,7 @@
 <style>
   /* Bespoke invoice-form layout; shared primitives (buttons, inputs, card, error)
      come from accounting.css. */
-  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text-body); }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-base); font-weight: 600; color: var(--text-body); }
   .from-quote select, .meta-grid input, .line input, .memo input, .taxrate input { width: 100%; }
 
   .from-quote { margin-bottom: 16px; }
@@ -245,31 +245,31 @@
   .meta-grid .grow { flex: 1; min-width: 220px; }
   .meta-grid > label { flex: 1; min-width: 120px; }
 
-  .lines { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+  .lines { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px; margin-bottom: 14px; }
   .lines-head, .line { display: grid; grid-template-columns: 3fr 0.8fr 1.2fr 1.2fr 34px; gap: 8px; align-items: center; }
-  .lines-head { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; padding: 0 2px 6px; }
+  .lines-head { font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; padding: 0 2px 6px; }
   .line { margin-bottom: 8px; }
   input.num { text-align: right; }
   .amount { font-weight: 600; color: var(--text); padding-right: 2px; }
-  .remove { background: var(--card-bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text-muted); height: 34px; cursor: pointer; }
+  .remove { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-muted); height: 34px; cursor: pointer; }
   .remove:hover:not(:disabled) { border-color: var(--danger-border); color: var(--danger); }
   .remove:disabled { opacity: 0.4; cursor: not-allowed; }
-  .add { margin-top: 4px; background: none; border: 1px dashed var(--border); border-radius: 7px; color: var(--primary-text); padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .add { margin-top: 4px; background: none; border: 1px dashed var(--border); border-radius: var(--radius-md); color: var(--primary-text); padding: 7px 12px; font-size: var(--font-base); font-weight: 600; cursor: pointer; }
   .add:hover { border-color: var(--primary); }
 
   .totals { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
   .taxrate { max-width: 120px; }
   .totals-figures { min-width: 240px; margin-left: auto; }
-  .totals-figures > div { display: flex; justify-content: space-between; gap: 24px; padding: 4px 0; font-size: 13px; color: var(--text-body); }
-  .totals-figures .grand { font-weight: 700; color: var(--text); border-top: 2px solid var(--border); margin-top: 4px; padding-top: 8px; font-size: 15px; }
+  .totals-figures > div { display: flex; justify-content: space-between; gap: 24px; padding: 4px 0; font-size: var(--font-base); color: var(--text-body); }
+  .totals-figures .grand { font-weight: 700; color: var(--text); border-top: 2px solid var(--border); margin-top: 4px; padding-top: 8px; font-size: var(--font-lg); }
 
   .memo { margin-top: 14px; }
   .recurring-box { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 10px; }
-  .recurring-box summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .recurring-box summary { cursor: pointer; font-size: var(--font-base); font-weight: 600; color: var(--text-muted); }
   .rec-grid { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
   .rec-grid label:first-child { flex: 1; min-width: 220px; }
   .rec-grid input[type='number'] { width: 70px; }
-  .rec-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0 0; }
+  .rec-hint { font-size: var(--font-sm); color: var(--text-muted); margin: 8px 0 0; }
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 
   @media (max-width: 640px) {

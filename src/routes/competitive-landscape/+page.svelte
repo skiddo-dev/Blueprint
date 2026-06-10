@@ -36,7 +36,7 @@
     height: 100%;
     min-height: 70vh;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: #0a2a66; /* blueprint field — avoids a white flash before load */
   }
 </style>

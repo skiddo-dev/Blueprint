@@ -54,14 +54,14 @@
 
 <style>
   /* Statement rows; shared chrome (card, toolbar) from accounting.css. */
-  .card { font-size: 14px; padding: 18px 20px; }
-  .sec-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; margin: 14px 0 4px; }
+  .card { font-size: var(--font-md); padding: 18px 20px; }
+  .sec-title { font-size: var(--font-sm); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; margin: 14px 0 4px; }
   .sec-title:first-child { margin-top: 0; }
   .row { display: flex; justify-content: space-between; gap: 24px; padding: 5px 0; color: var(--text-body); }
   .row.muted { color: var(--text-faint); }
   .num { font-variant-numeric: tabular-nums; }
   .subtotal { font-weight: 600; color: var(--text); border-top: 1px solid var(--border-soft); margin-top: 2px; }
   .gross { font-weight: 700; color: var(--text); border-top: 2px solid var(--border); border-bottom: 1px solid var(--border-soft); margin: 8px 0; padding: 8px 0; }
-  .net { font-weight: 800; font-size: 16px; color: var(--success); border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; }
+  .net { font-weight: 800; font-size: var(--font-lg); color: var(--success); border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; }
   .net.loss { color: var(--danger); }
 </style>

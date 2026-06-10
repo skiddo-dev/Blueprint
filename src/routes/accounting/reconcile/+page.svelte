@@ -182,9 +182,9 @@
 <style>
   /* Reconcile-specific layout; shared chrome (card, table, buttons, chip) from accounting.css. */
   .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
-  .summary > div { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow); }
-  .summary .k { font-size: 11px; color: var(--text-muted); font-weight: 600; }
-  .summary .v { font-size: 16px; font-weight: 700; color: var(--text); }
+  .summary > div { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: var(--radius-lg); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: var(--shadow); }
+  .summary .k { font-size: var(--font-xs); color: var(--text-muted); font-weight: 600; }
+  .summary .v { font-size: var(--font-lg); font-weight: 700; color: var(--text); }
   .summary .diff.ok { border-color: var(--success-border); background: var(--success-bg); }
   .summary .diff.ok .v { color: var(--success); }
   .summary .diff.bad { border-color: var(--warning-border); background: var(--warning-bg); }
@@ -197,13 +197,13 @@
   .num.neg { color: var(--warning); }
 
   .actions { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
-  .hint { color: var(--text-muted); font-size: 13px; }
+  .hint { color: var(--text-muted); font-size: var(--font-base); }
 
-  .import-card { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
-  .import-card summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text); }
-  .import-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0; }
-  .import-hint code { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 4px; padding: 0 4px; font-size: 11px; }
-  .import-card textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; resize: vertical; }
+  .import-card { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .import-card summary { cursor: pointer; font-size: var(--font-base); font-weight: 600; color: var(--text); }
+  .import-hint { font-size: var(--font-sm); color: var(--text-muted); margin: 8px 0; }
+  .import-hint code { background: var(--bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: 0 4px; font-size: var(--font-xs); }
+  .import-card textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--font-sm); resize: vertical; }
   .import-actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
-  .import-msg { font-size: 13px; color: var(--text-body); }
+  .import-msg { font-size: var(--font-base); color: var(--text-body); }
 </style>

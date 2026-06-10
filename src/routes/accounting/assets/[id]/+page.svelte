@@ -124,11 +124,11 @@
 <style>
   .facts { display: flex; flex-wrap: wrap; gap: 18px 28px; }
   .facts > div { display: flex; flex-direction: column; gap: 2px; }
-  .facts .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
+  .facts .k { font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
   .card-head.pad { padding: 14px 16px 0; }
   tr.posted td { color: var(--text-muted); }
-  .disposed-note { margin: 12px 0 0; font-size: 13px; color: var(--warning); }
+  .disposed-note { margin: 12px 0 0; font-size: var(--font-base); color: var(--warning); }
   .disp-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-  .disp-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
+  .disp-form label { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-sm); font-weight: 600; color: var(--text-body); }
   :global(.acct .btn-secondary.danger) { color: var(--danger); border-color: var(--danger-border); }
 </style>

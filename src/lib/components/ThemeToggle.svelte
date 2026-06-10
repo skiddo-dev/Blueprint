@@ -31,9 +31,9 @@
     background: var(--card-bg);
     border: 1px solid var(--border);
     color: var(--text-body);
-    border-radius: 7px;
+    border-radius: var(--radius-md);
     padding: 7px 12px;
-    font-size: 13px;
+    font-size: var(--font-base);
     font-weight: 600;
   }
   .theme-toggle:hover { background: var(--bg); border-color: var(--primary); color: var(--primary-text); }

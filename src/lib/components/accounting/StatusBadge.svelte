@@ -9,14 +9,11 @@
 
 <style>
   .status-badge {
-    font-size: 11px; font-weight: 600; border-radius: 8px; padding: 2px 8px; text-transform: capitalize; white-space: nowrap;
+    font-size: var(--font-xs); font-weight: 600; border-radius: var(--radius-md); padding: 2px 8px; text-transform: capitalize; white-space: nowrap;
   }
   .status-badge.partial { background: var(--warning-bg); color: var(--warning); }
   .status-badge.paid { background: var(--success-bg); color: var(--success); }
   .status-badge.overdue { background: var(--danger-bg); color: var(--danger); }
-  /* Open (info blue) and void (slate) have no semantic token; themed locally. */
-  .status-badge.open { background: #dbeafe; color: #1d4ed8; }
-  .status-badge.void { background: #f1f5f9; color: #475569; }
-  :global(:root[data-theme='dark']) .status-badge.open { background: #1e3a5f; color: #93c5fd; }
-  :global(:root[data-theme='dark']) .status-badge.void { background: #334155; color: #cbd5e1; }
+  .status-badge.open { background: var(--info-bg); color: var(--info); }
+  .status-badge.void { background: var(--border-soft); color: var(--text-soft); }
 </style>

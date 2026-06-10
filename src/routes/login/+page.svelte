@@ -44,7 +44,7 @@
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
     padding: 40px 36px;
     text-align: center;
     max-width: 360px;
@@ -58,13 +58,13 @@
     justify-content: center;
     width: 56px;
     height: 56px;
-    border-radius: 14px;
+    border-radius: var(--radius-xl);
     background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
     color: #fff;
     margin-bottom: 12px;
   }
-  h1 { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
-  .sub { font-size: 13px; color: var(--text-faint); margin-bottom: 20px; }
+  h1 { font-size: var(--font-2xl); font-weight: 800; color: var(--text); margin-bottom: 4px; }
+  .sub { font-size: var(--font-base); color: var(--text-faint); margin-bottom: 20px; }
   .value-bullets {
     list-style: none;
     margin: 0 0 24px;
@@ -78,7 +78,7 @@
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    font-size: 13px;
+    font-size: var(--font-base);
     color: var(--text-muted);
     line-height: 1.4;
   }
@@ -86,14 +86,14 @@
   .error {
     background: var(--danger-bg);
     color: var(--danger);
-    font-size: 13px;
+    font-size: var(--font-base);
     line-height: 1.4;
     text-align: left;
     padding: 10px 12px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     margin-bottom: 20px;
   }
   .signin-form { margin-bottom: 16px; }
-  .full-w { width: 100%; justify-content: center; padding: 12px; font-size: 14px; }
-  .footer-note { font-size: 12px; color: var(--text-faint); }
+  .full-w { width: 100%; justify-content: center; padding: 12px; font-size: var(--font-md); }
+  .footer-note { font-size: var(--font-sm); color: var(--text-faint); }
 </style>

@@ -161,14 +161,14 @@
 
 <style>
   .stat-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  .stat-row .k { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
-  .stat-row .v { font-size: 26px; font-weight: 700; color: var(--text); }
-  .reg-link { font-size: 13px; color: var(--text-muted); text-decoration: none; }
+  .stat-row .k { display: block; font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
+  .stat-row .v { font-size: var(--font-3xl); font-weight: 700; color: var(--text); }
+  .reg-link { font-size: var(--font-base); color: var(--text-muted); text-decoration: none; }
   .reg-link:hover { text-decoration: underline; }
   .pay-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-  .pay-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
+  .pay-form label { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-sm); font-weight: 600; color: var(--text-body); }
   .pay-form .grow { flex: 1; min-width: 160px; }
-  .warn { font-size: 13px; color: var(--warning); margin: 10px 0 0; }
+  .warn { font-size: var(--font-base); color: var(--warning); margin: 10px 0 0; }
   .card-head.pad { padding: 14px 16px 0; }
   tr.voided { opacity: 0.55; }
   tr.voided td:not(:last-child) { text-decoration: line-through; }

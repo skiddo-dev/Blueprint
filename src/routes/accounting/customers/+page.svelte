@@ -106,6 +106,6 @@
 <style>
   /* Inline-edit specifics not covered by the shared sheet. */
   tr.editing td { background: var(--primary-bg); }
-  td input { padding: 5px 7px; border-radius: 6px; width: 100%; }
+  td input { padding: 5px 7px; border-radius: var(--radius-md); width: 100%; }
   .row-actions { text-align: right; white-space: nowrap; }
 </style>

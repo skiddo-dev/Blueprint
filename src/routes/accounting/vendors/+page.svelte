@@ -111,9 +111,9 @@
 <style>
   /* Inline-edit specifics not covered by the shared sheet. */
   tr.editing td { background: var(--primary-bg); }
-  td input { padding: 5px 7px; border-radius: 6px; width: 100%; }
+  td input { padding: 5px 7px; border-radius: var(--radius-md); width: 100%; }
   .row-actions { text-align: right; white-space: nowrap; }
   .ten99-edit { min-width: 150px; }
-  .ten99-edit .check { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .ten99-edit .check { display: flex; align-items: center; gap: 5px; font-size: var(--font-sm); font-weight: 600; margin-bottom: 4px; }
   .ten99-edit .check input { width: auto; }
 </style>

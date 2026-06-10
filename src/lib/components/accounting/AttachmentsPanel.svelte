@@ -75,11 +75,11 @@
 
 <style>
   .files { list-style: none; margin: 0 0 10px; padding: 0; }
-  .files li { display: flex; align-items: baseline; gap: 10px; padding: 5px 0; font-size: 13px; }
+  .files li { display: flex; align-items: baseline; gap: 10px; padding: 5px 0; font-size: var(--font-base); }
   .name { color: var(--primary-text); text-decoration: none; }
   .name:hover { text-decoration: underline; }
   .name.purged { color: var(--text-muted); text-decoration: line-through; }
-  .size { color: var(--text-muted); font-size: 12px; }
+  .size { color: var(--text-muted); font-size: var(--font-sm); }
   .upload { display: inline-block; cursor: pointer; }
   .upload.busy { opacity: 0.6; }
 </style>

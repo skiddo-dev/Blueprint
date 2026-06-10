@@ -290,13 +290,13 @@
 </PageShell>
 
 <style>
-  .page-title { font-size: 22px; font-weight: 800; color: var(--text); }
-  .page-sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+  .page-title { font-size: var(--font-2xl); font-weight: 800; color: var(--text); }
+  .page-sub { font-size: var(--font-sm); color: var(--text-faint); margin-top: 2px; }
 
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
     padding: 20px 22px;
   }
@@ -304,7 +304,7 @@
   .section { padding: 16px 0; border-bottom: 1px solid var(--border-soft); }
   .section:first-child { padding-top: 0; }
   .section-title {
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -314,9 +314,9 @@
 
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
   .span-2 { grid-column: span 2; }
-  label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--text-soft); }
+  label { display: flex; flex-direction: column; gap: 5px; font-size: var(--font-base); font-weight: 600; color: var(--text-soft); }
   .optional { font-weight: 400; color: var(--text-faint); }
-  .hint { font-size: 11.5px; font-weight: 400; color: var(--text-faint); }
+  .hint { font-size: var(--font-sm); font-weight: 400; color: var(--text-faint); }
 
   label.checkbox { flex-direction: row; align-items: center; gap: 8px; align-self: end; padding-bottom: 8px; }
   label.checkbox input { width: 15px; height: 15px; accent-color: var(--primary); }
@@ -327,13 +327,13 @@
 
   .toggles { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
   .toggle { flex-direction: row; align-items: flex-start; gap: 10px; cursor: pointer; }
-  .toggle-text { display: flex; flex-direction: column; gap: 1px; font-size: 13px; color: var(--text-body); }
+  .toggle-text { display: flex; flex-direction: column; gap: 1px; font-size: var(--font-base); color: var(--text-body); }
 
   .switch { position: relative; flex-shrink: 0; width: 36px; height: 20px; margin-top: 1px; }
   .switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
   .switch .track {
     display: block; width: 100%; height: 100%;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     background: var(--scrollbar-thumb);
     transition: background 0.15s ease;
   }
@@ -346,41 +346,41 @@
   }
   .switch input:checked + .track { background: var(--primary); }
   .switch input:checked + .track::after { transform: translateX(16px); }
-  .switch input:focus-visible + .track { box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3); }
+  .switch input:focus-visible + .track { box-shadow: var(--focus-ring); }
 
   .money-grid { max-width: 480px; }
   .money { position: relative; display: block; }
   .cur {
     position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-    font-size: 13px; color: var(--text-faint); pointer-events: none;
+    font-size: var(--font-base); color: var(--text-faint); pointer-events: none;
   }
   .money input { padding-left: 24px; text-align: right; font-variant-numeric: tabular-nums; }
 
-  .field-error { margin-top: 10px; font-size: 12.5px; color: var(--danger); }
+  .field-error { margin-top: 10px; font-size: var(--font-base); color: var(--danger); }
 
   /* Mini rendering of the PDF's cost box (kept paper-white in both themes). */
   .preview { display: flex; flex-direction: column; gap: 6px; }
-  .preview-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .preview-title { font-size: var(--font-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
   .preview-paper {
-    background: #fff; border: 1.5px solid #94a3b8; border-radius: 4px;
+    background: #fff; border: 1.5px solid #94a3b8; border-radius: var(--radius-sm);
     padding: 10px 12px; min-height: 78px;
     display: flex; flex-direction: column; justify-content: center; gap: 6px;
     box-shadow: var(--shadow);
   }
-  .preview-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: #111827; }
+  .preview-row { display: flex; justify-content: space-between; gap: 12px; font-size: var(--font-base); color: #111827; }
   .preview-row .lbl { font-weight: 700; }
   .preview-row .val { font-variant-numeric: tabular-nums; }
-  .preview-empty { font-size: 12px; font-style: italic; color: #6b7280; text-align: center; }
-  .preview-caption { font-size: 11.5px; color: var(--text-faint); }
+  .preview-empty { font-size: var(--font-sm); font-style: italic; color: #6b7280; text-align: center; }
+  .preview-caption { font-size: var(--font-sm); color: var(--text-faint); }
 
-  .error { color: var(--danger); font-size: 13px; background: var(--danger-bg); border-radius: 8px; padding: 8px 12px; margin-top: 14px; }
+  .error { color: var(--danger); font-size: var(--font-base); background: var(--danger-bg); border-radius: var(--radius-md); padding: 8px 12px; margin-top: 14px; }
 
   .actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
   /* The download anchor uses the global .btn-primary treatment (app.css). */
 
-  .how-it-works { margin-top: 16px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; background: var(--card-bg); }
-  .how-it-works summary { font-size: 13px; font-weight: 600; color: var(--text-soft); }
-  .how-it-works ul { font-size: 12.5px; color: var(--text-muted); margin-top: 8px; padding-left: 18px; }
+  .how-it-works { margin-top: 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 10px 14px; background: var(--card-bg); }
+  .how-it-works summary { font-size: var(--font-base); font-weight: 600; color: var(--text-soft); }
+  .how-it-works ul { font-size: var(--font-base); color: var(--text-muted); margin-top: 8px; padding-left: 18px; }
   .how-it-works li { margin-bottom: 4px; }
 
   @media (max-width: 700px) {

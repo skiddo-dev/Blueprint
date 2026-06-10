@@ -914,13 +914,13 @@
     gap: 8px;
   }
   .board-title {
-    font-size: 22px;
+    font-size: var(--font-2xl);
     font-weight: 800;
     color: var(--text);
     letter-spacing: -0.02em;
   }
   .board-sub {
-    font-size: 12px;
+    font-size: var(--font-sm);
     color: var(--text-faint);
     margin-top: 2px;
   }
@@ -943,7 +943,7 @@
     gap: 2px;
     background: var(--primary-bg);
     border: 1px solid var(--border);
-    border-radius: 9px;
+    border-radius: var(--radius-md);
     padding: 2px;
   }
 
@@ -956,9 +956,9 @@
   .cb-badge {
     background: var(--primary);
     color: #fff;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 0 7px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
     margin-left: 5px;
   }
@@ -969,9 +969,9 @@
     background: transparent;
     border: none;
     color: var(--text-soft);
-    font-size: 13px;
+    font-size: var(--font-base);
     font-weight: 600;
-    border-radius: 7px;
+    border-radius: var(--radius-md);
     padding: 6px 12px;
   }
   .vt-btn.active {
@@ -982,17 +982,17 @@
   .vt-overdue {
     background: var(--danger-bg);
     color: var(--danger);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 1px 7px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
   }
   .mywork-empty {
     background: var(--bg);
     border: 1px dashed var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 10px 14px;
-    font-size: 13px;
+    font-size: var(--font-base);
     color: var(--text-muted);
     margin-bottom: 10px;
   }
@@ -1002,7 +1002,7 @@
     bottom: max(16px, env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
-    z-index: 55;
+    z-index: var(--z-bar);
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -1010,18 +1010,18 @@
     gap: 8px;
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    box-shadow: 0 10px 36px rgba(15, 23, 42, 0.22);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-pop);
     padding: 10px 14px;
     max-width: min(92vw, 640px);
   }
-  .bb-count { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .bb-count { font-size: var(--font-base); font-weight: 700; color: var(--text); white-space: nowrap; }
   .bb-select {
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 600;
     padding: 6px 9px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--bg);
     color: var(--text-body);
     min-height: 0;
@@ -1031,9 +1031,9 @@
     background: var(--bg);
     border: 1px solid var(--border);
     color: var(--text-soft);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 6px 11px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 600;
     min-height: 0;
     cursor: pointer;
@@ -1044,7 +1044,7 @@
   .bb-danger:hover:not(:disabled) { border-color: var(--danger-border); color: var(--danger); }
 
   .lens-hint {
-    font-size: 12px;
+    font-size: var(--font-sm);
     color: var(--text-faint);
     margin: -2px 0 10px;
   }
@@ -1053,9 +1053,9 @@
     background: var(--bg);
     border: 1px solid var(--border);
     border-left: 4px solid var(--primary);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 8px 14px;
-    font-size: 13px;
+    font-size: var(--font-base);
     color: var(--text-soft);
     margin-bottom: 10px;
   }
@@ -1064,7 +1064,7 @@
     border: none;
     color: var(--primary-dark);
     font-weight: 600;
-    font-size: 13px;
+    font-size: var(--font-base);
     padding: 0 2px;
     text-decoration: underline;
   }
@@ -1077,22 +1077,22 @@
     padding: 32px 24px;
     background: var(--card-bg);
     border: 1px dashed var(--border);
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
   }
   .be-icon { color: var(--text-faint); margin-bottom: 8px; }
-  .board-empty h2 { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 8px; }
-  .board-empty p { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin: 0 0 18px; }
+  .board-empty h2 { font-size: var(--font-xl); font-weight: 700; color: var(--text); margin: 0 0 8px; }
+  .board-empty p { font-size: var(--font-md); color: var(--text-muted); line-height: 1.5; margin: 0 0 18px; }
   .be-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
-  .be-help { font-size: 13px; font-weight: 600; color: var(--primary-dark); text-decoration: none; }
+  .be-help { font-size: var(--font-base); font-weight: 600; color: var(--primary-dark); text-decoration: none; }
   .be-help:hover { text-decoration: underline; }
 
   .sync-toast {
     background: var(--success-bg);
     color: var(--success);
     border: 1px solid var(--success-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 8px 14px;
-    font-size: 13px;
+    font-size: var(--font-base);
     margin-bottom: 10px;
   }
 
@@ -1100,9 +1100,9 @@
     background: var(--warning-bg);
     color: var(--warning);
     border: 1px solid var(--warning-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 8px 14px;
-    font-size: 13px;
+    font-size: var(--font-base);
     font-weight: 500;
     margin-bottom: 10px;
   }
@@ -1110,9 +1110,9 @@
     background: var(--danger-bg);
     color: var(--danger);
     border: 1px solid var(--danger-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 8px 14px;
-    font-size: 13px;
+    font-size: var(--font-base);
     margin-bottom: 10px;
   }
 
@@ -1156,9 +1156,9 @@
       background: var(--card-bg);
       border: 1px solid var(--border);
       color: var(--text-soft);
-      border-radius: 9px;
+      border-radius: var(--radius-md);
       padding: 6px 12px;
-      font-size: 13px;
+      font-size: var(--font-base);
       font-weight: 600;
       min-height: 0;
       cursor: pointer;
@@ -1198,9 +1198,9 @@
       background: var(--card-bg);
       border: 1px solid var(--border);
       color: var(--text-soft);
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       padding: 6px 10px;
-      font-size: 12px;
+      font-size: var(--font-sm);
       font-weight: 600;
       white-space: nowrap;
     }
@@ -1218,9 +1218,9 @@
     .tab-count {
       background: var(--border-soft);
       color: var(--text-muted);
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       padding: 0 6px;
-      font-size: 10px;
+      font-size: var(--font-2xs);
       font-weight: 700;
       min-width: 16px;
       text-align: center;

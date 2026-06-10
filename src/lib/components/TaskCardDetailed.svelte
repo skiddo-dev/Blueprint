@@ -421,7 +421,7 @@
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border-card);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     padding: 12px;
     margin-bottom: 8px;
     position: relative;
@@ -443,20 +443,20 @@
     right: 2px;
     padding: 6px 8px;
     color: var(--text-faint);
-    font-size: 15px;
+    font-size: var(--font-lg);
     line-height: 1;
     letter-spacing: -2px;
     user-select: none;
     cursor: grab;
     /* touch starting on the handle initiates a drag instead of scrolling */
     touch-action: none;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
   }
   .drag-hint:active { cursor: grabbing; }
 
   .card.selected {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+    box-shadow: var(--focus-ring);
   }
   /* Multi-select toggle: top-right beside the drag handle, materializes on
      hover/focus, pinned while selected. Mirrors the compact face. */
@@ -467,10 +467,10 @@
     width: 18px;
     height: 18px;
     border: 1.5px solid var(--border);
-    border-radius: 5px;
+    border-radius: var(--radius-sm);
     background: var(--card-bg);
     color: #fff;
-    font-size: 12px;
+    font-size: var(--font-sm);
     line-height: 1;
     padding: 0;
     min-height: 0;
@@ -488,7 +488,7 @@
   }
 
   .title {
-    font-size: 13px;
+    font-size: var(--font-base);
     font-weight: 600;
     color: var(--text);
     line-height: 1.4;
@@ -502,9 +502,9 @@
     background: var(--success-bg);
     color: var(--success);
     border: 1px solid var(--success-border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 2px 8px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
     letter-spacing: 0.02em;
   }
@@ -519,9 +519,9 @@
     background: var(--store-chip);
     color: #fff;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 2px 7px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
     font-family: inherit;
@@ -533,7 +533,7 @@
   /* The store currently filtering the board. */
   .store-tag.active {
     background: var(--primary);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+    box-shadow: var(--focus-ring);
   }
 
   /* Hidden by an active store filter (kept in the DOM/dnd list, just not shown). */
@@ -546,24 +546,24 @@
     margin-bottom: 6px;
     flex-wrap: wrap;
   }
-  .source { font-size: 11px; color: var(--text-faint); }
+  .source { font-size: var(--font-xs); color: var(--text-faint); }
   .chip {
     background: var(--chip-bg);
     color: var(--primary-text);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 2px 9px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 500;
   }
-  .unassigned { font-size: 11px; color: var(--text-faint); }
-  .created-chip { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+  .unassigned { font-size: var(--font-xs); color: var(--text-faint); }
+  .created-chip { font-size: var(--font-xs); color: var(--text-faint); white-space: nowrap; }
   /* Aging: past the warn threshold (amber) / alert threshold (rose) in this column. */
   .aging-chip {
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 600;
     color: #92670e; /* deliberately calm ink; only the border is themed */
     border: 1px solid var(--warning-border);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 2px 8px;
     white-space: nowrap;
   }
@@ -578,7 +578,7 @@
     border: none;
     cursor: pointer;
     padding: 0 1px;
-    font-size: 10px;
+    font-size: var(--font-2xs);
     line-height: 1;
     color: var(--primary-text);
     opacity: 0.6;
@@ -592,8 +592,8 @@
     width: auto;
     min-height: 0;
     padding: 2px 7px;
-    border-radius: 999px;
-    font-size: 11px;
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
     font-weight: 600;
     color: var(--text-soft);
     background: var(--bg);
@@ -607,14 +607,14 @@
   .inbox-chip {
     background: var(--border-soft);
     color: var(--text-muted, #64748b);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 2px 9px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 500;
   }
 
   .desc {
-    font-size: 12px;
+    font-size: var(--font-sm);
     color: var(--text-muted);
     margin-bottom: 6px;
     line-height: 1.45;
@@ -639,9 +639,9 @@
     background: var(--bg);
     border: 1px solid var(--border);
     color: var(--text-soft);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 3px 7px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 600;
     line-height: 1.4;
     min-height: 0;
@@ -666,12 +666,12 @@
   .tool-panel { margin-top: 2px; margin-bottom: 22px; }
 
   .email-body {
-    font-size: 11px;
+    font-size: var(--font-xs);
     color: var(--text-soft);
     max-height: 120px;
     overflow-y: auto;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 6px 8px;
     margin-top: 4px;
     background: var(--bg);
@@ -687,10 +687,10 @@
   .row-2.single { grid-template-columns: 1fr; }
 
   select, input[type="date"], input[type="text"], textarea {
-    font-size: 12px;
+    font-size: var(--font-sm);
     padding: 5px 8px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     background: var(--card-bg);
     color: var(--text-body);
     width: 100%;
@@ -709,7 +709,7 @@
     text-align: left;
     margin: 0;
     padding: 0;
-    font-size: 12px;
+    font-size: var(--font-sm);
   }
   /* Overdue, still-open task → a calm, muted nudge — NOT a bold red box. A soft
      border + desaturated rose text (plus the title="Overdue" tooltip) is enough;
@@ -721,24 +721,24 @@
   }
   select:focus, input:focus, textarea:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+    box-shadow: var(--focus-halo);
   }
   textarea { resize: none; font-family: inherit; }
 
   .quote-pop summary {
-    font-size: 12px;
+    font-size: var(--font-sm);
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 5px 8px;
     cursor: pointer;
     user-select: none;
   }
   .qs-badge {
     display: inline-block;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 0 7px;
-    font-size: 10px;
+    font-size: var(--font-2xs);
     font-weight: 700;
     letter-spacing: 0.02em;
     vertical-align: middle;
@@ -750,7 +750,7 @@
     margin-top: 4px;
     padding: 8px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--card-bg);
   }
 
@@ -761,9 +761,9 @@
     background: transparent;
     border: none;
     color: var(--text-faint);
-    font-size: 11px;
+    font-size: var(--font-xs);
     padding: 2px 5px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     line-height: 1;
     min-height: unset;
@@ -773,14 +773,14 @@
   @media (max-width: 768px) {
     .card:hover { transform: none; box-shadow: var(--shadow); }
     /* Finger-sized hit areas for the two smallest controls on the card. */
-    .drag-hint { padding: 11px 13px; font-size: 17px; }
+    .drag-hint { padding: 11px 13px; font-size: var(--font-xl); }
     /* No hover on touch: keep the select toggle visible, finger-sized, clear
        of the enlarged drag handle. */
-    .select-box { opacity: 1; width: 24px; height: 24px; font-size: 15px; right: 48px; }
+    .select-box { opacity: 1; width: 24px; height: 24px; font-size: var(--font-lg); right: 48px; }
     .delete-btn {
       min-width: 40px;
       min-height: 40px;
-      font-size: 14px;
+      font-size: var(--font-md);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -798,11 +798,11 @@
     textarea { min-height: 56px; }
 
     /* Roomier tap targets on touch: the footer chips and the quote disclosure. */
-    .tool-chip { padding: 7px 12px; font-size: 12px; }
+    .tool-chip { padding: 7px 12px; font-size: var(--font-sm); }
     /* The add-person picker keeps its chip shape but gets a finger-sized target;
        16px stops iOS Safari from zooming the page when the picker opens. */
     .co-add { font-size: 16px; min-height: 36px; padding: 4px 10px; width: auto; }
-    .co-remove { font-size: 13px; padding: 2px 5px; }
+    .co-remove { font-size: var(--font-base); padding: 2px 5px; }
     .quote-pop summary {
       padding-top: 8px;
       padding-bottom: 8px;

@@ -274,7 +274,7 @@
   }
 
   .col-header {
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     padding: 10px 14px;
     margin-bottom: 10px;
     display: flex;
@@ -283,15 +283,15 @@
     border-left: 4px solid transparent;
   }
   .col-title {
-    font-size: 13px;
+    font-size: var(--font-base);
     font-weight: 700;
     letter-spacing: 0.01em;
   }
   .count {
     color: #fff;
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 2px 10px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 700;
     min-width: 26px;
     text-align: center;
@@ -302,9 +302,9 @@
     background: var(--warning-bg);
     color: var(--warning);
     border: 1px solid var(--warning-border);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 1px 8px;
-    font-size: 10px;
+    font-size: var(--font-2xs);
     font-weight: 700;
     letter-spacing: 0.02em;
     white-space: nowrap;
@@ -323,7 +323,7 @@
        an 80px-tall empty zone can't contain a ~270px card's center, so drops
        into empty columns were snapping back. */
     min-height: 60vh;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 4px 2px;
     outline: none;
   }
@@ -340,8 +340,8 @@
     text-align: center;
     color: var(--text-faint);
     border: 2px dashed var(--border);
-    border-radius: 8px;
-    font-size: 12px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-sm);
     pointer-events: none;
   }
 
@@ -350,9 +350,9 @@
     background: transparent;
     border: 1px dashed var(--border);
     color: var(--text-faint);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 5px 10px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 600;
     margin-bottom: 8px;
     min-height: 0;
@@ -364,14 +364,14 @@
   .qa-row input {
     width: 100%;
     box-sizing: border-box;
-    font-size: 12px;
+    font-size: var(--font-sm);
     padding: 6px 9px;
     border: 1px solid var(--primary);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--card-bg);
     color: var(--text-body);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+    box-shadow: var(--focus-halo);
   }
 
   @media (max-width: 768px) {

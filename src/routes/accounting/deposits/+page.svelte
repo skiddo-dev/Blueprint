@@ -141,8 +141,8 @@
     display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;
     padding: 12px 16px; border-top: 1px solid var(--border-soft);
   }
-  .deposit-bar .total { font-size: 13px; color: var(--text-body); margin-right: auto; align-self: center; }
-  .deposit-bar label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
+  .deposit-bar .total { font-size: var(--font-base); color: var(--text-body); margin-right: auto; align-self: center; }
+  .deposit-bar label { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-sm); font-weight: 600; color: var(--text-body); }
   .deposit-bar .grow { flex: 1; min-width: 140px; }
   .pad-x { padding: 0 16px 12px; }
   tr.voided { opacity: 0.55; }

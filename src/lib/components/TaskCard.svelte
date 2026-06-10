@@ -191,7 +191,7 @@
   .card {
     background: var(--card-bg);
     border: 1px solid var(--border-card);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     padding: 10px 12px;
     margin-bottom: 8px;
     position: relative;
@@ -210,7 +210,7 @@
   }
   .card.selected {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+    box-shadow: var(--focus-ring);
   }
 
   /* Multi-select toggle: top-right beside the drag handle (the title already
@@ -223,10 +223,10 @@
     width: 18px;
     height: 18px;
     border: 1.5px solid var(--border);
-    border-radius: 5px;
+    border-radius: var(--radius-sm);
     background: var(--card-bg);
     color: #fff;
-    font-size: 12px;
+    font-size: var(--font-sm);
     line-height: 1;
     padding: 0;
     min-height: 0;
@@ -253,19 +253,19 @@
     right: 2px;
     padding: 6px 8px;
     color: var(--text-faint);
-    font-size: 15px;
+    font-size: var(--font-lg);
     line-height: 1;
     letter-spacing: -2px;
     user-select: none;
     cursor: grab;
     /* touch starting on the handle initiates a drag instead of scrolling */
     touch-action: none;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
   }
   .drag-hint:active { cursor: grabbing; }
 
   .title {
-    font-size: 13px;
+    font-size: var(--font-base);
     font-weight: 600;
     color: var(--text);
     line-height: 1.4;
@@ -283,9 +283,9 @@
     background: var(--store-chip);
     color: #fff;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 2px 7px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
     font-family: inherit;
@@ -296,14 +296,14 @@
   .store-tag:hover { background: var(--store-chip-hover); }
   .store-tag.active {
     background: var(--primary);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+    box-shadow: var(--focus-ring);
   }
 
   /* Hidden by an active filter (kept in the DOM/dnd list, just not shown). */
   .card-hidden { display: none; }
 
   .desc {
-    font-size: 12px;
+    font-size: var(--font-sm);
     color: var(--text-muted);
     margin-bottom: 7px;
     line-height: 1.45;
@@ -325,19 +325,19 @@
   .chip {
     background: var(--chip-bg);
     color: var(--primary-text);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 2px 9px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 500;
   }
   .co-count { font-weight: 700; opacity: 0.85; }
-  .unassigned { font-size: 11px; color: var(--text-faint); }
+  .unassigned { font-size: var(--font-xs); color: var(--text-faint); }
   .due-chip {
-    font-size: 11px;
+    font-size: var(--font-xs);
     color: var(--text-soft);
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 2px 8px;
     white-space: nowrap;
   }
@@ -352,12 +352,12 @@
   /* Aging: the card has sat in this column past the warn threshold (amber),
      then the alert threshold (rose). Same calm tone family as overdue. */
   .aging-chip {
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 600;
     color: #92670e;
     background: transparent;
     border: 1px solid var(--warning-border);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 2px 8px;
     white-space: nowrap;
   }
@@ -369,20 +369,20 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 600;
     color: var(--text-soft);
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 2px 8px;
     white-space: nowrap;
   }
   .qs-badge {
     display: inline-block;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 0 6px;
-    font-size: 10px;
+    font-size: var(--font-2xs);
     font-weight: 700;
     letter-spacing: 0.02em;
   }
@@ -391,9 +391,9 @@
     background: var(--success-bg);
     color: var(--success);
     border: 1px solid var(--success-border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 2px 8px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
     letter-spacing: 0.02em;
     white-space: nowrap;
@@ -406,7 +406,7 @@
     min-width: 0;
   }
   .source {
-    font-size: 11px;
+    font-size: var(--font-xs);
     color: var(--text-faint);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -414,17 +414,17 @@
     min-width: 0;
     flex: 1 1 auto;
   }
-  .created { font-size: 11px; color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }
+  .created { font-size: var(--font-xs); color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }
   .counts { display: inline-flex; gap: 5px; flex-shrink: 0; }
-  .count { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+  .count { font-size: var(--font-xs); color: var(--text-faint); white-space: nowrap; }
   .count.cl-complete { color: var(--success-vivid); font-weight: 600; }
 
   @media (max-width: 768px) {
     .card:hover { transform: none; box-shadow: var(--shadow); }
     /* Finger-sized drag handle. */
-    .drag-hint { padding: 11px 13px; font-size: 17px; }
+    .drag-hint { padding: 11px 13px; font-size: var(--font-xl); }
     /* No hover on touch: keep the select toggle visible and finger-sized,
        clear of the enlarged drag handle. */
-    .select-box { opacity: 1; width: 24px; height: 24px; font-size: 15px; right: 48px; }
+    .select-box { opacity: 1; width: 24px; height: 24px; font-size: var(--font-lg); right: 48px; }
   }
 </style>

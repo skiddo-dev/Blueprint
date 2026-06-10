@@ -25,15 +25,15 @@
   .feed { list-style: none; margin: 0; padding: 0; }
   .feed li {
     display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap;
-    padding: 7px 0; border-bottom: 1px solid var(--border-soft); font-size: 13px;
+    padding: 7px 0; border-bottom: 1px solid var(--border-soft); font-size: var(--font-base);
   }
   .feed li:last-child { border-bottom: none; }
-  .when { font-family: var(--mono, ui-monospace, monospace); font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .when { font-family: var(--mono, ui-monospace, monospace); font-size: var(--font-sm); color: var(--text-muted); white-space: nowrap; }
   .chip {
-    font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px;
+    font-size: var(--font-xs); font-weight: 600; padding: 1px 7px; border-radius: var(--radius-pill);
     background: var(--surface-2, rgba(127,127,127,0.12)); color: var(--text-body); white-space: nowrap;
   }
   .what { color: var(--text-body); flex: 1; min-width: 200px; }
-  .who { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
-  .empty { color: var(--text-muted); font-size: 13px; }
+  .who { font-size: var(--font-sm); color: var(--text-muted); white-space: nowrap; }
+  .empty { color: var(--text-muted); font-size: var(--font-base); }
 </style>

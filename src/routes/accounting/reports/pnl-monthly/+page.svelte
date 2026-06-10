@@ -78,11 +78,11 @@
 
 <style>
   .quick-picks { display: flex; gap: 6px; flex-wrap: wrap; }
-  .quick-picks .btn-secondary { padding: 7px 11px; font-size: 12px; border-radius: 999px; }
+  .quick-picks .btn-secondary { padding: 7px 11px; font-size: var(--font-sm); border-radius: var(--radius-pill); }
   .quick-picks .btn-secondary.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-  tr.sec td { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; padding-top: 14px; border-bottom: none; }
+  tr.sec td { font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; padding-top: 14px; border-bottom: none; }
   tr.subtotal td { font-weight: 700; color: var(--text); border-top: 1px solid var(--border); }
-  tr.net td { font-weight: 800; color: var(--success); border-top: 2px solid var(--border); font-size: 14px; }
+  tr.net td { font-weight: 800; color: var(--success); border-top: 2px solid var(--border); font-size: var(--font-md); }
   tr.net td.loss { color: var(--danger); }
   td.strong { font-weight: 600; }
   .acct-cell { color: var(--text-body); text-decoration: none; }

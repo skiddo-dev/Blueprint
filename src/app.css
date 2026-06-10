@@ -4,7 +4,7 @@
 html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
                Arial, system-ui, sans-serif;
-  font-size: 14px;
+  font-size: var(--font-md);
   background: var(--bg);
   color: var(--text);
   height: 100%;
@@ -59,14 +59,61 @@ html, body {
   --danger-bg: #fee2e2;
   --danger-bg-subtle: #fef2f2;
   --danger-border: #fecaca;
+  --info: #1d4ed8;
+  --info-bg: #dbeafe;
 
   /* Fixed accents — same in both themes (white-on-navy store chips). */
   --store-chip: #1e3a8a;
   --store-chip-hover: #1e40af;
 
+  /* Radius scale — sm: micro controls inside controls · md: buttons, inputs,
+     square-ish chips · lg: cards, panels, popovers · xl: modals, sheets, hero
+     cards · pill: fully-round chips/pills. (Deliberate non-scale values:
+     50% circles, 3px micro bars, 0.) */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* Type scale — size-named; roles in docs/design-system.md.
+     2xs micro badges · xs chips/meta · sm secondary text, labels, table heads ·
+     base body + controls · md emphasized body / root default · lg card &
+     section headings · xl sub-titles, empty-state heads · 2xl page titles ·
+     3xl display numerals. 16px stays literal ONLY as the iOS no-zoom input
+     floor in mobile media queries (platform threshold, not a design choice). */
+  --font-2xs: 10px;
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-base: 13px;
+  --font-md: 14px;
+  --font-lg: 16px;
+  --font-xl: 18px;
+  --font-2xl: 22px;
+  --font-3xl: 28px;
+
+  /* Z layers — every positioned layer in the app, lowest to highest. Backdrops
+     sit at calc(layer - 1). Local stacking inside a component (0/2/5) stays
+     literal. */
+  --z-topbar: 20;  /* sticky toolbars / mobile top bar */
+  --z-popover: 30; /* dropdown panels (board filters) */
+  --z-drawer: 40;  /* nav drawer */
+  --z-bar: 50;     /* floating bulk-action bar */
+  --z-sheet: 60;   /* detail sheet, search palette, page modals */
+  --z-modal: 70;   /* top-level dialogs (new task) */
+
   /* Effects (themed) — referenced so dark mode can soften/strengthen them. */
   --shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
   --shadow-hover: 0 6px 20px rgba(15, 23, 42, 0.11);
+  --shadow-pop: 0 8px 28px rgba(15, 23, 42, 0.16);    /* popovers / dropdowns */
+  --shadow-modal: 0 20px 60px rgba(15, 23, 42, 0.25); /* modals / sheets */
+  --shadow-drawer: 4px 0 20px rgba(15, 23, 42, 0.12); /* mobile nav drawer */
+  --shadow-sheet: -12px 0 40px rgba(15, 23, 42, 0.18); /* right-side detail sheet */
+  --focus-halo: 0 0 0 3px rgba(99, 102, 241, 0.12);   /* focused input */
+  --focus-ring: 0 0 0 2px rgba(99, 102, 241, 0.35);   /* selected element */
+  /* Primary-button elevation glow — indigo reads on both themes, no dark override. */
+  --glow-primary: 0 2px 8px rgba(99, 102, 241, 0.35);
+  --glow-primary-hover: 0 4px 14px rgba(99, 102, 241, 0.45);
   --backdrop: rgba(15, 23, 42, 0.4);   /* drawer / modal overlay */
   --chip-bg: #e0e7ff;                  /* indigo chips, mentions, role badge */
   --scrollbar-thumb: #cbd5e1;
@@ -98,6 +145,12 @@ html, body {
 
   --shadow: 0 1px 4px rgba(0, 0, 0, 0.40);
   --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.6);
+  --shadow-drawer: 4px 0 20px rgba(0, 0, 0, 0.5);
+  --shadow-sheet: -12px 0 40px rgba(0, 0, 0, 0.55);
+  --focus-halo: 0 0 0 3px rgba(129, 140, 248, 0.2);
+  --focus-ring: 0 0 0 2px rgba(129, 140, 248, 0.45);
   --backdrop: rgba(0, 0, 0, 0.6);
   --chip-bg: #3730a3;
   --scrollbar-thumb: #475569;
@@ -113,6 +166,8 @@ html, body {
   --danger-bg: #3f1d1d;
   --danger-bg-subtle: #2d1818;
   --danger-border: #7f1d1d;
+  --info: #93c5fd;
+  --info-bg: #1e3a5f;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -122,9 +177,9 @@ html, body {
 button {
   cursor: pointer;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-base);
   font-weight: 500;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   border: 1px solid transparent;
   padding: 7px 14px;
   transition: all 0.15s ease;
@@ -141,17 +196,17 @@ button.primary, .btn-primary {
   background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
   color: #fff;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   padding: 7px 14px;
-  font-size: 13px;
+  font-size: var(--font-base);
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(99,102,241,0.35);
+  box-shadow: var(--glow-primary);
 }
 button.primary:hover:not(:disabled), .btn-primary:hover:not(:disabled) {
-  box-shadow: 0 4px 14px rgba(99,102,241,0.45);
+  box-shadow: var(--glow-primary-hover);
   transform: translateY(-1px);
 }
 button.secondary, .btn-secondary {
@@ -161,9 +216,9 @@ button.secondary, .btn-secondary {
   gap: 6px;
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   padding: 7px 14px;
-  font-size: 13px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--text-body);
   text-decoration: none;
@@ -190,9 +245,9 @@ input[type="email"],
 textarea,
 select {
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-base);
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   padding: 6px 10px;
   background: var(--card-bg);
   color: var(--text-body);
@@ -202,7 +257,7 @@ select {
 }
 input:focus, textarea:focus, select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+  box-shadow: var(--focus-halo);
 }
 textarea { resize: vertical; min-height: 60px; }
 
@@ -231,7 +286,7 @@ details summary::-webkit-details-marker { display: none; }
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 :focus:not(:focus-visible) { outline: none; }
 
@@ -242,7 +297,7 @@ details summary::-webkit-details-marker { display: none; }
   0%   { box-shadow: 0 0 0 3px var(--primary); }
   100% { box-shadow: 0 0 0 3px transparent; }
 }
-.search-flash { animation: search-flash 2.4s ease-out; border-radius: 10px; }
+.search-flash { animation: search-flash 2.4s ease-out; border-radius: var(--radius-lg); }
 @media (prefers-reduced-motion: reduce) { .search-flash { animation: none; } }
 
 /* A card another user just changed (poll reconciliation, see KanbanBoard) —
@@ -286,7 +341,7 @@ details summary::-webkit-details-marker { display: none; }
     gap: 8px;
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: var(--z-topbar);
     margin: 0 -0.5rem 8px; /* bleed to the screen edges past .main-content padding */
     padding: 6px 0.5rem 10px;
     padding-top: max(6px, env(safe-area-inset-top));
@@ -301,15 +356,15 @@ details summary::-webkit-details-marker { display: none; }
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: var(--font-xl);
     line-height: 1;
     color: var(--text-soft);
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
   }
   .topbar-title {
-    font-size: 15px;
+    font-size: var(--font-lg);
     font-weight: 700;
     color: var(--text);
     white-space: nowrap;

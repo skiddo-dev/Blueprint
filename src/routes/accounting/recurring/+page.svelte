@@ -93,7 +93,7 @@
 
 <style>
   tr.paused td { opacity: 0.6; }
-  .result { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .result { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-sm); }
   .row-actions { text-align: right; white-space: nowrap; }
-  .run-msg { font-size: 13px; font-weight: 600; color: var(--success); margin: 0 0 10px; }
+  .run-msg { font-size: var(--font-base); font-weight: 600; color: var(--success); margin: 0 0 10px; }
 </style>
