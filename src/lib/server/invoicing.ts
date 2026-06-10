@@ -15,6 +15,8 @@ import { env } from '$env/dynamic/private'
 import { getDb } from './db'
 import { withTxn } from './txn'
 import { postEntry, postReversal } from './accounting'
+import { writeAudit } from './audit'
+import { usd } from '$lib/accounting/format'
 import { cents, type Cents } from '$lib/money'
 import {
   invoiceTotals, invoiceStatus, invoiceJournalLines, paymentJournalLines, dueDate, buildAging,
@@ -45,7 +47,7 @@ export interface CustomerWithStats extends Customer {
 /** Customers with their AR rollup (invoice count, total invoiced, outstanding). */
 /** Update a customer's name/email. A name change propagates to the denormalized
  *  customer_name on their invoices. Returns false if no such customer. */
-export async function updateCustomer(id: string, patch: { name?: string; email?: string }): Promise<boolean> {
+export async function updateCustomer(id: string, patch: { name?: string; email?: string }, actor?: string): Promise<boolean> {
   const d = await getDb()
   const set: Record<string, unknown> = {}
   const unset: Record<string, unknown> = {}
@@ -63,6 +65,16 @@ export async function updateCustomer(id: string, patch: { name?: string; email?:
   if (Object.keys(unset).length) update.$unset = unset
   const res = await col('customers', d).updateOne({ _id: id }, update)
   if (set.name) await col('invoices', d).updateMany({ customer_id: id }, { $set: { customer_name: set.name } })
+  if (res.matchedCount > 0) {
+    const fields = [...Object.keys(set), ...Object.keys(unset)].filter((k) => k !== 'name_lower')
+    await writeAudit({
+      actor: actor ?? 'system',
+      action: 'customer.update',
+      entity_type: 'customer',
+      entity_id: id,
+      summary: `Customer updated (${fields.join(', ')})${set.name ? ` — ${set.name}` : ''}`,
+    })
+  }
   return res.matchedCount > 0
 }
 
@@ -181,6 +193,13 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
       },
       { session },
     )
+    await writeAudit({
+      actor: input.created_by ?? 'system',
+      action: 'invoice.create',
+      entity_type: 'invoice',
+      entity_id: invoice._id,
+      summary: `Invoice #${year}-${number} — ${usd(total)} — ${customer.name}`,
+    }, { session })
     return invoice
   })
 }
@@ -254,6 +273,14 @@ export async function recordPayment(
       },
       { session },
     )
+    await writeAudit({
+      actor: opts.created_by ?? 'system',
+      action: 'payment.record',
+      entity_type: 'invoice',
+      entity_id: invoiceId,
+      summary: `Payment ${usd(amount)} on Invoice #${inv.number} — ${inv.customer_name}`,
+      meta: { payment_id: payment._id },
+    }, { session })
     return { payment, invoice: { ...inv, _id: String(inv._id), paid: newPaid, balance: newBalance, status } as Invoice }
   })
 }
@@ -354,6 +381,14 @@ export async function createCreditMemo(
       },
       { session },
     )
+    await writeAudit({
+      actor: opts.created_by ?? 'system',
+      action: 'credit-memo.create',
+      entity_type: 'invoice',
+      entity_id: invoiceId,
+      summary: `Credit memo #${number} ${usd(amount)} on Invoice #${inv.number} — ${inv.customer_name}`,
+      meta: { credit_id: credit._id },
+    }, { session })
     return { credit, invoice: { ...inv, _id: String(inv._id), credited, balance: newBalance, status } as Invoice }
   })
 }
@@ -370,18 +405,28 @@ export async function voidInvoice(invoiceId: string, opts: { created_by?: string
   if (((inv.credited as number) ?? 0) > 0) throw new Error('Cannot void an invoice with credit memos applied')
 
   const entry = await col('journalEntries', d).findOne({ source: 'invoice', source_ref: invoiceId })
+  let reversalId: string | undefined
   if (entry) {
-    await postReversal(String(entry._id), {
+    const reversal = await postReversal(String(entry._id), {
       date: new Date().toISOString().slice(0, 10),
       memo: `Void — Invoice #${inv.number}, ${inv.customer_name}`,
       ...(opts.created_by ? { created_by: opts.created_by } : {}),
     })
+    reversalId = reversal._id
   }
   const now = new Date().toISOString()
   await col('invoices', d).updateOne(
     { _id: invoiceId },
     { $set: { status: 'void', balance: 0, updated_at: now } },
   )
+  await writeAudit({
+    actor: opts.created_by ?? 'system',
+    action: 'invoice.void',
+    entity_type: 'invoice',
+    entity_id: invoiceId,
+    summary: `Void Invoice #${inv.number} — ${inv.customer_name}`,
+    ...(reversalId ? { meta: { reversal_entry_id: reversalId } } : {}),
+  })
   return { ...inv, _id: String(inv._id), status: 'void', balance: 0 } as Invoice
 }
 

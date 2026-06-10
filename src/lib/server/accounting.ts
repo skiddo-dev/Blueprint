@@ -4,6 +4,7 @@
 import type { ClientSession } from 'mongodb'
 import { env } from '$env/dynamic/private'
 import { getDb, getMeta, setMeta } from './db'
+import { writeAudit } from './audit'
 import { DEFAULT_CHART_OF_ACCOUNTS } from '$lib/accounting/coa'
 import { buildReversingEntry, periodOf, validateEntry } from '$lib/accounting/ledger'
 import { isPeriodClosed, type Balance, type PeriodBalance } from '$lib/accounting/statements'
@@ -287,5 +288,13 @@ export async function closeBooks(
     })
   }
   await setCloseThrough(through)
+  await writeAudit({
+    actor: created_by ?? 'system',
+    action: 'close.books',
+    entity_type: 'close',
+    entity_id: through,
+    summary: `Closed the books through ${through}${entry ? '' : ' (nothing to close — re-locked)'}`,
+    ...(entry ? { meta: { closing_entry_id: entry._id } } : {}),
+  })
   return { posted: lines.length > 0, entry, closedThrough: through }
 }

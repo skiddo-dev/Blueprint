@@ -33,6 +33,9 @@ export async function ensureAccountingIndexes(d: Db): Promise<void> {
     col(d, 'bills').createIndex({ vendor_id: 1 }),
     col(d, 'billPayments').createIndex({ bill_id: 1 }),        // payments for a bill
     col(d, 'reconciliations').createIndex({ account_id: 1, statement_date: -1 }), // bank rec history
+
+    col(d, 'auditLog').createIndex({ entity_type: 1, entity_id: 1, at: -1 }), // per-document activity feed
+    col(d, 'auditLog').createIndex({ at: -1 }),                               // the audit page's newest-first scan
   ])
 }
 

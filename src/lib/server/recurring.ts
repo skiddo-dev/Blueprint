@@ -14,6 +14,7 @@ import { advanceDate } from '$lib/accounting/recurring'
 import { validateEntry } from '$lib/accounting/ledger'
 import type { JournalLine, RecurringTemplate } from '$lib/accounting/types'
 import { log } from './log'
+import { writeAudit } from './audit'
 
 const USE_MOCK = env.USE_MOCK_DATA === 'true'
 const MAX_CATCHUP = 24 // missed occurrences materialized per template per tick
@@ -63,19 +64,44 @@ export async function createTemplate(input: {
   }
   const d = await getDb()
   await col('recurringTemplates', d).insertOne(t)
+  await writeAudit({
+    actor: input.created_by ?? 'system',
+    action: 'recurring-template.create',
+    entity_type: 'recurring-template',
+    entity_id: t._id,
+    summary: `Recurring ${t.type} "${t.name}" — first run ${t.next_date}`,
+  })
   return t
 }
 
-export async function setTemplateActive(id: string, active: boolean): Promise<boolean> {
+export async function setTemplateActive(id: string, active: boolean, actor?: string): Promise<boolean> {
   const d = await getDb()
-  const r = await col('recurringTemplates', d).updateOne({ _id: id }, { $set: { active } })
-  return r.matchedCount > 0
+  const r = await col('recurringTemplates', d).findOneAndUpdate({ _id: id }, { $set: { active } })
+  if (r) {
+    await writeAudit({
+      actor: actor ?? 'system',
+      action: active ? 'recurring-template.resume' : 'recurring-template.pause',
+      entity_type: 'recurring-template',
+      entity_id: id,
+      summary: `${active ? 'Resumed' : 'Paused'} recurring "${r.name}"`,
+    })
+  }
+  return !!r
 }
 
-export async function deleteTemplate(id: string): Promise<boolean> {
+export async function deleteTemplate(id: string, actor?: string): Promise<boolean> {
   const d = await getDb()
-  const r = await col('recurringTemplates', d).deleteOne({ _id: id })
-  return r.deletedCount > 0
+  const r = await col('recurringTemplates', d).findOneAndDelete({ _id: id })
+  if (r) {
+    await writeAudit({
+      actor: actor ?? 'system',
+      action: 'recurring-template.delete',
+      entity_type: 'recurring-template',
+      entity_id: id,
+      summary: `Deleted recurring "${r.name}" (posted documents stay in the books)`,
+    })
+  }
+  return !!r
 }
 
 async function materialize(t: RecurringTemplate, date: string): Promise<string> {
@@ -90,7 +116,7 @@ async function materialize(t: RecurringTemplate, date: string): Promise<string> 
     return `bill ${bill.year}-${String(bill.number).padStart(4, '0')}`
   }
   const p = t.payload as JournalPayload
-  await postEntry({
+  const entry = await postEntry({
     date,
     memo: p.memo ?? t.name,
     source: 'manual',
@@ -98,6 +124,15 @@ async function materialize(t: RecurringTemplate, date: string): Promise<string> 
     ...(p.job ? { job: p.job } : {}),
     lines: p.lines,
     created_by: `recurring:${t.name}`,
+  })
+  // Invoice/bill templates audit through createInvoice/createBill; the journal
+  // path posts directly, so it logs its own event here.
+  await writeAudit({
+    actor: `recurring:${t.name}`,
+    action: 'journal-entry.create',
+    entity_type: 'journal-entry',
+    entity_id: entry._id,
+    summary: `Recurring journal "${t.name}" posted for ${date}`,
   })
   return `journal entry ${date}`
 }

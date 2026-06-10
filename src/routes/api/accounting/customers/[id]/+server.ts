@@ -19,7 +19,7 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
   const ok = await updateCustomer(params.id, {
     name: body.name !== undefined ? String(body.name) : undefined,
     email: body.email !== undefined ? String(body.email) : undefined,
-  })
+  }, (user.email as string) ?? (user.displayName as string))
   if (!ok) throw error(404, 'Customer not found')
   return json({ ok: true })
 }

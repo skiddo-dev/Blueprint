@@ -51,6 +51,7 @@
     ] },
     { label: 'Reports', items: [
       { href: '/accounting/reports', ico: '📊', label: 'Reports' },
+      { href: '/accounting/audit', ico: '🛡️', label: 'Audit log' },
     ] },
     { label: 'Banking', items: [
       { href: '/accounting/reconcile', ico: '✅', label: 'Reconcile' },
