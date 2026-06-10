@@ -213,3 +213,22 @@ export interface VendorCredit {
   created_by?: string
   created_at: string
 }
+
+// A recurring-transaction template: the engine materializes a real invoice /
+// bill / journal entry each time next_date comes due, then advances it.
+import type { RecurrenceCadence } from './recurring'
+
+export interface RecurringTemplate {
+  _id: string
+  type: 'invoice' | 'bill' | 'journal'
+  name: string
+  cadence: RecurrenceCadence
+  next_date: string        // ISO YYYY-MM-DD — the next occurrence to post
+  end_date?: string        // stop after this date (inclusive)
+  payload: unknown         // parsed create-input for the type (amounts in cents)
+  active: boolean
+  last_run?: string        // ISO timestamp of the last engine attempt
+  last_result?: string     // 'ok: <doc ref>' or the error message
+  created_by?: string
+  created_at: string
+}

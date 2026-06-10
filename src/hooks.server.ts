@@ -7,6 +7,7 @@ import { ensureGraphSubscriptions } from '$lib/server/graphSubscription'
 import { runEmailSync } from '$lib/server/emailSync'
 import { purgeExpiredAttachmentData, getMeta, setMeta, tryAcquireLease, releaseLease } from '$lib/server/db'
 import { log } from '$lib/server/log'
+import { runRecurring } from '$lib/server/recurring'
 import { building } from '$app/environment'
 import { missingProdEnv } from '$lib/server/config'
 
@@ -166,6 +167,14 @@ function startBackgroundJobs() {
       await runRetention()
     } catch (e) {
       log.error('background job failed', { label, error: e instanceof Error ? e.message : String(e) })
+    }
+    // Books recurrence is isolated from the email pipeline: a failing template
+    // must never block sync, and vice versa. Claims are atomic, so an extra
+    // tick (multiple replicas, manual Run-now) can't double-post.
+    try {
+      await runRecurring(new Date().toISOString().slice(0, 10))
+    } catch (e) {
+      log.error('recurring engine failed', { label, error: e instanceof Error ? e.message : String(e) })
     }
   }
   setTimeout(() => run('boot'), 15_000) // shortly after boot: create the subscription + initial sync
