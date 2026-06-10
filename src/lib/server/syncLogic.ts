@@ -190,19 +190,28 @@ export function buildThreadPatch(
 }
 
 /** Merge a parsed attachment into a task. Fills po/quote/stores ONLY where the
- *  task is still empty. Returns null when the document yielded nothing useful (so
- *  we don't spam the timeline with "read a file that told us nothing"). `current`
- *  is the task's running field state (so several attachments on one email stack
- *  correctly). */
+ *  task is still empty, and — when the model judged the document pertinent —
+ *  appends its one-line summary to the card description (never replaces what's
+ *  there, and skips files the description already mentions so a re-attached file
+ *  on a thread reply can't stack duplicates). Returns null when the document
+ *  yielded nothing useful (so we don't spam the timeline with "read a file that
+ *  told us nothing"). `current` is the task's running field state (so several
+ *  attachments on one email stack correctly). */
 export function buildAttachmentPatch(
-  current: { po?: string | null; quote?: string | null; quote_status?: string | null; store_numbers?: string[] },
+  current: { po?: string | null; quote?: string | null; quote_status?: string | null; store_numbers?: string[]; description?: string | null },
   doc: ParsedDoc,
   filename: string,
 ): { set: Record<string, unknown>; timelineEntry: TimelineEntry } | null {
   const union = normalizeStoreNumbers([...(current.store_numbers ?? []), ...doc.store_numbers])
   const newStores = union.length !== (current.store_numbers?.length ?? 0)
 
-  if (!doc.po && !doc.amount && !newStores) return null
+  const summary = doc.summary.trim().slice(0, 160)
+  const desc = (current.description ?? '').trim()
+  const blurb = doc.pertinent && summary && !desc.includes(filename)
+    ? `📎 ${filename}${doc.doc_type ? ` (${doc.doc_type})` : ''}: ${summary}`
+    : null
+
+  if (!doc.po && !doc.amount && !newStores && !blurb) return null
 
   const set: Record<string, unknown> = {}
   if (doc.po && !current.po) set.po = doc.po
@@ -211,12 +220,14 @@ export function buildAttachmentPatch(
     if (!current.quote_status) set.quote_status = 'Draft'
   }
   if (newStores) set.store_numbers = union
+  if (blurb) set.description = desc ? `${desc}\n\n${blurb}` : blurb
 
   const found = [doc.po && `PO ${doc.po}`, doc.amount].filter(Boolean).join(' — ')
+  const detail = found || (blurb ? summary : '')
   const timelineEntry: TimelineEntry = {
     at: new Date().toISOString(),
     kind: 'attachment',
-    text: `📎 ${filename}${found ? `: ${found}` : ` (${doc.doc_type ?? 'document'})`}`.slice(0, 160),
+    text: `📎 ${filename}${detail ? `: ${detail}` : ` (${doc.doc_type ?? 'document'})`}`.slice(0, 160),
   }
   return { set, timelineEntry }
 }
