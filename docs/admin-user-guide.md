@@ -15,7 +15,7 @@ the five admin-only workspaces — **Dashboard**, **Quote Generator**,
 
 ## 1. Signing in & who is an admin
 
-1. Open Blueprint and click **🔐 Sign in with Microsoft** (your company account).
+1. Open Blueprint and click **Sign in with Microsoft** (your company account).
 2. You land on the **Kanban Board** with the full sidebar and nav.
 
 You have admin rights if **either**:
@@ -173,30 +173,30 @@ threshold for the win-rate charts), **Estimator**, and **Work type**. Use:
 - **⬇ Export CSV** — exports the currently filtered quotes.
 - **Reset** — clears filters back to defaults.
 
-**💰 Quote Summary** — headline metrics: **Win Rate**, **Won Value**, **Open
+**Quote Summary** — headline metrics: **Win Rate**, **Won Value**, **Open
 Pipeline**, **Expected** (open × win rate), **Total Quoted**, **Quotes**, and the
 current-year **Projected (FY)**.
 
-**📈 Insights** — charts: Win Rate by Estimator, Win Rate by Work Type, Won vs
+**Insights** — charts: Win Rate by Estimator, Win Rate by Work Type, Won vs
 Lost by Deal Size, Quote Pipeline by Stage, Growth (Quoted vs Won by Year with a
 win-rate line), Value Concentration by Estimator (Pareto), Top Stores by Value,
 Quotes by Month (seasonality), and Total Quote Value by Type.
 
-**🥇 Estimator Scorecards** — per-estimator quotes, win %, average deal, top work
+**Estimator Scorecards** — per-estimator quotes, win %, average deal, top work
 type, and total value.
 
-**🏬 Account Intelligence** — per-store quote count, value, win %, and last
+**Account Intelligence** — per-store quote count, value, win %, and last
 quoted, with **⚠ at-risk** flags (≥3 decided and winning under 40%) and a
 repeat-vs-first-time win-rate summary.
 
-**🧾 Needs Review** — quotes that have a **PO but aren't marked Won** yet — your
+**Needs Review** — quotes that have a **PO but aren't marked Won** yet — your
 follow-up list.
 
-**🧾 Quote Tracker** — the working list. Flip each quote between **open / won /
+**Quote Tracker** — the working list. Flip each quote between **open / won /
 lost**; the change saves immediately and every chart and metric above updates
 with it. Filter the list by **open / won / lost / all**.
 
-**📋 Raw Task Data** — the underlying task rows.
+**Raw Task Data** — the underlying task rows.
 
 ---
 
