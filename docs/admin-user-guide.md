@@ -135,6 +135,10 @@ parsing the date, assignee, quote, and a summary with AI, and attaching any file
 
 A newly synced task carries its **source** (📩 sender), the parsed fields, the
 **📥 inbox** chip, and a **📄 Full Email** view; attachments appear under **📎**.
+When an attachment is **pertinent to the work** — a bill, a schedule, even a
+scanned image — the AI reads it too and appends the key details to the card's
+summary, marked with **📎**, so nobody has to open the file to know what's in it.
+(Files you upload by hand are *not* auto-analyzed.)
 
 > **Flag-time cutoff.** To avoid back-importing years of old flagged mail, Blueprint
 > only syncs messages **flagged on or after a configured cutoff date** (set at deploy
@@ -195,14 +199,26 @@ Create a professional **proposal PDF** matching the RAVES Construction template.
 Each one you generate is **auto-logged** (with a sequential Quote #/year) into the
 quote log, so it immediately feeds the **Dashboard** analytics above.
 
-1. **Client & Job** — **Customer Name** *(the only required field)*, Store #,
-   Point of Contact (with suggestions), Work Type (with suggestions), and Amount
-   (shows a live formatted preview).
-2. **Timeline & PO** — Date Sent, Bid Due Date (warns if it's before the send
-   date), PO, and a **Sitefolio** checkbox.
-3. **Scope of Work** — Description (prints on the PDF) and optional Notes.
-4. Click **📄 Generate Proposal PDF**, then **📥 Download PDF**. Use **Regenerate**
-   after edits, or **Clear** to start over.
+The form is grouped into four sections:
+
+1. **Client & project** — **Customer** *(the only required field)*, Store #,
+   Point of Contact (with suggestions), and Work Type (with suggestions).
+2. **Schedule & references** — Date Sent, Bid Due Date, optional PO, and a
+   **Sitefolio** checkbox.
+3. **Pricing** — two switches control **what prints in the proposal's cost box**:
+   - **Labor cost** — prints a labor line (plus a materials line when you enter
+     one). Switching it on reveals **Labor** and **Materials** fields, and the
+     total auto-fills from labor + materials until you type your own.
+   - **Total cost** — prints the total / amount line.
+
+   A live **"Proposal cost box"** preview on the right shows *exactly* what the
+   customer will see — including nothing at all if both switches are off.
+   Whatever you choose, the **total quoted amount is always logged** to the quote
+   log and Dashboard; the switches only change what the customer sees.
+4. **Scope of work** — Description of work (prints on the PDF) and optional Notes.
+
+Click **Generate proposal PDF**, then **⬇ Download proposal PDF**. Use
+**Regenerate proposal** after edits.
 
 ---
 
@@ -436,7 +452,7 @@ for the details:
 | **📥 Import Tasks (CSV)** | Bulk-create tasks from a spreadsheet |
 | **⚠️ Clear All Tasks** | Permanently delete all tasks |
 | **📊 Dashboard** | Quote analytics, win rates, pipeline |
-| **💰 Quote Generator** | Proposal PDFs (auto-logged to analytics) |
+| **💰 Quote Generator** | Proposal PDFs with labor/total print toggles (auto-logged to analytics) |
 | **📒 Accounting** | Blueprint Books — invoices/A-R, bills/A-P, statements, reconciliation, period close |
 | **🏭 Prospects** | Warehouse lead pipeline + map (live OSM + county data) |
 | **🗺️ Competitive Landscape** | Embedded market sheet |
