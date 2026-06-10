@@ -25,6 +25,14 @@ export const newTaskSchema = z.object({
   store_numbers: z.array(z.string().max(20)).max(50).optional(),
 })
 
+// Bulk action over selected cards. `value` carries the target status (action
+// 'status') or assignee name (action 'assign'); archive/delete take none.
+export const bulkTaskSchema = z.object({
+  ids: z.array(z.string().trim().min(1).max(100)).min(1).max(200),
+  action: z.enum(['status', 'assign', 'archive', 'delete']),
+  value: z.string().max(120).optional(),
+})
+
 // Drag-drop move: target column + the card's new fractional rank within it.
 // The charset/no-trailing-'0' rules mirror $lib/rank's invariants — a crafted
 // rank can't corrupt a column beyond misplacing this one card, but there's no

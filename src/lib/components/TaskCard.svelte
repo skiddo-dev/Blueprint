@@ -13,6 +13,9 @@
     task,
     onOpen,
     onStoreFilter,
+    onNavigate,
+    onToggleSelect,
+    selected = false,
     activeStores = [],
     hidden = false,
     isAdmin = false,
@@ -20,6 +23,9 @@
     task: Task
     onOpen: (id: string) => void
     onStoreFilter?: (n: string) => void
+    onNavigate?: (id: string, dir: 'up' | 'down' | 'left' | 'right') => void
+    onToggleSelect?: (id: string) => void
+    selected?: boolean
     activeStores?: string[]
     hidden?: boolean
     isAdmin?: boolean
@@ -69,10 +75,20 @@
 
   // Open the sheet from a click or keyboard activation anywhere on the face —
   // except the drag handle and the store-tag buttons (they stopPropagation).
+  // Arrow keys walk the board (handled by KanbanBoard, which knows the visible
+  // order); only when the card itself is focused, so inner controls keep theirs.
+  const ARROWS: Record<string, 'up' | 'down' | 'left' | 'right'> = {
+    ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+  }
   function activate(e: KeyboardEvent) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       onOpen(task._id)
+      return
+    }
+    if (onNavigate && ARROWS[e.key] && e.target === e.currentTarget) {
+      e.preventDefault()
+      onNavigate(task._id, ARROWS[e.key])
     }
   }
 </script>
@@ -81,6 +97,7 @@
   class="card"
   id="task-{task._id}"
   class:card-hidden={hidden}
+  class:selected
   style:border-top="3px solid {meta.color}"
   role="button"
   tabindex="0"
@@ -88,6 +105,19 @@
   onclick={() => onOpen(task._id)}
   onkeydown={activate}
 >
+  {#if onToggleSelect}
+    <!-- Multi-select toggle — shown on hover/focus (always when selected). -->
+    <button
+      type="button"
+      class="select-box"
+      class:on={selected}
+      role="checkbox"
+      aria-checked={selected}
+      aria-label="Select task — {task.title}"
+      title={selected ? 'Deselect' : 'Select for bulk actions'}
+      onclick={(e) => { e.stopPropagation(); onToggleSelect?.(task._id) }}
+    >{selected ? '✓' : ''}</button>
+  {/if}
   <!-- Drag handle — the ONLY element that initiates a drag, so clicking the
        rest of the card opens the sheet and the board stays scrollable on touch. -->
   <!-- The click handler only stops a handle-tap from bubbling up and opening
@@ -173,6 +203,41 @@
     outline: 2px solid var(--primary);
     outline-offset: 1px;
   }
+  .card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+  }
+
+  /* Multi-select toggle: top-right beside the drag handle (the title already
+     reserves right padding), materializes on hover/focus, pinned while
+     selected. Sized for touch on mobile below. */
+  .select-box {
+    position: absolute;
+    top: 6px;
+    right: 34px;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    background: var(--card-bg);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    min-height: 0;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s;
+    z-index: 2;
+  }
+  .card:hover .select-box,
+  .card:focus-visible .select-box,
+  .select-box:focus-visible,
+  .select-box.on { opacity: 1; }
+  .select-box.on {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
   @media (prefers-reduced-motion: reduce) {
     .card:hover { transform: none; box-shadow: var(--shadow); }
   }
@@ -200,7 +265,7 @@
     color: var(--text);
     line-height: 1.4;
     margin-bottom: 6px;
-    padding-right: 30px;
+    padding-right: 56px; /* clears the drag handle + select toggle */
   }
 
   .store-tags {
@@ -351,5 +416,8 @@
     .card:hover { transform: none; box-shadow: var(--shadow); }
     /* Finger-sized drag handle. */
     .drag-hint { padding: 11px 13px; font-size: 17px; }
+    /* No hover on touch: keep the select toggle visible and finger-sized,
+       clear of the enlarged drag handle. */
+    .select-box { opacity: 1; width: 24px; height: 24px; font-size: 15px; right: 48px; }
   }
 </style>
