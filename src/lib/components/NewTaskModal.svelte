@@ -184,20 +184,20 @@
     position: fixed;
     inset: 0;
     background: var(--backdrop);
-    z-index: 99;
+    z-index: calc(var(--z-modal) - 1);
   }
   .modal {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 100;
+    z-index: var(--z-modal);
     background: var(--card-bg);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     width: min(480px, calc(100vw - 32px));
     /* Never taller than the viewport — the body scrolls inside instead. */
     max-height: calc(100dvh - 32px);
-    box-shadow: 0 20px 60px rgba(15,23,42,0.2);
+    box-shadow: var(--shadow-modal);
     display: flex;
     flex-direction: column;
   }
@@ -208,8 +208,8 @@
     padding: 16px 20px 12px;
     border-bottom: 1px solid var(--border);
   }
-  .modal-header h2 { font-size: 16px; font-weight: 700; color: var(--text); }
-  .close-btn { font-size: 16px; color: var(--text-faint); padding: 4px 8px; }
+  .modal-header h2 { font-size: var(--font-lg); font-weight: 700; color: var(--text); }
+  .close-btn { font-size: var(--font-lg); color: var(--text-faint); padding: 4px 8px; }
   .modal-body {
     padding: 16px 20px;
     display: flex;
@@ -220,13 +220,13 @@
     min-height: 0;  /* allow it to shrink below content height inside the flex column */
   }
   label { display: flex; flex-direction: column; gap: 4px; }
-  label span { font-size: 12px; font-weight: 500; color: var(--text-body); }
+  label span { font-size: var(--font-sm); font-weight: 500; color: var(--text-body); }
   .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
   /* "Also assign" — chips for each extra person + a dashed add-person picker.
      A .field div (not a <label>) so a stray click can't focus the select. */
   .field { display: flex; flex-direction: column; gap: 4px; }
-  .field-label { font-size: 12px; font-weight: 500; color: var(--text-body); }
+  .field-label { font-size: var(--font-sm); font-weight: 500; color: var(--text-body); }
   .co-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
   .co-chip {
     display: inline-flex;
@@ -234,9 +234,9 @@
     gap: 4px;
     background: var(--chip-bg);
     color: var(--primary-text);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 4px 10px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 500;
   }
   .co-remove {
@@ -244,7 +244,7 @@
     border: none;
     cursor: pointer;
     padding: 0 1px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     line-height: 1;
     color: var(--primary-text);
     opacity: 0.6;
@@ -255,8 +255,8 @@
     width: auto;
     min-height: 0;
     padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
+    border-radius: var(--radius-pill);
+    font-size: var(--font-sm);
     font-weight: 600;
     color: var(--text-soft);
     background: var(--bg);
@@ -273,7 +273,7 @@
     padding: 12px 20px 16px;
     border-top: 1px solid var(--border);
   }
-  .error { font-size: 12px; color: var(--danger); }
+  .error { font-size: var(--font-sm); color: var(--danger); }
 
   /* Mobile: dock the dialog to the bottom as a thumb-reachable sheet, clear of
      the home indicator, with bigger tap targets. */
@@ -286,7 +286,7 @@
       width: 100%;
       max-width: 100%;
       max-height: 92dvh;
-      border-radius: 16px 16px 0 0;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     }
     .modal-footer {
       padding-bottom: max(16px, env(safe-area-inset-bottom));
@@ -297,7 +297,7 @@
     }
     /* 16px stops iOS Safari from zooming the page when the picker opens. */
     .co-add { font-size: 16px; min-height: 36px; }
-    .co-remove { font-size: 13px; padding: 2px 5px; }
+    .co-remove { font-size: var(--font-base); padding: 2px 5px; }
   }
 
   /* On the narrowest phones, stack the paired fields so 16px inputs don't crowd. */

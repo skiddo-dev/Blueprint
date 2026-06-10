@@ -63,6 +63,6 @@
 
 <style>
   .quick-picks { display: flex; gap: 6px; flex-wrap: wrap; }
-  .quick-picks .btn-secondary { padding: 7px 11px; font-size: 12px; border-radius: 999px; }
+  .quick-picks .btn-secondary { padding: 7px 11px; font-size: var(--font-sm); border-radius: var(--radius-pill); }
   .sep { width: 1px; height: 26px; background: var(--border); align-self: flex-end; margin: 0 2px 5px; }
 </style>

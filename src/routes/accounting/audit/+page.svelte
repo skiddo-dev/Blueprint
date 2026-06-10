@@ -105,5 +105,5 @@
   .nowrap { white-space: nowrap; }
   .ev-link { color: inherit; text-decoration: none; }
   .ev-link:hover { text-decoration: underline; }
-  .cap-note { font-size: 12px; color: var(--text-muted); padding: 10px 16px; margin: 0; }
+  .cap-note { font-size: var(--font-sm); color: var(--text-muted); padding: 10px 16px; margin: 0; }
 </style>

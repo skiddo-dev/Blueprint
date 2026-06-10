@@ -265,10 +265,10 @@
 
 <style>
   textarea {
-    font-size: 12px;
+    font-size: var(--font-sm);
     padding: 5px 8px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     background: var(--card-bg);
     color: var(--text-body);
     width: 100%;
@@ -279,7 +279,7 @@
   }
   textarea:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+    box-shadow: var(--focus-halo);
   }
 
   .comments {
@@ -291,7 +291,7 @@
   .comment {
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 6px 8px;
   }
   .comment-head {
@@ -300,10 +300,10 @@
     gap: 6px;
     margin-bottom: 2px;
   }
-  .comment-author { font-size: 11px; font-weight: 700; color: var(--text); }
-  .comment-time { font-size: 10px; color: var(--text-faint); }
+  .comment-author { font-size: var(--font-xs); font-weight: 700; color: var(--text); }
+  .comment-time { font-size: var(--font-2xs); color: var(--text-faint); }
   .comment-text {
-    font-size: 12px;
+    font-size: var(--font-sm);
     color: var(--text-soft);
     line-height: 1.45;
     white-space: pre-wrap;
@@ -312,11 +312,11 @@
   .mention {
     color: var(--primary-text);
     background: var(--chip-bg);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 0 3px;
     font-weight: 600;
   }
-  .comment-empty { font-size: 11px; color: var(--text-faint); }
+  .comment-empty { font-size: var(--font-xs); color: var(--text-faint); }
 
   /* A reply sits indented under its parent. */
   .comment.reply { margin-left: 16px; border-left: 2px solid var(--border); }
@@ -325,7 +325,7 @@
   .cmt-actions { margin-left: auto; display: inline-flex; gap: 2px; }
   .cmt-act {
     background: transparent; border: none; cursor: pointer;
-    font-size: 11px; line-height: 1; padding: 2px 4px; border-radius: 4px;
+    font-size: var(--font-xs); line-height: 1; padding: 2px 4px; border-radius: var(--radius-sm);
     color: var(--text-faint); min-height: 0;
   }
   .cmt-act:hover { color: var(--primary-text); background: var(--primary-bg); }
@@ -334,7 +334,7 @@
   .cmt-edit-actions { display: flex; gap: 6px; margin-top: 6px; }
   .cmt-cancel {
     background: transparent; border: 1px solid var(--border); color: var(--text-muted);
-    border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; min-height: 0; cursor: pointer;
+    border-radius: var(--radius-md); padding: 5px 12px; font-size: var(--font-sm); font-weight: 600; min-height: 0; cursor: pointer;
   }
   .cmt-cancel:hover { background: var(--bg); }
 
@@ -343,21 +343,21 @@
   .reaction-chip {
     display: inline-flex; align-items: center; gap: 3px;
     background: var(--bg); border: 1px solid var(--border); color: var(--text-soft);
-    border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; min-height: 0; cursor: pointer;
+    border-radius: var(--radius-pill); padding: 1px 8px; font-size: var(--font-xs); font-weight: 600; min-height: 0; cursor: pointer;
   }
   .reaction-chip.mine { background: var(--chip-bg); border-color: var(--primary); color: var(--primary-text); }
   .react-add {
     background: transparent; border: 1px dashed var(--border); color: var(--text-faint);
-    border-radius: 999px; width: 20px; height: 20px; line-height: 1; font-size: 12px; padding: 0; min-height: 0; cursor: pointer;
+    border-radius: var(--radius-pill); width: 20px; height: 20px; line-height: 1; font-size: var(--font-sm); padding: 0; min-height: 0; cursor: pointer;
   }
   .react-add:hover { color: var(--primary-text); border-color: var(--primary); }
   .react-pop {
     display: inline-flex; gap: 2px; padding: 2px 4px;
-    background: var(--card-bg); border: 1px solid var(--border); border-radius: 999px;
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-pill);
   }
-  .react-opt { background: transparent; border: none; font-size: 14px; line-height: 1; padding: 2px; min-height: 0; cursor: pointer; border-radius: 4px; }
+  .react-opt { background: transparent; border: none; font-size: var(--font-md); line-height: 1; padding: 2px; min-height: 0; cursor: pointer; border-radius: var(--radius-sm); }
   .react-opt:hover { background: var(--primary-bg); }
-  .reply-btn { background: transparent; border: none; color: var(--primary); font-size: 11px; font-weight: 600; padding: 2px 4px; min-height: 0; cursor: pointer; }
+  .reply-btn { background: transparent; border: none; color: var(--primary); font-size: var(--font-xs); font-weight: 600; padding: 2px 4px; min-height: 0; cursor: pointer; }
   .reply-btn:hover { text-decoration: underline; }
   .reply-compose { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 
@@ -367,9 +367,9 @@
     background: var(--primary);
     color: #fff;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 5px 14px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 600;
     min-height: 0;
     cursor: pointer;
@@ -389,8 +389,8 @@
     max-width: 100%;
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
     overflow: hidden;
   }
   .mention-opt {
@@ -398,7 +398,7 @@
     border: none;
     text-align: left;
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     color: var(--text-body);
     min-height: 0;
     cursor: pointer;

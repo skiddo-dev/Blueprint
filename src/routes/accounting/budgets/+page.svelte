@@ -115,11 +115,11 @@
 </AccountingShell>
 
 <style>
-  .grid input { width: 76px; padding: 4px 6px; text-align: right; font-size: 12.5px; }
+  .grid input { width: 76px; padding: 4px 6px; text-align: right; font-size: var(--font-base); }
   .grid .acc { min-width: 200px; white-space: nowrap; }
   .grid td, .grid th { padding: 4px 5px; }
   .grid .total { font-weight: 600; white-space: nowrap; }
   tr.inactive { opacity: 0.6; }
-  .saved { color: var(--success); font-size: 13px; font-weight: 600; align-self: center; }
+  .saved { color: var(--success); font-size: var(--font-base); font-weight: 600; align-self: center; }
   .pad { padding: 10px 16px; }
 </style>

@@ -264,7 +264,7 @@
   hr { border: none; border-top: 1px solid var(--border-soft); margin: 4px 0; }
 
   .section-label {
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 600;
     color: var(--text-faint);
     letter-spacing: 0.06em;
@@ -279,10 +279,10 @@
     padding: 6px 10px;
     background: var(--card-bg);
     border: 1px solid var(--border-soft);
-    border-radius: 7px;
+    border-radius: var(--radius-md);
   }
   .stat-label {
-    font-size: 13px;
+    font-size: var(--font-base);
     color: var(--text-body);
     display: flex;
     align-items: center;
@@ -295,24 +295,24 @@
     display: inline-block;
     flex-shrink: 0;
   }
-  .stat-count { font-size: 13px; font-weight: 700; }
+  .stat-count { font-size: var(--font-base); font-weight: 700; }
 
   .completion { margin-top: 8px; }
   .completion-labels {
     display: flex;
     justify-content: space-between;
-    font-size: 11px;
+    font-size: var(--font-xs);
     color: var(--text-faint);
     margin-bottom: 4px;
   }
   .progress-track {
     background: var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     height: 5px;
   }
   .progress-fill {
     background: var(--success-vivid);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     height: 5px;
     transition: width 0.4s ease;
   }
@@ -320,7 +320,7 @@
 
   details { border: none; }
   .expander-title {
-    font-size: 13px;
+    font-size: var(--font-base);
     font-weight: 500;
     color: var(--text-body);
     padding: 6px 2px;
@@ -334,23 +334,23 @@
     padding: 6px 2px 8px;
   }
 
-  .hint { font-size: 11px; color: var(--text-faint); }
+  .hint { font-size: var(--font-xs); color: var(--text-faint); }
 
   .user-row {
     display: flex;
     align-items: center;
     gap: 4px;
   }
-  .user-email { font-size: 11px; color: var(--text-body); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .user-active { font-size: 10px; color: var(--text-faint); white-space: nowrap; }
-  .user-role { font-size: 10px; color: var(--text-faint); }
+  .user-email { font-size: var(--font-xs); color: var(--text-body); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .user-active { font-size: var(--font-2xs); color: var(--text-faint); white-space: nowrap; }
+  .user-role { font-size: var(--font-2xs); color: var(--text-faint); }
 
   .req-badge {
     background: var(--danger-bg);
     color: var(--danger);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 0 6px;
-    font-size: 10px;
+    font-size: var(--font-2xs);
     font-weight: 700;
   }
   .req-row {
@@ -361,32 +361,32 @@
     padding: 6px 8px;
     background: var(--card-bg);
     border: 1px solid var(--border-soft);
-    border-radius: 7px;
+    border-radius: var(--radius-md);
   }
   .req-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-  .req-name { font-size: 12px; font-weight: 600; color: var(--text-body); }
-  .req-email { font-size: 10px; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; }
-  .req-note { font-size: 10px; color: var(--text-muted); font-style: italic; }
+  .req-name { font-size: var(--font-sm); font-weight: 600; color: var(--text-body); }
+  .req-email { font-size: var(--font-2xs); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; }
+  .req-note { font-size: var(--font-2xs); color: var(--text-muted); font-style: italic; }
   .req-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
-  .req-actions .secondary { font-size: 11px; padding: 3px 7px; }
+  .req-actions .secondary { font-size: var(--font-xs); padding: 3px 7px; }
 
-  label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-body); }
-  .checkbox-label { flex-direction: row; align-items: center; gap: 6px; font-size: 12px; }
+  label { display: flex; flex-direction: column; gap: 3px; font-size: var(--font-xs); color: var(--text-body); }
+  .checkbox-label { flex-direction: row; align-items: center; gap: 6px; font-size: var(--font-sm); }
   .danger-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   textarea {
     width: 100%;
     box-sizing: border-box;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 6px 8px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     resize: vertical;
     background: var(--bg);
     color: var(--text);
   }
-  input[type="file"] { font-size: 11px; color: var(--text-muted); }
+  input[type="file"] { font-size: var(--font-xs); color: var(--text-muted); }
   .dl-link { color: var(--primary-dark); text-decoration: none; }
   .dl-link:hover { text-decoration: underline; }
 </style>

@@ -232,10 +232,10 @@
   .ft-text {
     flex: 0 1 220px;
     min-width: 140px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     padding: 6px 10px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     background: var(--card-bg);
     color: var(--text-body);
     outline: none;
@@ -243,7 +243,7 @@
   }
   .ft-text:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+    box-shadow: var(--focus-halo);
   }
 
   .ft-drop { position: relative; }
@@ -254,9 +254,9 @@
     background: var(--card-bg);
     border: 1px solid var(--border);
     color: var(--text-soft);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 5px 11px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 600;
     white-space: nowrap;
     min-height: 0;
@@ -273,14 +273,14 @@
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
-    z-index: 40;
+    z-index: var(--z-popover);
     min-width: 170px;
     max-height: 260px;
     overflow-y: auto;
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.16);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-pop);
     padding: 6px;
     display: flex;
     flex-direction: column;
@@ -290,10 +290,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     color: var(--text-body);
     padding: 6px 8px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     user-select: none;
   }
@@ -305,14 +305,14 @@
     height: 14px;
   }
 
-  .ft-result { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-left: 2px; }
+  .ft-result { font-size: var(--font-sm); color: var(--text-muted); font-weight: 600; margin-left: 2px; }
   .ft-clear {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-muted);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 5px 11px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 600;
     min-height: 0;
     cursor: pointer;
@@ -323,6 +323,6 @@
     /* Finger-sized controls; 16px input so iOS doesn't zoom on focus. */
     .ft-text { font-size: 16px; min-height: 40px; flex-basis: 100%; }
     .ft-btn, .ft-clear { padding: 8px 13px; min-height: 38px; }
-    .ft-opt { padding: 9px 10px; font-size: 14px; }
+    .ft-opt { padding: 9px 10px; font-size: var(--font-md); }
   }
 </style>

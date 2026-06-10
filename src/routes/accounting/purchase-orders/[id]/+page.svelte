@@ -177,18 +177,18 @@
 <style>
   .facts { display: flex; flex-wrap: wrap; gap: 18px 28px; margin-bottom: 14px; }
   .facts > div { display: flex; flex-direction: column; gap: 2px; }
-  .facts .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
-  .memo { color: var(--text-body); font-size: 14px; margin: 0 0 12px; }
+  .facts .k { font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
+  .memo { color: var(--text-body); font-size: var(--font-md); margin: 0 0 12px; }
   .totals { margin-top: 14px; margin-left: auto; max-width: 320px; }
-  .totals > div { display: flex; justify-content: space-between; gap: 24px; padding: 4px 0; font-size: 13px; color: var(--text-body); }
+  .totals > div { display: flex; justify-content: space-between; gap: 24px; padding: 4px 0; font-size: var(--font-base); color: var(--text-body); }
   .totals .grand { font-weight: 700; color: var(--text); border-top: 2px solid var(--border); margin-top: 4px; padding-top: 8px; }
   .totals .bal { font-weight: 700; color: var(--text); border-top: 1px solid var(--border-soft); margin-top: 4px; padding-top: 8px; }
   .convert-cta { margin-top: 14px; display: flex; justify-content: flex-end; }
   .convert-form { margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 12px; }
   .meta-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-  .meta-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
+  .meta-row label { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-sm); font-weight: 600; color: var(--text-body); }
   .meta-row .grow { flex: 1; min-width: 160px; }
-  .draft-line { display: grid; grid-template-columns: 60px 1fr 130px; gap: 10px; align-items: center; padding: 4px 0; font-size: 13px; }
+  .draft-line { display: grid; grid-template-columns: 60px 1fr 130px; gap: 10px; align-items: center; padding: 4px 0; font-size: var(--font-base); }
   .draft-line .num { text-align: right; }
   .convert-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
   :global(.acct .btn-secondary.danger) { color: var(--danger); border-color: var(--danger-border); }

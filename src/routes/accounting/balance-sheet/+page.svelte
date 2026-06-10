@@ -82,15 +82,15 @@
 <style>
   /* Statement rows; shared chrome from accounting.css. */
   .quick-picks { display: flex; gap: 6px; flex-wrap: wrap; }
-  .quick-picks .btn-secondary { padding: 7px 11px; font-size: 12px; border-radius: 999px; }
+  .quick-picks .btn-secondary { padding: 7px 11px; font-size: var(--font-sm); border-radius: var(--radius-pill); }
   .qp-sep { width: 1px; height: 26px; background: var(--border); align-self: flex-end; margin: 0 2px 5px; }
-  .card { font-size: 14px; padding: 18px 20px; }
-  .sec-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; margin: 0 0 4px; }
+  .card { font-size: var(--font-md); padding: 18px 20px; }
+  .sec-title { font-size: var(--font-sm); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; margin: 0 0 4px; }
   .row { display: flex; justify-content: space-between; gap: 24px; padding: 5px 0; color: var(--text-body); }
   .row.muted { color: var(--text-faint); }
   .num { font-variant-numeric: tabular-nums; }
   .subtotal { font-weight: 700; color: var(--text); border-top: 1px solid var(--border-soft); margin-top: 2px; }
   .spacer { height: 14px; }
-  .grand { font-weight: 800; font-size: 16px; color: var(--text); border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; }
+  .grand { font-weight: 800; font-size: var(--font-lg); color: var(--text); border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; }
   .grand.bad { color: var(--danger); }
 </style>

@@ -143,24 +143,24 @@
 
 <style>
   .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  .page-title { font-size: 22px; font-weight: 800; color: var(--text); margin: 0; }
-  .page-sub { color: var(--text-muted); margin: 4px 0 0; font-size: 12px; }
+  .page-title { font-size: var(--font-2xl); font-weight: 800; color: var(--text); margin: 0; }
+  .page-sub { color: var(--text-muted); margin: 4px 0 0; font-size: var(--font-sm); }
 
   /* Page-specific layout on top of the shared .acct primitives. */
   .total-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .total-num { font-size: 30px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-  .refreshed { font-size: 12px; color: var(--text-faint); white-space: nowrap; }
+  .total-num { font-size: var(--font-3xl); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .refreshed { font-size: var(--font-sm); color: var(--text-faint); white-space: nowrap; }
 
   .badge.muted { background: var(--chip-bg); color: var(--text-muted); }
 
   .mtd { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-  .mtd-num { font-size: 24px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-  .mtd-label { font-size: 12px; color: var(--text-muted); }
+  .mtd-num { font-size: var(--font-2xl); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .mtd-label { font-size: var(--font-sm); color: var(--text-muted); }
 
   .trend { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
   .trend-row { display: grid; grid-template-columns: 36px 1fr 90px; align-items: center; gap: 8px; }
-  .trend-month { font-size: 12px; color: var(--text-muted); }
-  .bar-track { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 5px; height: 14px; overflow: hidden; }
-  .bar { display: block; height: 100%; background: var(--primary); border-radius: 5px; min-width: 2px; }
-  .trend-amt { font-size: 12px; text-align: right; color: var(--text-body); font-variant-numeric: tabular-nums; }
+  .trend-month { font-size: var(--font-sm); color: var(--text-muted); }
+  .bar-track { background: var(--bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); height: 14px; overflow: hidden; }
+  .bar { display: block; height: 100%; background: var(--primary); border-radius: var(--radius-sm); min-width: 2px; }
+  .trend-amt { font-size: var(--font-sm); text-align: right; color: var(--text-body); font-variant-numeric: tabular-nums; }
 </style>

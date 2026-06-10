@@ -426,7 +426,7 @@
     position: fixed;
     inset: 0;
     background: var(--backdrop);
-    z-index: 60;
+    z-index: calc(var(--z-sheet) - 1);
   }
   .sheet {
     position: fixed;
@@ -436,8 +436,8 @@
     width: min(480px, 100vw);
     background: var(--card-bg);
     border-left: 1px solid var(--border);
-    box-shadow: -12px 0 40px rgba(15, 23, 42, 0.18);
-    z-index: 61;
+    box-shadow: var(--shadow-sheet);
+    z-index: var(--z-sheet);
     overflow-y: auto;
     padding: 16px 18px calc(24px + env(safe-area-inset-bottom));
     animation: slide-in 0.18s ease-out;
@@ -460,18 +460,18 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 3px 11px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 700;
   }
   .sheet-close {
     background: transparent;
     border: none;
     color: var(--text-faint);
-    font-size: 16px;
+    font-size: var(--font-lg);
     padding: 6px 9px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     line-height: 1;
     min-height: 0;
@@ -479,7 +479,7 @@
   .sheet-close:hover { color: var(--text); background: var(--bg); }
 
   .sheet-title {
-    font-size: 17px;
+    font-size: var(--font-xl);
     font-weight: 700;
     color: var(--text);
     line-height: 1.35;
@@ -492,15 +492,15 @@
     gap: 8px;
     margin-bottom: 8px;
   }
-  .src { font-size: 12px; color: var(--text-faint); }
+  .src { font-size: var(--font-sm); color: var(--text-faint); }
   .po-chip {
     display: inline-block;
     background: var(--success-bg);
     color: var(--success);
     border: 1px solid var(--success-border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 2px 8px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
     letter-spacing: 0.02em;
   }
@@ -510,9 +510,9 @@
     background: var(--store-chip);
     color: #fff;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 2px 8px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
     letter-spacing: 0.04em;
     line-height: 1.5;
@@ -529,20 +529,20 @@
   }
   .field { display: flex; flex-direction: column; gap: 4px; }
   .field-label {
-    font-size: 10px;
+    font-size: var(--font-2xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-faint);
   }
   .co-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; min-height: 30px; }
-  .co-none { color: var(--text-faint); font-size: 12px; }
+  .co-none { color: var(--text-faint); font-size: var(--font-sm); }
   .chip {
     background: var(--chip-bg);
     color: var(--primary-text);
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     padding: 2px 9px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 500;
   }
   .co-chip { display: inline-flex; align-items: center; gap: 4px; }
@@ -551,7 +551,7 @@
     border: none;
     cursor: pointer;
     padding: 0 1px;
-    font-size: 10px;
+    font-size: var(--font-2xs);
     line-height: 1;
     color: var(--primary-text);
     opacity: 0.6;
@@ -562,8 +562,8 @@
     width: auto;
     min-height: 0;
     padding: 2px 7px;
-    border-radius: 999px;
-    font-size: 11px;
+    border-radius: var(--radius-pill);
+    font-size: var(--font-xs);
     font-weight: 600;
     color: var(--text-soft);
     background: var(--bg);
@@ -576,7 +576,7 @@
 
   .sect { margin-bottom: 14px; }
   .sect-title {
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -585,7 +585,7 @@
   }
   .email-summary { cursor: pointer; user-select: none; }
   .desc {
-    font-size: 13px;
+    font-size: var(--font-base);
     color: var(--text-soft);
     line-height: 1.5;
     margin: 0;
@@ -605,7 +605,7 @@
     align-items: baseline;
     gap: 8px;
     padding: 3px 4px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
   }
   .cl-row:hover { background: var(--bg); }
   .cl-row input[type="checkbox"] {
@@ -619,7 +619,7 @@
   .cl-text {
     flex: 1 1 auto;
     min-width: 0;
-    font-size: 13px;
+    font-size: var(--font-base);
     color: var(--text-body);
     line-height: 1.45;
     cursor: pointer;
@@ -633,10 +633,10 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    font-size: 11px;
+    font-size: var(--font-xs);
     line-height: 1;
     padding: 2px 4px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-faint);
     min-height: 0;
     flex-shrink: 0;
@@ -646,29 +646,29 @@
   .cl-del:hover { color: var(--danger); background: var(--danger-bg); }
 
   .email-body {
-    font-size: 12px;
+    font-size: var(--font-sm);
     color: var(--text-soft);
     max-height: 300px;
     overflow-y: auto;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 8px 10px;
     margin-top: 6px;
     background: var(--bg);
   }
 
   .activity { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  .act-row { display: flex; align-items: baseline; gap: 7px; font-size: 12px; }
+  .act-row { display: flex; align-items: baseline; gap: 7px; font-size: var(--font-sm); }
   .act-icon { flex-shrink: 0; }
   .act-text { color: var(--text-soft); line-height: 1.4; min-width: 0; }
   .act-from { color: var(--text-faint); }
-  .act-date { margin-left: auto; flex-shrink: 0; color: var(--text-faint); font-size: 11px; }
+  .act-date { margin-left: auto; flex-shrink: 0; color: var(--text-faint); font-size: var(--font-xs); }
 
   select, input[type="date"], input[type="text"], textarea {
-    font-size: 13px;
+    font-size: var(--font-base);
     padding: 6px 9px;
     border: 1px solid var(--border);
-    border-radius: 7px;
+    border-radius: var(--radius-md);
     background: var(--card-bg);
     color: var(--text-body);
     width: 100%;
@@ -684,7 +684,7 @@
     text-align: left;
     margin: 0;
     padding: 0;
-    font-size: 13px;
+    font-size: var(--font-base);
   }
   input[type="date"].overdue {
     border-color: var(--danger-border);
@@ -692,7 +692,7 @@
   }
   select:focus, input:focus, textarea:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+    box-shadow: var(--focus-halo);
   }
   textarea { resize: vertical; font-family: inherit; }
 
@@ -707,9 +707,9 @@
     background: transparent;
     border: 1px solid var(--danger-border);
     color: var(--danger);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 7px 14px;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 600;
     cursor: pointer;
     min-height: 0;
@@ -727,7 +727,7 @@
     input[type="date"]::-webkit-date-and-time-value { font-size: 16px; }
     textarea { min-height: 56px; }
     .co-add { font-size: 16px; min-height: 36px; padding: 4px 10px; width: auto; }
-    .co-remove { font-size: 13px; padding: 2px 5px; }
+    .co-remove { font-size: var(--font-base); padding: 2px 5px; }
     .sheet-close { min-width: 44px; min-height: 44px; }
   }
 </style>

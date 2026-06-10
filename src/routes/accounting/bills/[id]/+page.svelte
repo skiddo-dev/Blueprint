@@ -190,20 +190,20 @@
   /* Bill-specific facts/totals/payment layout; shared chrome from accounting.css. */
   .facts { display: flex; flex-wrap: wrap; gap: 18px 28px; margin-bottom: 16px; }
   .facts > div { display: flex; flex-direction: column; gap: 2px; }
-  .facts .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
+  .facts .k { font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
 
   .totals { margin-top: 14px; margin-left: auto; max-width: 320px; }
-  .totals > div { display: flex; justify-content: space-between; gap: 24px; padding: 4px 0; font-size: 13px; color: var(--text-body); }
+  .totals > div { display: flex; justify-content: space-between; gap: 24px; padding: 4px 0; font-size: var(--font-base); color: var(--text-body); }
   .totals .grand { font-weight: 700; color: var(--text); border-top: 2px solid var(--border); padding-top: 8px; }
   .totals .bal { font-weight: 700; color: var(--text); border-top: 1px solid var(--border-soft); margin-top: 4px; padding-top: 8px; }
 
   .pay-form { display: flex; gap: 10px; align-items: flex-end; margin-top: 14px; flex-wrap: wrap; }
-  .pay-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
+  .pay-form label { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-sm); font-weight: 600; color: var(--text-body); }
   .pay-form .grow { flex: 1; min-width: 140px; }
-  .paid-note { color: var(--success); font-weight: 600; font-size: 14px; margin-top: 12px; }
+  .paid-note { color: var(--success); font-weight: 600; font-size: var(--font-md); margin-top: 12px; }
   :global(.acct .btn-secondary.danger) { color: var(--danger); border-color: var(--danger-border); }
   :global(.acct .btn-secondary.danger:hover:not(:disabled)) { background: var(--danger-bg-subtle); border-color: var(--danger); }
   .credit-box { margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 10px; }
-  .credit-box summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); }
-  .credit-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0 4px; max-width: 60ch; }
+  .credit-box summary { cursor: pointer; font-size: var(--font-base); font-weight: 600; color: var(--text-muted); }
+  .credit-hint { font-size: var(--font-sm); color: var(--text-muted); margin: 8px 0 4px; max-width: 60ch; }
 </style>

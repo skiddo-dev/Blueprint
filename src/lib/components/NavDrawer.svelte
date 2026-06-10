@@ -126,7 +126,7 @@
     position: fixed;
     inset: 0;
     background: var(--backdrop);
-    z-index: 39; /* just under the drawer (40) */
+    z-index: calc(var(--z-drawer) - 1);
   }
 
   .brand {
@@ -141,13 +141,13 @@
     justify-content: center;
     width: 26px;
     height: 26px;
-    border-radius: 7px;
+    border-radius: var(--radius-md);
     background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
     color: #fff;
     flex-shrink: 0;
   }
   .brand-name {
-    font-size: 15px;
+    font-size: var(--font-lg);
     font-weight: 800;
     letter-spacing: -0.01em;
     color: var(--text);
@@ -161,13 +161,13 @@
     gap: 8px;
   }
   .user-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .user-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .user-name { font-size: var(--font-base); font-weight: 600; color: var(--text); }
   .role-badge {
     background: var(--chip-bg);
     color: var(--primary-text);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     padding: 1px 7px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 600;
     align-self: flex-start;
   }
@@ -179,11 +179,11 @@
     height: 40px;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: var(--font-lg);
     color: var(--text-muted);
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 9px;
+    border-radius: var(--radius-md);
   }
 
   .full-w { width: 100%; justify-content: center; }
@@ -193,7 +193,7 @@
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     width: 100%;
     background: var(--bg); border: 1px solid var(--border); color: var(--text-muted);
-    border-radius: 7px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+    border-radius: var(--radius-md); padding: 7px 12px; font-size: var(--font-base); font-weight: 600; cursor: pointer;
   }
   .nav-search:hover { border-color: var(--primary); color: var(--primary-text); }
   .nav-search-label { display: inline-flex; align-items: center; gap: 7px; }
@@ -207,16 +207,16 @@
     background: var(--bg);
     border: 1px solid var(--border);
     color: var(--text-muted);
-    border-radius: 7px;
+    border-radius: var(--radius-md);
     padding: 7px 12px;
-    font-size: 13px;
+    font-size: var(--font-base);
     font-weight: 600;
     text-decoration: none;
   }
   .nav-help:hover { border-color: var(--primary); color: var(--primary-text); }
   .nav-search kbd {
-    font-family: inherit; font-size: 11px; color: var(--text-faint);
-    border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; background: var(--card-bg);
+    font-family: inherit; font-size: var(--font-xs); color: var(--text-faint);
+    border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 5px; background: var(--card-bg);
   }
 
   .nav-links { display: flex; flex-direction: column; gap: 4px; }
@@ -224,12 +224,12 @@
     display: flex;
     align-items: center;
     padding: 8px 10px;
-    font-size: 13px;
+    font-size: var(--font-base);
     font-weight: 500;
     color: var(--text-body);
     text-decoration: none;
     border: 1px solid var(--border);
-    border-radius: 7px;
+    border-radius: var(--radius-md);
     background: var(--bg);
     transition: background 0.15s, border-color 0.15s;
   }
@@ -253,12 +253,12 @@
       left: 0;
       top: 0;
       width: min(280px, 84vw);
-      z-index: 40;
+      z-index: var(--z-drawer);
       /* Clear the notch and the home indicator. */
       padding-top: max(14px, env(safe-area-inset-top));
       padding-left: max(12px, env(safe-area-inset-left));
       padding-bottom: max(14px, env(safe-area-inset-bottom));
-      box-shadow: 4px 0 20px rgba(15, 23, 42, 0.12);
+      box-shadow: var(--shadow-drawer);
       display: none;          /* hidden by default on mobile */
     }
     .sidebar.open { display: flex; }   /* shown when the menu button is tapped */

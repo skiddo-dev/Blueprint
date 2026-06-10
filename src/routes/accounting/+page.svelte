@@ -224,11 +224,11 @@
   }
   .trial summary::-webkit-details-marker { display: none; }
   .trial[open] summary { border-bottom: 1px solid var(--border-soft); margin-bottom: 8px; }
-  .trial .sum-title { font-size: 15px; color: var(--text); }
+  .trial .sum-title { font-size: var(--font-lg); color: var(--text); }
   .trial table { margin-bottom: 14px; }
 
-  .lock-status { font-size: 14px; color: var(--text-body); margin: 0 0 12px; }
-  .lock-hint { font-size: 12px; color: var(--text-muted); margin: 10px 0 0; }
+  .lock-status { font-size: var(--font-md); color: var(--text-body); margin: 0 0 12px; }
+  .lock-hint { font-size: var(--font-sm); color: var(--text-muted); margin: 10px 0 0; }
   .lock-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
   .reg-link { color: inherit; text-decoration: none; }
   .reg-link:hover { color: var(--primary-text); text-decoration: underline; }

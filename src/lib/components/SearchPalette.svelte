@@ -124,18 +124,18 @@
 
 <style>
   .search-backdrop {
-    position: fixed; inset: 0; z-index: 60;
+    position: fixed; inset: 0; z-index: calc(var(--z-sheet) - 1);
     background: var(--backdrop);
   }
   .search-modal {
-    position: fixed; z-index: 61;
+    position: fixed; z-index: var(--z-sheet);
     top: 12vh; left: 50%; transform: translateX(-50%);
     width: min(560px, calc(100vw - 24px));
     max-height: 70vh;
     display: flex; flex-direction: column;
     background: var(--card-bg);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-hover);
     overflow: hidden;
   }
@@ -144,29 +144,29 @@
     border: none; border-bottom: 1px solid var(--border);
     border-radius: 0;
     padding: 14px 16px;
-    font-size: 15px;
+    font-size: var(--font-lg);
     background: var(--card-bg);
     color: var(--text);
     outline: none;
   }
   .search-results { overflow-y: auto; padding: 6px; }
-  .search-hint { padding: 16px; font-size: 13px; color: var(--text-faint); text-align: center; }
+  .search-hint { padding: 16px; font-size: var(--font-base); color: var(--text-faint); text-align: center; }
   .search-group {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    font-size: var(--font-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
     color: var(--text-faint); padding: 8px 10px 4px;
   }
   .search-hit {
     width: 100%; text-align: left;
     display: flex; flex-direction: column; gap: 1px;
-    background: transparent; border: none; border-radius: 8px;
+    background: transparent; border: none; border-radius: var(--radius-md);
     padding: 7px 10px; cursor: pointer; min-height: 0;
   }
   .search-hit.active { background: var(--primary-bg); }
-  .hit-title { font-size: 13px; font-weight: 600; color: var(--text); }
-  .hit-sub { font-size: 11px; color: var(--text-muted); }
+  .hit-title { font-size: var(--font-base); font-weight: 600; color: var(--text); }
+  .hit-sub { font-size: var(--font-xs); color: var(--text-muted); }
   .search-foot {
     display: flex; gap: 14px; justify-content: flex-end;
     padding: 8px 12px; border-top: 1px solid var(--border-soft);
-    font-size: 11px; color: var(--text-faint);
+    font-size: var(--font-xs); color: var(--text-faint);
   }
 </style>

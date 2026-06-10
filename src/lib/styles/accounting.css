@@ -19,8 +19,8 @@
   padding-bottom: 14px;
   border-bottom: 1px solid var(--border);
 }
-.acct-head h1 { margin: 0; font-size: 22px; line-height: 1.2; }
-.acct-crumbs { color: var(--text-muted); margin: 4px 0 0; font-size: 13px; }
+.acct-head h1 { margin: 0; font-size: var(--font-2xl); line-height: 1.2; }
+.acct-crumbs { color: var(--text-muted); margin: 4px 0 0; font-size: var(--font-base); }
 .acct-crumbs a { color: var(--primary-text); text-decoration: none; }
 .acct-crumbs a:hover { text-decoration: underline; }
 .acct-crumbs .sep { margin: 0 6px; color: var(--text-faint); }
@@ -37,8 +37,8 @@
 /* Accrual | Cash basis toggle on the statements. */
 .acct .basis-toggle { display: inline-flex; gap: 6px; margin-bottom: 10px; }
 .acct .basis-toggle .pill {
-  padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px;
-  font-size: 12.5px; font-weight: 600; color: var(--text-muted); text-decoration: none;
+  padding: 4px 12px; border: 1px solid var(--border); border-radius: var(--radius-pill);
+  font-size: var(--font-base); font-weight: 600; color: var(--text-muted); text-decoration: none;
 }
 .acct .basis-toggle .pill.active { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
 .acct-nav .group { display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; }
@@ -47,8 +47,8 @@
 }
 .acct-nav a {
   display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; line-height: 1.1;
-  font-size: 12.5px; font-weight: 600; text-decoration: none; color: var(--text-body);
-  background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px;
+  font-size: var(--font-base); font-weight: 600; text-decoration: none; color: var(--text-body);
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 6px 9px;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 .acct-nav a:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary-text); }
@@ -62,23 +62,23 @@
 /* ── Cards ── */
 .acct .card {
   background: var(--card-bg); border: 1px solid var(--border-card);
-  border-radius: 12px; padding: 16px 18px; margin-bottom: 18px;
+  border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 18px;
   box-shadow: var(--shadow);
 }
 .acct .card.flush { margin-bottom: 0; }
 .acct .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.acct .card-head h2 { font-size: 15px; margin: 0; color: var(--text); }
+.acct .card-head h2 { font-size: var(--font-lg); margin: 0; color: var(--text); }
 .acct .section-title {
-  font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+  font-size: var(--font-sm); text-transform: uppercase; letter-spacing: 0.04em;
   color: var(--text-muted); font-weight: 700; margin: 18px 0 10px;
 }
 .acct .section-title:first-child { margin-top: 0; }
 
 /* ── Tables ── */
-.acct table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.acct table { width: 100%; border-collapse: collapse; font-size: var(--font-base); }
 .acct th, .acct td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border-soft); }
 .acct th {
-  color: var(--text-muted); font-weight: 600; font-size: 12px;
+  color: var(--text-muted); font-weight: 600; font-size: var(--font-sm);
   text-transform: uppercase; letter-spacing: 0.03em;
 }
 .acct td { color: var(--text-body); }
@@ -92,46 +92,46 @@
 .acct .table-wrap { overflow-x: auto; }
 
 /* ── Inline status/info bits ── */
-.acct .badge { font-size: 12px; font-weight: 600; border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
+.acct .badge { font-size: var(--font-sm); font-weight: 600; border-radius: var(--radius-lg); padding: 2px 9px; white-space: nowrap; }
 .acct .badge.ok { background: var(--success-bg); color: var(--success); }
 .acct .badge.bad { background: var(--danger-bg); color: var(--danger); }
-.acct .chip { background: var(--chip-bg); color: var(--primary-text); border-radius: 8px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
-.acct .tag { margin-left: 8px; background: var(--warning-bg); color: var(--warning); border-radius: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
+.acct .chip { background: var(--chip-bg); color: var(--primary-text); border-radius: var(--radius-md); padding: 1px 8px; font-size: var(--font-xs); font-weight: 600; }
+.acct .tag { margin-left: 8px; background: var(--warning-bg); color: var(--warning); border-radius: var(--radius-md); padding: 1px 7px; font-size: var(--font-xs); font-weight: 600; }
 .acct .muted { color: var(--text-muted); }
-.acct .empty { color: var(--text-muted); font-size: 14px; padding: 10px 2px; }
+.acct .empty { color: var(--text-muted); font-size: var(--font-md); padding: 10px 2px; }
 
 /* ── Buttons ──
    .btn-primary / .btn-secondary are styled globally (app.css) — one treatment
    app-wide. Only acct-specific tweaks live here. */
 .acct .btn-primary, .acct .btn-secondary { flex-shrink: 0; }
-.acct .btn-ghost { background: none; border: none; color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; }
-.acct .link { background: none; border: none; color: var(--primary-text); font-size: 13px; font-weight: 600; cursor: pointer; padding: 2px 6px; text-decoration: none; }
+.acct .btn-ghost { background: none; border: none; color: var(--text-muted); font-size: var(--font-base); font-weight: 600; cursor: pointer; text-decoration: underline; }
+.acct .link { background: none; border: none; color: var(--primary-text); font-size: var(--font-base); font-weight: 600; cursor: pointer; padding: 2px 6px; text-decoration: none; }
 .acct .link.muted { color: var(--text-muted); }
 .acct .link:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Form controls + toolbars ── */
 .acct input, .acct select, .acct textarea {
   font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border);
-  border-radius: 7px; background: var(--bg); color: var(--text);
+  border-radius: var(--radius-md); background: var(--bg); color: var(--text);
 }
 .acct input:focus, .acct select:focus, .acct textarea:focus { outline: none; border-color: var(--primary); }
 .acct input[readonly], .acct .readonly { background: var(--card-bg); color: var(--text-muted); }
-.acct .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
+.acct .field { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-sm); font-weight: 600; color: var(--text-body); }
 .acct .toolbar { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
 
 /* ── Working-list toolbar: status filter pills + search ── */
 .acct .list-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .acct .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .acct .filter-pills button {
-  font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+  font-size: var(--font-sm); font-weight: 600; padding: 4px 12px; border-radius: var(--radius-pill); cursor: pointer;
   background: var(--bg); color: var(--text-soft); border: 1px solid var(--border);
 }
 .acct .filter-pills button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 .acct .filter-pills button .count { font-weight: 400; opacity: 0.75; margin-left: 4px; font-variant-numeric: tabular-nums; }
-.acct .search-box { min-width: 180px; font-size: 13px; }
+.acct .search-box { min-width: 180px; font-size: var(--font-base); }
 
 /* ── Urgency + payment progress in tables ── */
-.acct .due-chip { font-size: 12px; white-space: nowrap; color: var(--text-muted); }
+.acct .due-chip { font-size: var(--font-sm); white-space: nowrap; color: var(--text-muted); }
 .acct .due-chip.overdue { color: var(--danger); font-weight: 600; }
 .acct tbody tr.row-overdue td { background: var(--danger-bg-subtle); }
 .acct tbody tr.row-overdue.row-link:hover td { background: var(--danger-bg); }
@@ -148,7 +148,7 @@
   display: inline-flex; align-items: center; justify-content: center;
   width: 15px; height: 15px; border-radius: 50%; vertical-align: 1px;
   border: 1px solid var(--border); color: var(--text-faint);
-  font-size: 10px; font-weight: 700; cursor: help;
+  font-size: var(--font-2xs); font-weight: 700; cursor: help;
 }
 
 /* ── Party (customer/vendor) initial avatars in directory lists ── */
@@ -156,11 +156,11 @@
 .acct .avatar {
   width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  background: var(--chip-bg); color: var(--primary-text); font-size: 12px; font-weight: 700;
+  background: var(--chip-bg); color: var(--primary-text); font-size: var(--font-sm); font-weight: 700;
 }
 
 /* ── Report hint (plain-language subtitle under a statement title) ── */
-.acct .report-hint { font-size: 13px; color: var(--text-muted); margin: -6px 0 14px; max-width: 70ch; }
+.acct .report-hint { font-size: var(--font-base); color: var(--text-muted); margin: -6px 0 14px; max-width: 70ch; }
 
 /* ── Print: statements get handed to banks and accountants. Strip the app
       chrome (drawer, nav, toolbars, buttons) and let the statement card own
@@ -176,4 +176,4 @@
 }
 
 /* ── Errors ── */
-.acct .error { color: var(--danger); font-size: 13px; background: var(--danger-bg); border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+.acct .error { color: var(--danger); font-size: var(--font-base); background: var(--danger-bg); border-radius: var(--radius-md); padding: 8px 12px; margin-top: 10px; }

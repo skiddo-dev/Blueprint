@@ -55,6 +55,6 @@
 
 <style>
   tr.entry-start td { border-top: 2px solid var(--border); }
-  .acct-cell { color: var(--text-body); text-decoration: none; font-size: 12.5px; }
+  .acct-cell { color: var(--text-body); text-decoration: none; font-size: var(--font-base); }
   .acct-cell:hover { color: var(--primary-text); text-decoration: underline; }
 </style>

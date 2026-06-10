@@ -45,12 +45,12 @@
   .report-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
   .report-card {
     display: flex; gap: 14px; align-items: flex-start; text-decoration: none;
-    background: var(--card-bg); border: 1px solid var(--border-card); border-radius: 12px;
+    background: var(--card-bg); border: 1px solid var(--border-card); border-radius: var(--radius-lg);
     padding: 16px 18px; box-shadow: var(--shadow); transition: box-shadow 0.12s, transform 0.12s;
   }
   .report-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
   .ico { display: inline-flex; color: var(--primary); margin-top: 1px; }
   .body { display: flex; flex-direction: column; gap: 4px; }
-  .name { font-size: 15px; font-weight: 700; color: var(--text); }
-  .blurb { font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+  .name { font-size: var(--font-lg); font-weight: 700; color: var(--text); }
+  .blurb { font-size: var(--font-base); color: var(--text-muted); line-height: 1.45; }
 </style>

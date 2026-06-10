@@ -81,7 +81,7 @@
   .att-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
   .att-row { display: flex; align-items: center; gap: 6px; }
   .att-link {
-    font-size: 11px;
+    font-size: var(--font-xs);
     color: var(--primary-text);
     text-decoration: none;
     padding: 3px 0;
@@ -96,15 +96,15 @@
   .att-expired { color: var(--text-faint); cursor: default; }
   .att-expired:hover { text-decoration: none; }
   .att-tag {
-    font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+    font-size: var(--font-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
     color: var(--text-faint); background: var(--chip-bg); border: 1px solid var(--border);
-    padding: 1px 5px; border-radius: 999px; flex-shrink: 0;
+    padding: 1px 5px; border-radius: var(--radius-pill); flex-shrink: 0;
   }
-  .att-size { font-size: 10px; color: var(--text-faint); flex-shrink: 0; }
-  .att-empty { font-size: 11px; color: var(--text-faint); }
+  .att-size { font-size: var(--font-2xs); color: var(--text-faint); flex-shrink: 0; }
+  .att-empty { font-size: var(--font-xs); color: var(--text-faint); }
   .att-del {
     background: transparent; border: none; cursor: pointer;
-    font-size: 11px; line-height: 1; padding: 2px 4px; border-radius: 4px;
+    font-size: var(--font-xs); line-height: 1; padding: 2px 4px; border-radius: var(--radius-sm);
     color: var(--text-faint); min-height: 0; flex-shrink: 0;
   }
   .att-del:hover { color: var(--danger); background: var(--danger-bg); }
@@ -114,9 +114,9 @@
     background: transparent;
     border: 1px dashed var(--border);
     color: var(--primary);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     padding: 4px 10px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 600;
     cursor: pointer;
   }

@@ -112,7 +112,7 @@
   .lane {
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     padding: 10px 12px;
   }
   .lane-head {
@@ -127,11 +127,11 @@
     cursor: pointer;
     text-align: left;
   }
-  .lane-caret { color: var(--text-faint); font-size: 12px; }
-  .lane-title { font-size: 14px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+  .lane-caret { color: var(--text-faint); font-size: var(--font-sm); }
+  .lane-title { font-size: var(--font-md); font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
   .lane-count {
     margin-left: auto;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 600;
     color: var(--text-muted);
     white-space: nowrap;
@@ -150,21 +150,21 @@
     flex-shrink: 0;
   }
   .lane-col-head {
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     border-left: 4px solid transparent;
     padding: 6px 10px;
     margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 12px;
+    font-size: var(--font-sm);
     font-weight: 700;
   }
   .lc-count {
     color: #fff;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 1px 8px;
-    font-size: 11px;
+    font-size: var(--font-xs);
     font-weight: 700;
   }
 
@@ -172,9 +172,9 @@
     text-align: center;
     color: var(--text-faint);
     border: 2px dashed var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
     padding: 28px 16px;
-    font-size: 13px;
+    font-size: var(--font-base);
   }
 
   @media (max-width: 768px) {

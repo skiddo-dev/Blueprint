@@ -174,40 +174,40 @@
 
 <style>
   /* Bespoke journal grid; shared primitives come from accounting.css. */
-  .form-hint { color: var(--text-muted); font-size: 13px; margin: -6px 0 16px; }
+  .form-hint { color: var(--text-muted); font-size: var(--font-base); margin: -6px 0 16px; }
   .meta-grid { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
-  .meta-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text-body); }
+  .meta-grid label { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-base); font-weight: 600; color: var(--text-body); }
   .meta-grid .grow { flex: 1; min-width: 220px; }
   .meta-grid input { width: 100%; }
 
-  .lines { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .lines { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px; }
   .lines-head, .line { display: grid; grid-template-columns: 2.2fr 1fr 1fr 1.6fr 34px; gap: 8px; align-items: center; }
-  .lines-head { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; padding: 0 2px 6px; }
+  .lines-head { font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; padding: 0 2px 6px; }
   .line { margin-bottom: 8px; }
   .line select, .line input { width: 100%; }
   input.num { text-align: right; }
-  .remove { background: var(--card-bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text-muted); height: 34px; cursor: pointer; }
+  .remove { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-muted); height: 34px; cursor: pointer; }
   .remove:hover:not(:disabled) { border-color: var(--danger-border); color: var(--danger); }
   .remove:disabled { opacity: 0.4; cursor: not-allowed; }
-  .add { margin-top: 4px; background: none; border: 1px dashed var(--border); border-radius: 7px; color: var(--primary-text); padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .add { margin-top: 4px; background: none; border: 1px dashed var(--border); border-radius: var(--radius-md); color: var(--primary-text); padding: 7px 12px; font-size: var(--font-base); font-weight: 600; cursor: pointer; }
   .add:hover { border-color: var(--primary); }
 
   .totals {
     display: grid; grid-template-columns: 2.2fr 1fr 1fr 1.6fr 34px; gap: 8px; align-items: center;
     margin-top: 14px; padding: 10px 2px; border-top: 2px solid var(--border); font-weight: 700; color: var(--text);
   }
-  .totals-label { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .totals-label { color: var(--text-muted); font-size: var(--font-sm); text-transform: uppercase; letter-spacing: 0.03em; }
   .totals .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .totals .diff { grid-column: 4 / 6; font-size: 13px; color: var(--warning); font-weight: 600; }
+  .totals .diff { grid-column: 4 / 6; font-size: var(--font-base); color: var(--warning); font-weight: 600; }
   .totals.balanced .diff { color: var(--success); }
 
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
   .recurring-box { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 10px; }
-  .recurring-box summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .recurring-box summary { cursor: pointer; font-size: var(--font-base); font-weight: 600; color: var(--text-muted); }
   .rec-grid { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
   .rec-grid label:first-child { flex: 1; min-width: 220px; }
   .rec-grid input[type='number'] { width: 70px; }
-  .rec-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0 0; }
+  .rec-hint { font-size: var(--font-sm); color: var(--text-muted); margin: 8px 0 0; }
 
   @media (max-width: 640px) {
     .lines-head { display: none; }

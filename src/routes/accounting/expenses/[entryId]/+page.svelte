@@ -48,6 +48,6 @@
 <style>
   .facts { display: flex; flex-wrap: wrap; gap: 18px 28px; margin-bottom: 14px; }
   .facts > div { display: flex; flex-direction: column; gap: 2px; }
-  .facts .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
-  .memo { color: var(--text-body); font-size: 14px; margin: 0 0 12px; }
+  .facts .k { font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
+  .memo { color: var(--text-body); font-size: var(--font-md); margin: 0 0 12px; }
 </style>
