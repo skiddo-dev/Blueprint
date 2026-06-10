@@ -14,6 +14,10 @@ interface QuotePayload {
   point_of_contact?: string
   work_type?: string
   amount?: number
+  labor?: number
+  materials?: number
+  show_labor?: boolean
+  show_total?: boolean
   date_sent?: string
   bid_due_date?: string
   po?: string
@@ -35,8 +39,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const year = new Date(dateSent).getFullYear() || new Date().getFullYear()
   const storeNumber = (body.store_number ?? '').trim()
 
-  // Customer-facing proposal PDF. Amount is the single quoted figure, so the
-  // PDF's cost box renders just "Amount" (labor/materials are unused here).
+  // Customer-facing proposal PDF. `amount` stays the single logged figure (the
+  // quote log tracks one Amount per quote); the show flags only control which
+  // cost-box lines the PDF prints.
+  const showLabor = !!body.show_labor
   const pdfData: QuoteData = {
     customer: body.customer || 'TBD',
     date_received: dateSent,
@@ -45,9 +51,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     project_location: storeNumber ? `Store #${storeNumber}` : 'TBD',
     description: body.description ?? '',
     notes: body.notes,
-    labor: 0,
-    materials: 0,
+    labor: showLabor ? Number(body.labor) || 0 : 0,
+    materials: showLabor ? Number(body.materials) || 0 : 0,
     total: amount,
+    show_labor: showLabor,
+    show_total: body.show_total !== false,
     quote_type: body.work_type ?? '',
   }
 

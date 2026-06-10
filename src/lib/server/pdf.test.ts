@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { cents } from '$lib/money'
-import { generateInvoicePdf, generateBillPdf } from './pdf'
+import { generateInvoicePdf, generateBillPdf, generateQuotePdf } from './pdf'
 import type { Invoice, Bill } from '$lib/accounting/types'
 
 const invoice: Invoice = {
@@ -38,6 +38,30 @@ describe('generateInvoicePdf', () => {
 describe('generateBillPdf', () => {
   it('produces a valid PDF buffer', async () => {
     const buf = await generateBillPdf(bill)
+    expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-')
+    expect(buf.length).toBeGreaterThan(800)
+  })
+})
+
+describe('generateQuotePdf', () => {
+  it('produces a valid PDF buffer with the show toggles set', async () => {
+    const buf = await generateQuotePdf({
+      customer: 'Kroger #412', date_received: '2026-06-09', bid_due_date: '2026-06-20',
+      architect: 'Frank Crew', project_location: 'Store #412',
+      description: 'Minor remodel of front-end registers', quote_type: 'Minor Remodel',
+      labor: 3000, materials: 1500, total: 4500, show_labor: true, show_total: true,
+    })
+    expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-')
+    expect(buf.subarray(-6).toString('latin1')).toContain('%%EOF')
+    expect(buf.length).toBeGreaterThan(800)
+  })
+
+  it('renders with everything hidden (empty cost box)', async () => {
+    const buf = await generateQuotePdf({
+      customer: 'TBD', date_received: '2026-06-09', bid_due_date: '',
+      architect: '', project_location: 'TBD', description: '', quote_type: '',
+      labor: 0, materials: 0, total: 4500, show_labor: false, show_total: false,
+    })
     expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-')
     expect(buf.length).toBeGreaterThan(800)
   })
