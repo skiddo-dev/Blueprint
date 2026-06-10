@@ -42,6 +42,14 @@ export function yearRange(today = new Date()): { from: string; to: string } {
   return { from: `${y}-01-01`, to: `${y}-12-31` }
 }
 
+/** The day before an ISO date — the opening-balance cutoff for windowed
+ *  registers (shared by the register page and its CSV export). */
+export function dayBefore(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - 1)
+  return d.toISOString().slice(0, 10)
+}
+
 /** A due date as people read it — "12d overdue", "Due today", "Due in 30d" —
  *  so the working lists carry urgency instead of raw ISO dates. */
 export function relativeDue(dueISO: string, todayISO: string): { label: string; overdue: boolean } {

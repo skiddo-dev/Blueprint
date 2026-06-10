@@ -160,6 +160,7 @@
     {#if tb.rows.length === 0}
       <p class="empty">No postings yet. Create a journal entry to get started.</p>
     {:else}
+      <div class="trial-actions"><a class="btn-secondary" href="/api/accounting/export/trial-balance">⬇ CSV</a></div>
       <table>
         <thead>
           <tr><th>Code</th><th>Account</th><th class="num">Debit</th><th class="num">Credit</th></tr>
@@ -215,6 +216,7 @@
   /* Trial-balance collapsible: the shared .card supplies the chrome; these style
      just the <summary> affordance, which is page-specific. */
   .trial { padding-top: 0; padding-bottom: 0; }
+  .trial-actions { display: flex; justify-content: flex-end; padding: 10px 0 2px; }
   .trial summary {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     cursor: pointer; list-style: none; padding: 16px 0; font-weight: 600;

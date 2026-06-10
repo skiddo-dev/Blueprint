@@ -15,6 +15,7 @@
 <AccountingShell {user} title="📚 General Ledger" maxWidth="900px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: 'General ledger' }]}>
   {#snippet actions()}
+    <a class="btn-secondary" href={`/api/accounting/export/general-ledger?from=${data.from}&to=${data.to}`}>⬇ CSV</a>
     <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
   {/snippet}
 

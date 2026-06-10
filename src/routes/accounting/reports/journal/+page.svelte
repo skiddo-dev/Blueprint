@@ -15,6 +15,7 @@
 <AccountingShell {user} title="🧾 Journal" maxWidth="900px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: 'Journal' }]}>
   {#snippet actions()}
+    <a class="btn-secondary" href={`/api/accounting/export/journal?from=${data.from}&to=${data.to}`}>⬇ CSV</a>
     <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
   {/snippet}
 

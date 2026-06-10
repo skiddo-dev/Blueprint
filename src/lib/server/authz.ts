@@ -20,6 +20,17 @@ export function canAccessTask(user: Record<string, unknown>, task: Task): boolea
   })
 }
 
+/** Throw 401/403 unless the caller is a signed-in admin; returns the session
+ *  user. The guard for the /api/accounting surface (pages get the same rule
+ *  from the hooks.server.ts path guard). */
+export async function requireAdmin(locals: App.Locals): Promise<Record<string, unknown>> {
+  const session = await locals.auth()
+  const user = session?.user as Record<string, unknown> | undefined
+  if (!user) throw error(401)
+  if (user.role !== 'admin') throw error(403)
+  return user
+}
+
 /** Throw 401/403/404 unless the caller may access `taskId`. The single
  *  authorization rule shared by the task and attachment endpoints. */
 export async function assertCanAccessTask(locals: App.Locals, taskId: string): Promise<void> {
