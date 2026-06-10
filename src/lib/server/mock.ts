@@ -89,6 +89,8 @@ export function generateMockTasks(count = 35): Task[] {
       quote_status: pick(QUOTE_STATUSES),
       po,
       assigned_to: pick(ASSIGNEES),
+      // A slice of tasks carries co-assignees so the 👥 chips render in mock mode.
+      co_assignees: i % 5 === 0 ? ['Dean', 'Vickie'] : i % 7 === 0 ? ['Riley'] : [],
       date: new Date(Date.now() - randInt(270) * DAY_MS).toISOString().slice(0, 10),
       status: pick(KANBAN_STATUSES) as TaskStatus,
       exchange_id: `mock_exchange_${String(i).padStart(3, '0')}`,

@@ -7,6 +7,8 @@ import {
   resolveMailboxes,
   flaggedOnOrAfterCutoff,
   flaggedBeforeCutoff,
+  tombstoneKeysForTask,
+  isEmailTombstoned,
   type SyncEmail,
 } from './syncLogic'
 import type { Task } from '$lib/types'
@@ -50,6 +52,35 @@ describe('classifyEmail', () => {
   it('treats an unseen message with no known thread as new', () => {
     const existing = [task({ _id: 'a', exchange_id: 'other', conversation_id: 'threadZ' })]
     expect(classifyEmail(email({ id: 'msg9', conversation_id: 'threadQ' }), existing).action).toBe('new')
+  })
+})
+
+describe('deleted-card tombstones', () => {
+  it('a deleted synced card leaves both message and thread keys', () => {
+    expect(tombstoneKeysForTask({ exchange_id: 'msg1', conversation_id: 'thread1' }))
+      .toEqual(['exch:msg1', 'conv:thread1'])
+  })
+
+  it('a manual card (no email provenance) leaves no tombstones', () => {
+    expect(tombstoneKeysForTask({ exchange_id: null, conversation_id: null })).toEqual([])
+    expect(tombstoneKeysForTask({})).toEqual([])
+  })
+
+  it('skips the exact deleted message even while it is still flagged', () => {
+    const keys = new Set(tombstoneKeysForTask({ exchange_id: 'msg1', conversation_id: 'thread1' }))
+    expect(isEmailTombstoned(email({ id: 'msg1', conversation_id: 'thread1' }), keys)).toBe(true)
+  })
+
+  it("skips the thread's OTHER messages too — replies refresh a card's exchange_id, so the original message's id no longer matches the deleted card's", () => {
+    const keys = new Set(tombstoneKeysForTask({ exchange_id: 'reply7', conversation_id: 'thread1' }))
+    expect(isEmailTombstoned(email({ id: 'msg1', conversation_id: 'thread1' }), keys)).toBe(true)
+  })
+
+  it('leaves unrelated emails alone', () => {
+    const keys = new Set(tombstoneKeysForTask({ exchange_id: 'msg1', conversation_id: 'thread1' }))
+    expect(isEmailTombstoned(email({ id: 'msg2', conversation_id: 'thread2' }), keys)).toBe(false)
+    expect(isEmailTombstoned(email({ id: 'msg2', conversation_id: null }), keys)).toBe(false)
+    expect(isEmailTombstoned(email({ id: 'msg2' }), new Set<string>())).toBe(false)
   })
 })
 

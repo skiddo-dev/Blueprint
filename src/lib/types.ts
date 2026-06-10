@@ -32,6 +32,8 @@ export interface Task {
   po?: string                  // purchase order # (from a reply or a parsed attachment)
   store_numbers?: string[]
   assigned_to: string
+  co_assignees?: string[]       // additional people on the task (assigned_to stays the primary)
+  co_assignee_emails?: string[] // co-assignees' login emails where they're provisioned users (ownership)
   notes?: string
   date?: string
   status: TaskStatus

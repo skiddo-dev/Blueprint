@@ -41,7 +41,8 @@ export function searchTasks(tasks: Task[], q: string): SearchHit[] {
   return tasks
     .filter(t => matchesAll(join([
       t.title, t.description, t.full_body, t.notes, t.po,
-      (t.store_numbers ?? []).join(' '), t.assigned_to, t.sender_name, t.sender_email, t.quote,
+      (t.store_numbers ?? []).join(' '), t.assigned_to, (t.co_assignees ?? []).join(' '),
+      t.sender_name, t.sender_email, t.quote,
     ]), toks))
     .sort(byRecency)
     .slice(0, CAP)

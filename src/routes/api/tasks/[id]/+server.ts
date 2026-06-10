@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
-import { updateTaskField, patchTask, deleteTask, getUserEmailByName, getTask } from '$lib/server/db'
+import { updateTaskField, patchTask, deleteTask, getUserEmailByName, getTask, resolveCoAssignees } from '$lib/server/db'
 import { assertCanAccessTask } from '$lib/server/authz'
 import { validateTaskFieldValue } from '$lib/server/validation'
 import { statusOnAssign } from '$lib/taskRules'
@@ -11,7 +11,7 @@ import { statusOnAssign } from '$lib/taskRules'
 // (reassign authorship, dodge the ownership check) or inject arbitrary fields the
 // dashboard later trusts. Adding a new editable field? Add it here too.
 const EDITABLE_FIELDS = new Set([
-  'status', 'assigned_to', 'date',
+  'status', 'assigned_to', 'co_assignees', 'date',
   'quote', 'quote_type', 'quote_status', 'quote_assignee',
   'notes',
 ])
@@ -32,7 +32,20 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     const current = await getTask(params.id)
     const nextStatus = current ? statusOnAssign(current.status, checked) : null
     if (nextStatus) set.status = nextStatus
+    // Promoting a co-assignee to primary removes them from the co-list (one
+    // person shouldn't hold both slots).
+    if (current?.co_assignees?.length) {
+      Object.assign(set, await resolveCoAssignees(current.co_assignees, checked as string))
+    }
     const ok = await patchTask(params.id, set)
+    return json({ ok })
+  }
+  // Co-assignees travel with their resolved identities so the new people gain
+  // ownership ("My Work") and dropped ones lose it — same rule as assigned_to.
+  if (field === 'co_assignees') {
+    const current = await getTask(params.id)
+    const resolved = await resolveCoAssignees(checked as string[], current?.assigned_to)
+    const ok = await patchTask(params.id, { ...resolved })
     return json({ ok })
   }
   const ok = await updateTaskField(params.id, field, checked)

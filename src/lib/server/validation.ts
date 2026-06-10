@@ -14,6 +14,7 @@ export const newTaskSchema = z.object({
   description: z.string().max(10_000).optional(),
   status: oneOf(KANBAN_STATUSES, 'status').optional(),
   assigned_to: z.string().max(120).nullable().optional(),
+  co_assignees: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
   quote_assignee: z.string().max(120).nullable().optional(),
   date: z.string().max(40).nullable().optional(),
   quote: z.string().max(120).nullable().optional(),
@@ -35,6 +36,7 @@ export const userUpsertSchema = z.object({
 const TASK_FIELD_VALUE: Record<string, z.ZodTypeAny> = {
   status: oneOf(KANBAN_STATUSES, 'status'),
   assigned_to: z.string().max(120),
+  co_assignees: z.array(z.string().trim().min(1).max(120)).max(20),
   quote_assignee: z.string().max(120).nullable(),
   date: z.string().max(40).nullable(),
   quote: z.string().max(120).nullable(),

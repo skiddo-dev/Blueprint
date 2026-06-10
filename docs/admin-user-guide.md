@@ -40,7 +40,9 @@ What's different with admin rights:
   to or created by them.)
 - **Assign to anyone** — the card and New-Task **Assign to** lists include all
   provisioned **PM users** *plus* the supervisor roster. (PMs can only assign to
-  Unassigned or a supervisor.)
+  Unassigned or a supervisor.) A task can also carry **several people**: the
+  dashed **＋👤** chip adds extra assignees (shown as **👥** chips, removed with
+  **✕**), and each of them sees the task in their **My Work**.
 - **Inbox chips** — synced cards show a **📥** chip marking which PM mailbox the
   email was flagged in. Tap a store **#tag** to filter the board, same as a PM.
 - **Comment moderation** — you can **edit or delete any** comment, not just your
@@ -146,6 +148,11 @@ summary, marked with **📎**, so nobody has to open the file to know what's in 
 > that is ignored — so if an old flagged email never turns into a card, that's why,
 > not a bug. (Re-flagging it doesn't move its date, since the cutoff is judged by the
 > message's received date.)
+
+> **Deleted cards stay deleted.** When someone deletes a card that came from a
+> flagged email, the sync remembers it and will **not** re-create that card — even
+> while the email stays flagged in Outlook, and even for later replies on the same
+> thread. Want it back? Create the task manually with **✏️ New Task**.
 
 > Mailbox, Graph permissions, and the AI key are configured at deploy time — see
 > the project **README** and **`.github/DEPLOY.md`**. As an admin user you don't
