@@ -22,8 +22,8 @@
   const data = $derived<ChartData<'bar', number[], string>>({
     labels,
     datasets: [
-      { label: 'Revenue', data: months.map((m) => m.revenue / 100), backgroundColor: '#10b981', borderRadius: 3, maxBarThickness: 26 },
-      { label: 'Expenses', data: months.map((m) => m.expenses / 100), backgroundColor: '#f97316', borderRadius: 3, maxBarThickness: 26 },
+      { label: 'Revenue', data: months.map((m) => m.revenue / 100), backgroundColor: '#10b981', borderRadius: 4, maxBarThickness: 72 },
+      { label: 'Expenses', data: months.map((m) => m.expenses / 100), backgroundColor: '#f97316', borderRadius: 4, maxBarThickness: 72 },
     ],
   })
 
