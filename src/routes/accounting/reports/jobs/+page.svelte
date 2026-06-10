@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { usd, pct } from '$lib/accounting/format'
   import type { PageData } from './$types'
@@ -15,7 +16,7 @@
 <AccountingShell {user} title="Job profitability" maxWidth="900px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: 'Jobs' }]}>
   {#snippet actions()}
-    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
   {/snippet}
 
   <p class="report-hint">Profit per job: invoiced revenue against vendor bills and job-tagged expenses, by document totals. Tag invoices, bills, and expenses with a job name as you enter them and this report builds itself.</p>

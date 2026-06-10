@@ -57,7 +57,7 @@ describe('icons', () => {
       'warning', 'trash', 'person', 'list', 'sliders', 'refresh', 'pencil',
       'sun', 'moon', 'monitor', 'mail', 'calendar', 'checklist', 'note',
       'attachment', 'comment', 'pin', 'tag', 'archive', 'download', 'spark',
-      'wrench', 'signal', 'hourglass',
+      'wrench', 'signal', 'hourglass', 'scales', 'printer', 'camera', 'lock', 'unlock',
     ] as const
     for (const name of required) expect(ICONS[name], `missing icon: ${name}`).toBeTruthy()
   })

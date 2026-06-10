@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto } from '$app/navigation'
   import type { PageData } from './$types'
@@ -94,7 +95,7 @@
   <section class="card">
     <div class="scan-row">
       <label class="btn-secondary scan" class:busy={scanning}>
-        {scanning ? 'Reading receipt…' : '📷 Scan receipt'}
+        {#if scanning}Reading receipt…{:else}<Icon name="camera" size={13} /> Scan receipt{/if}
         <input type="file" accept="image/*,.pdf" onchange={scanReceipt} disabled={scanning} hidden />
       </label>
       {#if scanNote}<span class="scan-note">✓ {scanNote}</span>{/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import DateRange from '$lib/components/accounting/DateRange.svelte'
   import { usd } from '$lib/accounting/format'
@@ -17,7 +18,7 @@
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Profit & Loss' }]}>
   {#snippet actions()}
     <a class="btn-secondary" href={`/api/accounting/export/income-statement?from=${data.from}&to=${data.to}${data.basis === 'cash' ? '&basis=cash' : ''}`}>⬇ CSV</a>
-    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
   {/snippet}
 
   <p class="report-hint">What the business earned over the period: revenue, minus the cost of doing the jobs, minus overhead — ending at net income.</p>

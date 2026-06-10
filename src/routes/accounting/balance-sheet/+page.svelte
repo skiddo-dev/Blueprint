@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { usd } from '$lib/accounting/format'
   import { goto } from '$app/navigation'
@@ -35,7 +36,7 @@
       {st.balanced ? '✓ Balanced' : '✕ Out of balance'}
     </span>
     <a class="btn-secondary" href={`/api/accounting/export/balance-sheet?asOf=${data.asOf}${data.basis === 'cash' ? '&basis=cash' : ''}`}>⬇ CSV</a>
-    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
   {/snippet}
 
   <p class="report-hint">A snapshot of what the business owns and owes on a single date — assets on one side, liabilities plus equity on the other. The two sides must match.</p>
