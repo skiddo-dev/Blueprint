@@ -86,7 +86,12 @@
                   <td class="num">{c.invoiceCount}</td>
                   <td class="num">{usd(c.totalInvoiced)}</td>
                   <td class="num" class:owed={c.outstanding > 0}>{usd(c.outstanding)}</td>
-                  <td class="row-actions"><button class="link" type="button" onclick={() => startEdit(c)}>Edit</button></td>
+                  <td class="row-actions">
+                    {#if c.outstanding > 0}
+                      <a class="link" href="/api/accounting/customers/{c._id}/statement.pdf" target="_blank" rel="noopener">Statement</a>
+                    {/if}
+                    <button class="link" type="button" onclick={() => startEdit(c)}>Edit</button>
+                  </td>
                 </tr>
               {/if}
             {/each}

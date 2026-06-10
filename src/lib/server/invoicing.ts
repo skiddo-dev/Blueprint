@@ -382,3 +382,22 @@ export async function voidInvoice(invoiceId: string, opts: { created_by?: string
   )
   return { ...inv, _id: String(inv._id), status: 'void', balance: 0 } as Invoice
 }
+
+/** One customer by id (statement endpoint). */
+export async function getCustomer(id: string): Promise<Customer | null> {
+  if (USE_MOCK) return null
+  const d = await getDb()
+  const c = await col('customers', d).findOne({ _id: id })
+  return c ? ({ ...c, _id: String(c._id) } as Customer) : null
+}
+
+/** A customer's open/partial invoices, oldest due first — the statement body. */
+export async function listCustomerOpenInvoices(customerId: string): Promise<Invoice[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const rows = await col('invoices', d)
+    .find({ customer_id: customerId, status: { $in: ['open', 'partial'] } })
+    .sort({ due_date: 1 })
+    .toArray()
+  return rows.map((i) => ({ ...i, _id: String(i._id) })) as Invoice[]
+}
