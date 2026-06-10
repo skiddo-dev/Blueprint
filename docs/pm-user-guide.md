@@ -125,6 +125,12 @@ Every edit you make **saves automatically** — there's no Save button.
   removed and the entry shows **"expired"** (the record stays on the card); files
   **you upload** are kept indefinitely.
 
+  > **The summary reads the attachments for you.** On email-sourced tasks, when an
+  > attachment matters to the work — a bill, a schedule, even a scanned image — the
+  > AI reads it and appends the key details to the card's **summary**, marked with
+  > **📎**. So if a card's summary mentions figures that aren't in the email body,
+  > they came from an attachment. (Files you upload yourself aren't auto-analyzed.)
+
 ### Delete a task
 
 Click the small **✕** in the card's bottom-right corner. (Use this for cards you

@@ -3,8 +3,9 @@
 //
 // This is the sibling of build-raves-pitch-deck.mjs: same Raves Blueprint visual
 // system, different offer. It sells the in-house accounting module
-// (job-costed books, A/R + A/P, statements, period close, invoice/bill PDFs)
-// as the next funded phase after Field Rollout + Reliability.
+// (job-costed books, A/R + A/P, registers, statements + report pack, credits/void,
+// recurring, bank rec, period close, invoice/bill/statement PDFs) as the next
+// funded phase after Field Rollout + Reliability.
 
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -276,12 +277,12 @@ function addDeliverSlide(presentation) {
   addShape(slide, { x: 0, y: 0, w: W, h: H, fill: C.light })
   addHeader(slide, 'What it delivers', 'A real set of construction books, already built into Blueprint.', null)
   const items = [
-    ['Job-costed accounts', 'Construction chart of accounts: retainage, WIP, change orders, and job-cost categories.'],
-    ['Invoices & A/R', 'Invoice customers from won quotes, record payments, and watch A/R aging buckets.'],
-    ['Bills & A/P', 'Enter vendor bills, pay them, and watch what Raves owes with A/P aging.'],
-    ['Ledger & trial balance', 'Double-entry journal and a live trial balance that always ties out to the penny.'],
-    ['Statements', 'Income statement and balance sheet on demand, no re-keying into other software.'],
-    ['Close & PDFs', 'Lock a period when it is final, and send branded invoice and bill PDFs.'],
+    ['Job costing', 'Profit and margin per job, built from invoices, bills, and expenses tagged with the job.'],
+    ['Invoices & A/R', 'Invoice customers from won quotes, record payments and credit memos, watch A/R aging.'],
+    ['Bills & A/P', 'Vendor bills, payments, vendor credits, one-click expense entry, and A/P aging.'],
+    ['Ledger & registers', 'Double-entry journal, a live trial balance, and a running-balance register per account.'],
+    ['Statements & reports', 'Income statement, balance sheet, cash flow, and P&L by month — print-ready on demand.'],
+    ['Close & PDFs', 'Lock a period when it is final, and send branded invoice, bill, and statement PDFs.'],
   ]
   items.forEach(([title, body], i) => {
     const x = 72 + (i % 3) * 384
@@ -336,7 +337,7 @@ function addWalkthroughFlowsSlide(presentation) {
   smallCard(
     slide,
     'Also in the product',
-    'Vendor bills and A/P, customer and vendor directories, A/R + A/P aging, balance sheet, cash flow, journal and trial balance, period close, invoice/bill PDFs, dark mode.',
+    'Vendor bills and A/P, customer and vendor directories, A/R + A/P aging, balance sheet, cash flow, account registers, job costing, recurring transactions, credit memos and void, customer statement PDFs, quick expense entry, period close, invoice/bill PDFs, dark mode.',
     72,
     512,
     1136,
@@ -344,6 +345,31 @@ function addWalkthroughFlowsSlide(presentation) {
     C.blue,
   )
   addFooter(slide, 7)
+}
+
+function addParitySlide(presentation) {
+  const slide = presentation.slides.add()
+  addShape(slide, { x: 0, y: 0, w: W, h: H, fill: C.light })
+  addHeader(
+    slide,
+    'Already shipped',
+    'The QuickBooks-replacement layer is live in the product.',
+    'Everything below is deployed today — rollout work, not a build-from-scratch roadmap.',
+  )
+  const items = [
+    ['Account registers', 'Running-balance history for every account — a checkbook view per ledger line.', C.green],
+    ['Report pack', 'General Ledger, Journal, and P&L by month, alongside the three statements.', C.cyan],
+    ['Job costing', 'Per-job profit and margin from invoices, bills, and expenses tagged with the job.', C.blue],
+    ['Credits & void', 'Credit memos, vendor credits, and void — every correction an append-only reversal.', C.amber],
+    ['Customer statements', 'A PDF of a customer’s open invoices with ages and total due, collections-ready.', C.green],
+    ['Recurring & expenses', 'Recurring invoices, bills, and journals that never double-post; one-click expenses.', C.cyan],
+  ]
+  items.forEach(([title, body, accent], i) => {
+    const x = 72 + (i % 3) * 384
+    const y = i < 3 ? 248 : 452
+    smallCard(slide, title, body, x, y, 332, 150, accent)
+  })
+  addFooter(slide, 8)
 }
 
 function addCommercialSlide(presentation) {
@@ -367,8 +393,8 @@ function addCommercialSlide(presentation) {
   })
   smallCard(slide, 'Books Complete', '$28,000 adds bank reconciliation, cash-flow statement, data migration from current books, and 30-day hypercare.', 646, 246, 250, 172, C.amber)
   smallCard(slide, 'Books Care', 'Optional monthly lane for month-end review, reconciliation checks, and small accounting changes.', 930, 246, 250, 172, C.green)
-  smallCard(slide, 'Builds on what is shipped', 'The ledger, A/R, A/P, statements, period close, and invoice/bill PDFs are already built. This phase tailors and rolls them out for Raves.', 646, 456, 534, 120, C.blue)
-  addFooter(slide, 8)
+  smallCard(slide, 'Builds on what is shipped', 'The ledger, A/R, A/P, registers, job costing, statements, recurring, bank rec, period close, and invoice/bill/statement PDFs are already built. This phase tailors and rolls them out for Raves.', 646, 456, 534, 120, C.blue)
+  addFooter(slide, 9)
 }
 
 function addMapSlide(presentation) {
@@ -411,7 +437,7 @@ function addMapSlide(presentation) {
       })
     }
   })
-  addFooter(slide, 9)
+  addFooter(slide, 10)
 }
 
 function addAskSlide(presentation) {
@@ -438,7 +464,7 @@ function addAskSlide(presentation) {
   smallCard(slide, 'Next artifact', 'One-page Books SOW and opening-balance checklist.', 160, 532, 280, 96, C.green)
   smallCard(slide, 'Next meeting', 'Kickoff once opening balances are confirmed.', 500, 532, 280, 96, C.cyan)
   smallCard(slide, 'Next offer', 'Books Care after go-live for monthly close support.', 840, 532, 280, 96, C.amber)
-  addFooter(slide, 10, true)
+  addFooter(slide, 11, true)
 }
 
 async function writeBlob(blob, path) {
@@ -483,6 +509,7 @@ addRiskSlide(presentation)
 addDeliverSlide(presentation)
 addWalkthroughHeroSlide(presentation)
 addWalkthroughFlowsSlide(presentation)
+addParitySlide(presentation)
 addCommercialSlide(presentation)
 addMapSlide(presentation)
 addAskSlide(presentation)
