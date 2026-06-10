@@ -34,7 +34,7 @@ To sign out, open the sidebar and click **Log out**.
 The board has two parts:
 
 - **Sidebar** (left on desktop; the **☰** menu on mobile) — your name and **PM**
-  badge, **🔎 Search**, a **📖 Help & Guide** link (opens this guide as a PDF),
+  badge, **Search**, a **Help & Guide** link (opens this guide as a PDF),
   **Log out**, the **theme** switch, and live **Board Stats** (a count per column
   plus an overall completion bar).
 - **Board columns** — your tasks, grouped into six status columns.
@@ -187,7 +187,7 @@ Comments appear for everyone on the task in near real time.
 
 ## 6. Search (⌘K)
 
-Press **⌘K** (Mac) or **Ctrl+K** (Windows) anywhere — or click **🔎 Search** in
+Press **⌘K** (Mac) or **Ctrl+K** (Windows) anywhere — or click **Search** in
 the sidebar — to open the command palette.
 
 - Type at least **2 characters**. Search matches task titles, store numbers, POs,
@@ -239,16 +239,18 @@ Blueprint is built to work on a phone:
 These exist in Blueprint but require the **Admin** role. If you need something
 here, ask an admin:
 
-- **📊 Dashboard** — analytics across all tasks.
-- **💰 Quote Generator** — building and exporting PDF quotes.
-- **🏭 Prospects** & **🗺️ Competitive Landscape** — the warehouse lead pipeline
+- **Dashboard** — analytics across all tasks.
+- **Quote Generator** — building and exporting PDF quotes.
+- **Prospects** & **Competitive Landscape** — the warehouse lead pipeline
   and market map.
-- **🔄 Refresh / Sync Emails** — pulling flagged emails into tasks. *(This runs
+- **Accounting** — Blueprint Books (invoices, bills, statements, reconciliation,
+  purchase orders, budgets, fixed assets, and more).
+- **Refresh / Sync Emails** — pulling flagged emails into tasks. *(This runs
   automatically in the background regardless — flagged emails become tasks on
   their own.)*
-- **👥 User Access** — adding people, setting roles, approving **access requests**,
+- **User Access** — adding people, setting roles, approving **access requests**,
   and **CSV-importing** tasks in bulk.
-- **👁️ View User Activity** ("view as" another user) and **Clear All Tasks**.
+- **View User Activity** ("view as" another user) and **Clear All Tasks**.
 
 Trying to open an admin page simply returns you to the board.
 
@@ -278,7 +280,7 @@ Trying to open an admin page simply returns you to the board.
 
 ## Getting help
 
-The **📖 Help & Guide** link in the sidebar reopens this guide any time. If
+The **Help & Guide** link in the sidebar reopens this guide any time. If
 something looks wrong — a missing task, a card that won't save, an access screen you
 didn't expect — note what you were doing and reach out to your Blueprint admin. If an
 error screen shows a reference **ID**, include it; it helps them trace exactly what
