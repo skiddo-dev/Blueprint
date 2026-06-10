@@ -12,6 +12,7 @@
     { href: '/accounting/balance-sheet', ico: '🏦', name: 'Balance sheet', blurb: 'What the business owns vs owes on a date.' },
     { href: '/accounting/cash-flow', ico: '💵', name: 'Cash flow', blurb: 'Where cash actually moved: operating, investing, financing.' },
     { href: '/accounting/reports/pnl-monthly', ico: '📅', name: 'P&L by month', blurb: 'The comparative view — one column per month, the way accountants read a year.' },
+    { href: '/accounting/reports/jobs', ico: '🏗️', name: 'Job profitability', blurb: 'Profit and margin per job — revenue vs bills and job-tagged expenses.' },
     { href: '/accounting/reports/general-ledger', ico: '📚', name: 'General ledger', blurb: 'Every posting grouped by account with period totals.' },
     { href: '/accounting/reports/journal', ico: '🧾', name: 'Journal', blurb: 'Every entry in date order with its debits and credits.' },
   ]

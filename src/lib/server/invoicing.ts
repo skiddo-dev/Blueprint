@@ -127,6 +127,7 @@ export interface CreateInvoiceInput {
   tax_rate?: number
   po?: string
   quote_id?: string
+  job?: string
   memo?: string
   created_by?: string
 }
@@ -162,6 +163,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<Invoice>
       status: 'open',
       ...(input.po ? { po: input.po } : {}),
       ...(input.quote_id ? { quote_id: input.quote_id } : {}),
+      ...(input.job ? { job: input.job.trim() } : {}),
       ...(input.memo ? { memo: input.memo } : {}),
       ...(input.created_by ? { created_by: input.created_by } : {}),
       created_at: now,

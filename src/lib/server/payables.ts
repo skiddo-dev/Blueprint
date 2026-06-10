@@ -113,6 +113,7 @@ export interface CreateBillInput {
   lines: BillLine[]
   vendor_invoice_no?: string
   po?: string
+  job?: string
   memo?: string
   created_by?: string
 }
@@ -145,6 +146,7 @@ export async function createBill(input: CreateBillInput): Promise<Bill> {
       status: 'open',
       ...(input.vendor_invoice_no ? { vendor_invoice_no: input.vendor_invoice_no } : {}),
       ...(input.po ? { po: input.po } : {}),
+      ...(input.job ? { job: input.job.trim() } : {}),
       ...(input.memo ? { memo: input.memo } : {}),
       ...(input.created_by ? { created_by: input.created_by } : {}),
       created_at: now,
