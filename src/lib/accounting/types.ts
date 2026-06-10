@@ -17,7 +17,7 @@ export interface Account {
 }
 
 // ── Double-entry journal ───────────────────────────────────────────────────────
-export type JournalSource = 'manual' | 'invoice' | 'payment' | 'bill' | 'bill-payment' | 'closing' | 'credit-memo' | 'vendor-credit' | 'expense'
+export type JournalSource = 'manual' | 'invoice' | 'payment' | 'bill' | 'bill-payment' | 'closing' | 'credit-memo' | 'vendor-credit' | 'expense' | 'sales-tax-remittance'
 
 // One leg of an entry. Exactly one of debit/credit is > 0; the other is 0.
 export interface JournalLine {
@@ -124,6 +124,8 @@ export interface Vendor {
   name: string
   name_lower: string
   email?: string
+  is_1099?: boolean // payments to this vendor count toward a 1099-NEC
+  tax_id?: string   // EIN/SSN for the 1099 form (display-masked in the UI)
   created_at: string
 }
 

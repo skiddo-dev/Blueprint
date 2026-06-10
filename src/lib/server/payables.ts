@@ -35,7 +35,7 @@ export interface VendorWithStats extends Vendor {
 /** Vendors with their AP rollup (bill count, total billed, outstanding). */
 /** Update a vendor's name/email. A name change propagates to the denormalized
  *  vendor_name on their bills. Returns false if no such vendor. */
-export async function updateVendor(id: string, patch: { name?: string; email?: string }, actor?: string): Promise<boolean> {
+export async function updateVendor(id: string, patch: { name?: string; email?: string; is_1099?: boolean; tax_id?: string }, actor?: string): Promise<boolean> {
   const d = await getDb()
   const set: Record<string, unknown> = {}
   const unset: Record<string, unknown> = {}
@@ -46,6 +46,11 @@ export async function updateVendor(id: string, patch: { name?: string; email?: s
   if (patch.email !== undefined) {
     if (patch.email.trim()) set.email = patch.email.trim()
     else unset.email = ''
+  }
+  if (patch.is_1099 !== undefined) set.is_1099 = patch.is_1099
+  if (patch.tax_id !== undefined) {
+    if (patch.tax_id.trim()) set.tax_id = patch.tax_id.trim()
+    else unset.tax_id = ''
   }
   if (!Object.keys(set).length && !Object.keys(unset).length) return false
   const update: Record<string, unknown> = {}
@@ -264,6 +269,27 @@ export async function recordBillPayment(
     }, { session })
     return { payment, bill: { ...bill, _id: String(bill._id), paid: newPaid, balance: newBalance, status } as Bill }
   })
+}
+
+// ── 1099 report data ──────────────────────────────────────────────────────────
+/** Everything the 1099 rollup needs for one calendar year: that year's bill
+ *  payments, a vendor_id lookup for their bills, and the vendor list. */
+export async function get1099Data(year: number): Promise<{
+  payments: BillPayment[]
+  billsById: Map<string, { vendor_id: string }>
+  vendors: Vendor[]
+}> {
+  if (USE_MOCK) return { payments: [], billsById: new Map(), vendors: [] }
+  const d = await getDb()
+  const payments = (await col('billPayments', d)
+    .find({ date: { $gte: `${year}-01-01`, $lte: `${year}-12-31` } })
+    .toArray()).map((p) => ({ ...p, _id: String(p._id) })) as BillPayment[]
+  const billIds = [...new Set(payments.map((p) => p.bill_id))]
+  const bills = await col('bills', d)
+    .find({ _id: { $in: billIds } }, { projection: { vendor_id: 1 } })
+    .toArray()
+  const billsById = new Map(bills.map((b) => [String(b._id), { vendor_id: String(b.vendor_id) }]))
+  return { payments, billsById, vendors: await listVendors() }
 }
 
 // ── A/P aging ───────────────────────────────────────────────────────────────────

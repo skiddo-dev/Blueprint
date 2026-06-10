@@ -94,6 +94,27 @@ export function journalCsv(entries: JournalEntry[], nameByAccount: Map<string, s
   return out.join('\n')
 }
 
+export function salesTaxCsv(months: { period: string; collected: number; credited: number; remitted: number; net: number }[], balance: number): string {
+  const out = [row(['Month', 'Collected', 'Credited back', 'Remitted', 'Net'])]
+  for (const m of months) {
+    out.push(row([csvCell(m.period), moneyCell(m.collected), moneyCell(m.credited), moneyCell(m.remitted), moneyCell(m.net)]))
+  }
+  out.push(row(['Balance owed', '', '', '', moneyCell(balance)]))
+  return out.join('\n')
+}
+
+export function ten99Csv(rows: { name: string; tax_id?: string; paymentCount: number; total: number; overThreshold: boolean }[], year: number, total: number): string {
+  const out = [
+    row([csvCell(`1099 vendor payments ${year}`), '', '', '', '']),
+    row(['Vendor', 'Tax ID', 'Payments', 'Total paid', '1099 required']),
+  ]
+  for (const r of rows) {
+    out.push(row([csvCell(r.name), csvCell(r.tax_id ?? ''), String(r.paymentCount), moneyCell(r.total), r.overThreshold ? 'YES' : 'no']))
+  }
+  out.push(row(['Total', '', '', moneyCell(total), '']))
+  return out.join('\n')
+}
+
 export function registerCsv(
   rows: RegisterRow[],
   account: Pick<Account, '_id' | 'name'>,

@@ -51,6 +51,7 @@
     ] },
     { label: 'Reports', items: [
       { href: '/accounting/reports', ico: '📊', label: 'Reports' },
+      { href: '/accounting/sales-tax', ico: '🏛️', label: 'Sales tax' },
       { href: '/accounting/audit', ico: '🛡️', label: 'Audit log' },
     ] },
     { label: 'Banking', items: [
