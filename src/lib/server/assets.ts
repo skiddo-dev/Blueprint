@@ -8,7 +8,7 @@
 import { env } from '$env/dynamic/private'
 import { getDb } from './db'
 import { withTxn } from './txn'
-import { postEntry, postReversal, getCloseThrough } from './accounting'
+import { postEntry, postReversal, getCloseThrough, getAccounts } from './accounting'
 import { writeAudit } from './audit'
 import {
   depreciationSchedule, periodsToPost, depreciationLines, disposalLines, monthEndISO,
@@ -197,6 +197,10 @@ export async function disposeAsset(
   if (!asset) throw new Error(`No asset ${assetId}`)
   if (asset.status === 'disposed') return { ...asset, _id: String(asset._id) } as FixedAsset
 
+  if (input.cash_account_id) {
+    const acct = (await getAccounts()).find((x) => x._id === input.cash_account_id)
+    if (!acct?.active || acct.subtype !== 'bank') throw new Error('cash_account_id must be an active bank account')
+  }
   const accumulated = await postedAccumulated(assetId)
   // One ref per disposal ATTEMPT (minted before the txn so a re-driven replay
   // stays at-most-once), not per asset — a fresh disposal after an undo must
