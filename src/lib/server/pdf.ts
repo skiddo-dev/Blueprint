@@ -2,8 +2,10 @@ import PDFDocument from 'pdfkit'
 import type { Invoice, Bill } from '$lib/accounting/types'
 import { cents } from '$lib/money'
 import { format as usd } from '$lib/money'
+import { quoteCostRows } from '$lib/quoteCost'
+import type { QuoteCostInput } from '$lib/quoteCost'
 
-export interface QuoteData {
+export interface QuoteData extends QuoteCostInput {
   customer: string
   date_received: string
   bid_due_date: string
@@ -11,9 +13,6 @@ export interface QuoteData {
   project_location: string
   description: string
   notes?: string
-  labor: number
-  materials: number
-  total: number
   quote_type: string
 }
 
@@ -107,17 +106,13 @@ export async function generateQuotePdf(data: QuoteData): Promise<Buffer> {
     // Right: cost box
     const rightX = LEFT + boxW + 8
     doc.rect(rightX, botY, boxW, 72).fillAndStroke('#e8e8e8', '#000')
-    // Show the labor/materials breakdown only when provided; otherwise just the
-    // single quoted amount (the quote log tracks one Amount per quote).
-    const costRows: Array<[string, number]> =
-      data.labor > 0 || data.materials > 0
-        ? [['Labor:', data.labor], ['Materials:', data.materials], ['Total:', data.total]]
-        : [['Amount:', data.total]]
-    costRows.forEach(([lbl, val], i) => {
+    // Row set (labor / materials / total vs. a single amount, per the form's
+    // show toggles) is shared with the generator page's live preview.
+    quoteCostRows(data).forEach(([lbl, val], i) => {
       doc.fillColor('#000').fontSize(10).font('Helvetica-Bold')
       doc.text(lbl, rightX + 6, botY + i * 22 + 6, { width: boxW / 2 })
       doc.font('Helvetica')
-      doc.text(`$${val.toFixed(2)}`, rightX + boxW / 2, botY + i * 22 + 6, {
+      doc.text(`$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, rightX + boxW / 2, botY + i * 22 + 6, {
         width: boxW / 2 - 8,
         align: 'right',
       })
