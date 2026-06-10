@@ -6,6 +6,8 @@ import { env } from '$env/dynamic/private'
 import { getDb } from './db'
 import { withTxn } from './txn'
 import { postEntry, postReversal } from './accounting'
+import { writeAudit } from './audit'
+import { usd } from '$lib/accounting/format'
 import { type Cents, cents } from '$lib/money'
 import { billTotal, billJournalLines, billPaymentJournalLines, vendorCreditJournalLines } from '$lib/accounting/payables'
 import { invoiceStatus, dueDate, buildAging } from '$lib/accounting/invoicing'
@@ -33,7 +35,7 @@ export interface VendorWithStats extends Vendor {
 /** Vendors with their AP rollup (bill count, total billed, outstanding). */
 /** Update a vendor's name/email. A name change propagates to the denormalized
  *  vendor_name on their bills. Returns false if no such vendor. */
-export async function updateVendor(id: string, patch: { name?: string; email?: string }): Promise<boolean> {
+export async function updateVendor(id: string, patch: { name?: string; email?: string }, actor?: string): Promise<boolean> {
   const d = await getDb()
   const set: Record<string, unknown> = {}
   const unset: Record<string, unknown> = {}
@@ -51,6 +53,16 @@ export async function updateVendor(id: string, patch: { name?: string; email?: s
   if (Object.keys(unset).length) update.$unset = unset
   const res = await col('vendors', d).updateOne({ _id: id }, update)
   if (set.name) await col('bills', d).updateMany({ vendor_id: id }, { $set: { vendor_name: set.name } })
+  if (res.matchedCount > 0) {
+    const fields = [...Object.keys(set), ...Object.keys(unset)].filter((k) => k !== 'name_lower')
+    await writeAudit({
+      actor: actor ?? 'system',
+      action: 'vendor.update',
+      entity_type: 'vendor',
+      entity_id: id,
+      summary: `Vendor updated (${fields.join(', ')})${set.name ? ` — ${set.name}` : ''}`,
+    })
+  }
   return res.matchedCount > 0
 }
 
@@ -164,6 +176,13 @@ export async function createBill(input: CreateBillInput): Promise<Bill> {
       },
       { session },
     )
+    await writeAudit({
+      actor: input.created_by ?? 'system',
+      action: 'bill.create',
+      entity_type: 'bill',
+      entity_id: bill._id,
+      summary: `Bill #${year}-${number} — ${usd(total)} — ${vendor.name}`,
+    }, { session })
     return bill
   })
 }
@@ -235,6 +254,14 @@ export async function recordBillPayment(
       },
       { session },
     )
+    await writeAudit({
+      actor: opts.created_by ?? 'system',
+      action: 'bill-payment.record',
+      entity_type: 'bill',
+      entity_id: billId,
+      summary: `Bill payment ${usd(amount)} on Bill #${bill.number} — ${bill.vendor_name}`,
+      meta: { payment_id: payment._id },
+    }, { session })
     return { payment, bill: { ...bill, _id: String(bill._id), paid: newPaid, balance: newBalance, status } as Bill }
   })
 }
@@ -334,6 +361,14 @@ export async function createVendorCredit(
       },
       { session },
     )
+    await writeAudit({
+      actor: opts.created_by ?? 'system',
+      action: 'vendor-credit.create',
+      entity_type: 'bill',
+      entity_id: billId,
+      summary: `Vendor credit #${number} ${usd(amount)} on Bill #${bill.number} — ${bill.vendor_name}`,
+      meta: { credit_id: credit._id },
+    }, { session })
     return { credit, bill: { ...bill, _id: String(bill._id), credited, balance: newBalance, status } as Bill }
   })
 }
@@ -349,14 +384,24 @@ export async function voidBill(billId: string, opts: { created_by?: string } = {
   if (((bill.credited as number) ?? 0) > 0) throw new Error('Cannot void a bill with vendor credits applied')
 
   const entry = await col('journalEntries', d).findOne({ source: 'bill', source_ref: billId })
+  let reversalId: string | undefined
   if (entry) {
-    await postReversal(String(entry._id), {
+    const reversal = await postReversal(String(entry._id), {
       date: new Date().toISOString().slice(0, 10),
       memo: `Void — Bill #${bill.number}, ${bill.vendor_name}`,
       ...(opts.created_by ? { created_by: opts.created_by } : {}),
     })
+    reversalId = reversal._id
   }
   const now = new Date().toISOString()
   await col('bills', d).updateOne({ _id: billId }, { $set: { status: 'void', balance: 0, updated_at: now } })
+  await writeAudit({
+    actor: opts.created_by ?? 'system',
+    action: 'bill.void',
+    entity_type: 'bill',
+    entity_id: billId,
+    summary: `Void Bill #${bill.number} — ${bill.vendor_name}`,
+    ...(reversalId ? { meta: { reversal_entry_id: reversalId } } : {}),
+  })
   return { ...bill, _id: String(bill._id), status: 'void', balance: 0 } as Bill
 }

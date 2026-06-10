@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
+import { actorOf } from '$lib/server/authz'
 import { updateCustomer } from '$lib/server/invoicing'
 
 // Admin-only. Edit a customer's name/email (a name change propagates to their
@@ -19,7 +20,7 @@ export const PATCH: RequestHandler = async ({ request, params, locals }) => {
   const ok = await updateCustomer(params.id, {
     name: body.name !== undefined ? String(body.name) : undefined,
     email: body.email !== undefined ? String(body.email) : undefined,
-  })
+  }, actorOf(user))
   if (!ok) throw error(404, 'Customer not found')
   return json({ ok: true })
 }

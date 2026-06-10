@@ -31,6 +31,12 @@ export async function requireAdmin(locals: App.Locals): Promise<Record<string, u
   return user
 }
 
+/** The audit/created_by identity string for a session user: login email,
+ *  falling back to display name. */
+export function actorOf(user: Record<string, unknown>): string {
+  return (user.email as string) ?? (user.displayName as string)
+}
+
 /** Throw 401/403/404 unless the caller may access `taskId`. The single
  *  authorization rule shared by the task and attachment endpoints. */
 export async function assertCanAccessTask(locals: App.Locals, taskId: string): Promise<void> {

@@ -4,6 +4,8 @@
 import { env } from '$env/dynamic/private'
 import { getDb } from './db'
 import { getAccounts } from './accounting'
+import { writeAudit } from './audit'
+import { usd } from '$lib/accounting/format'
 import { accountEffect, type BankTxn } from '$lib/accounting/reconciliation'
 import { type Cents, cents } from '$lib/money'
 import type { Account } from '$lib/accounting/types'
@@ -108,6 +110,13 @@ export async function createReconciliation(input: {
     created_at: new Date().toISOString(),
   }
   await col('reconciliations', d).insertOne(rec)
+  await writeAudit({
+    actor: input.created_by ?? 'system',
+    action: 'reconciliation.create',
+    entity_type: 'reconciliation',
+    entity_id: rec._id,
+    summary: `Reconciled ${input.account_id} to ${usd(input.statement_balance)} as of ${input.statement_date} (${input.cleared_entry_ids.length} cleared)`,
+  })
   return rec
 }
 

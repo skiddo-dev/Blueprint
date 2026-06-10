@@ -1,6 +1,9 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { postEntry, getAccounts } from '$lib/server/accounting'
+import { writeAudit } from '$lib/server/audit'
+import { actorOf } from '$lib/server/authz'
+import { usd } from '$lib/accounting/format'
 import { parseMoney, cents } from '$lib/money'
 
 // Admin-only. Quick expense entry — QuickBooks' "Expense" transaction: money
@@ -47,6 +50,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         { account_id: bank._id, debit: cents(0), credit: amount },
       ],
       created_by: (user.email as string) ?? (user.displayName as string),
+    })
+    await writeAudit({
+      actor: actorOf(user),
+      action: 'expense.create',
+      entity_type: 'journal-entry',
+      entity_id: entry._id,
+      summary: `Expense ${usd(amount)} — ${expense.name}${body.payee ? ` — ${String(body.payee)}` : ''}`,
     })
     return json(entry, { status: 201 })
   } catch (e) {
