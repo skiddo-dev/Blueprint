@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types'
 import { getLedgerBalances, getAccounts } from '$lib/server/accounting'
+import { getCashBasisBalances } from '$lib/server/cashbasis'
 import { incomeStatement } from '$lib/accounting/statements'
 
 // Admin-only (page guard in hooks.server.ts). Defaults to year-to-date; ?from=&to=
@@ -8,6 +9,12 @@ export const load: PageServerLoad = async ({ url }) => {
   const today = new Date().toISOString().slice(0, 10)
   const from = url.searchParams.get('from') || `${today.slice(0, 4)}-01-01`
   const to = url.searchParams.get('to') || today
-  const [balances, accounts] = await Promise.all([getLedgerBalances({ from, to, excludeClosing: true }), getAccounts()])
-  return { from, to, statement: incomeStatement(balances, accounts) }
+  const basis = url.searchParams.get('basis') === 'cash' ? 'cash' : 'accrual'
+  const [balances, accounts] = await Promise.all([
+    basis === 'cash'
+      ? getCashBasisBalances({ from, to, excludeClosing: true })
+      : getLedgerBalances({ from, to, excludeClosing: true }),
+    getAccounts(),
+  ])
+  return { from, to, basis, statement: incomeStatement(balances, accounts) }
 }

@@ -9,12 +9,19 @@
     to,
     base,
     applyLabel = 'Apply',
+    extraParams = {},
   }: {
     from: string
     to: string
     base: string
     applyLabel?: string
+    extraParams?: Record<string, string> // carried on every navigation (e.g. basis=cash)
   } = $props()
+
+  function withExtras(q: string): string {
+    const extras = new URLSearchParams(extraParams).toString()
+    return extras ? `${q}&${extras}` : q
+  }
 
   // svelte-ignore state_referenced_locally
   let f = $state(from)
@@ -22,7 +29,7 @@
   let t = $state(to)
   $effect(() => { f = from; t = to })
 
-  function apply() { goto(`${base}?from=${f}&to=${t}`) }
+  function apply() { goto(withExtras(`${base}?from=${f}&to=${t}`)) }
 
   const iso = (d: Date) => d.toISOString().slice(0, 10)
   function pick(range: 'month' | 'last-month' | 'quarter' | 'ytd') {

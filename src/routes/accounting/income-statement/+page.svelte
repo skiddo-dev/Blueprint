@@ -16,12 +16,17 @@
 <AccountingShell {user} title="📊 Income Statement" maxWidth="760px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Profit & Loss' }]}>
   {#snippet actions()}
-    <a class="btn-secondary" href={`/api/accounting/export/income-statement?from=${data.from}&to=${data.to}`}>⬇ CSV</a>
+    <a class="btn-secondary" href={`/api/accounting/export/income-statement?from=${data.from}&to=${data.to}${data.basis === 'cash' ? '&basis=cash' : ''}`}>⬇ CSV</a>
     <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
   {/snippet}
 
   <p class="report-hint">What the business earned over the period: revenue, minus the cost of doing the jobs, minus overhead — ending at net income.</p>
-  <DateRange from={data.from} to={data.to} base="/accounting/income-statement" />
+  <div class="basis-toggle" role="group" aria-label="Accounting basis">
+    <a class="pill" class:active={data.basis !== 'cash'} href={`/accounting/income-statement?from=${data.from}&to=${data.to}`}>Accrual</a>
+    <a class="pill" class:active={data.basis === 'cash'} href={`/accounting/income-statement?from=${data.from}&to=${data.to}&basis=cash`}
+       title="Revenue when payments arrive, expenses when bills are paid">Cash</a>
+  </div>
+  <DateRange from={data.from} to={data.to} base="/accounting/income-statement" extraParams={data.basis === 'cash' ? { basis: 'cash' } : {}} />
 
   <section class="card">
     {#snippet sectionBlock(title: string, lines: { account_id: string; name: string; amount: number }[], total: number)}
