@@ -112,6 +112,7 @@
   <div class="quick-actions">
     <a class="btn-secondary" href="/accounting/invoices/new">📄 New invoice</a>
     <a class="btn-secondary" href="/accounting/bills/new">🧾 New bill</a>
+    <a class="btn-secondary" href="/accounting/expenses/new">💸 Record expense</a>
     <a class="btn-secondary" href="/accounting/reconcile">✅ Reconcile</a>
   </div>
 

@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit'
 import type { Invoice, Bill } from '$lib/accounting/types'
+import { cents } from '$lib/money'
 import { format as usd } from '$lib/money'
 
 export interface QuoteData {
@@ -282,5 +283,52 @@ export async function generateBillPdf(bill: Bill): Promise<Buffer> {
       { label: 'Balance Due', value: usd(bill.balance), bold: true },
     ],
     status: bill.status,
+  })
+}
+
+/** A customer statement: every open invoice with its age, and the total due —
+ *  the document you attach to a collections email. */
+export async function generateCustomerStatement(opts: {
+  customer: { name: string; email?: string }
+  invoices: Invoice[] // open/partial only
+  asOf: string
+}): Promise<Buffer> {
+  const { customer, invoices, asOf } = opts
+  const outstanding = invoices.reduce((s, i) => s + i.balance, 0)
+  const overdue = invoices.reduce((s, i) => s + (i.due_date < asOf ? i.balance : 0), 0)
+  const totals: DocTotal[] = [{ label: 'Total outstanding', value: usd(cents(outstanding)), bold: true }]
+  if (overdue > 0) totals.push({ label: 'Of which overdue', value: usd(cents(overdue)), bold: true })
+
+  return renderDoc({
+    title: 'STATEMENT',
+    number: asOf,
+    partyLabel: 'Statement For',
+    partyName: customer.name,
+    ...(customer.email ? { partyEmail: customer.email } : {}),
+    meta: [
+      ['As of', asOf],
+      ['Open invoices', String(invoices.length)],
+    ],
+    columns: [
+      { label: 'Invoice', width: 0.16 },
+      { label: 'Issued', width: 0.16 },
+      { label: 'Due', width: 0.16 },
+      { label: 'Age', width: 0.16, align: 'right' },
+      { label: 'Total', width: 0.18, align: 'right' },
+      { label: 'Balance', width: 0.18, align: 'right' },
+    ],
+    rows: invoices.map((i) => {
+      const days = Math.floor((Date.parse(`${asOf}T00:00:00Z`) - Date.parse(`${i.due_date}T00:00:00Z`)) / 86_400_000)
+      return [
+        docNumber(i.year, i.number),
+        i.issue_date,
+        i.due_date,
+        days > 0 ? `${days}d overdue` : 'current',
+        usd(i.total),
+        usd(i.balance),
+      ]
+    }),
+    totals,
+    status: overdue > 0 ? 'payment overdue' : 'current',
   })
 }
