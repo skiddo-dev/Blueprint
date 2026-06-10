@@ -14,13 +14,14 @@ import type { ClientSession } from 'mongodb'
 import { env } from '$env/dynamic/private'
 import { getDb } from './db'
 import { withTxn } from './txn'
-import { postEntry } from './accounting'
+import { postEntry, postReversal } from './accounting'
 import { cents, type Cents } from '$lib/money'
 import {
   invoiceTotals, invoiceStatus, invoiceJournalLines, paymentJournalLines, dueDate, buildAging,
   type InvoiceLineInput,
+  creditMemoJournalLines,
 } from '$lib/accounting/invoicing'
-import type { Customer, Invoice, Payment } from '$lib/accounting/types'
+import type { CreditMemo, Customer, Invoice, Payment } from '$lib/accounting/types'
 
 const USE_MOCK = env.USE_MOCK_DATA === 'true'
 
@@ -276,4 +277,108 @@ export async function getArAging(asOf?: string) {
     })),
     asOfISO,
   )
+}
+
+// ── Credit memos + void (V4 corrections parity) ───────────────────────────────
+async function getNextCreditMemoNumber(year: number, session?: ClientSession): Promise<number> {
+  const d = await getDb()
+  const res = await col('counters', d).findOneAndUpdate(
+    { _id: `credit-memo:${year}` },
+    { $inc: { seq: 1 } },
+    { upsert: true, returnDocument: 'after', session },
+  )
+  return Number(res?.seq ?? res?.value?.seq ?? 1)
+}
+
+export async function listInvoiceCredits(invoiceId: string): Promise<CreditMemo[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const rows = await col('creditMemos', d).find({ invoice_id: invoiceId }).sort({ date: 1, created_at: 1 }).toArray()
+  return rows.map((c) => ({ ...c, _id: String(c._id) })) as CreditMemo[]
+}
+
+/** Issue a credit memo against an invoice and apply it immediately: the balance
+ *  drops (paid does not), the contra-revenue entry posts, and the status
+ *  recomputes treating payments + credits together as settlement. */
+export async function createCreditMemo(
+  invoiceId: string,
+  amount: Cents,
+  date: string,
+  opts: { memo?: string; created_by?: string } = {},
+): Promise<{ credit: CreditMemo; invoice: Invoice }> {
+  if (amount <= 0) throw new Error('Credit amount must be positive')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('date must be ISO YYYY-MM-DD')
+
+  return withTxn(async (session) => {
+    const d = await getDb()
+    const inv = await col('invoices', d).findOne({ _id: invoiceId }, { session })
+    if (!inv) throw new Error(`No invoice ${invoiceId}`)
+    if (inv.status === 'void') throw new Error('Cannot credit a void invoice')
+    if (amount > inv.balance) throw new Error(`Credit exceeds the open balance (${inv.balance})`)
+
+    const credited = ((inv.credited as number) ?? 0) + amount
+    const newBalance = (inv.total as number) - (inv.paid as number) - credited
+    const status = invoiceStatus(inv.total as Cents, cents((inv.paid as number) + credited))
+    const year = Number(date.slice(0, 4))
+    const number = await getNextCreditMemoNumber(year, session)
+    const now = new Date().toISOString()
+    const credit: CreditMemo = {
+      _id: crypto.randomUUID(),
+      invoice_id: invoiceId,
+      customer_id: String(inv.customer_id),
+      customer_name: inv.customer_name as string,
+      year,
+      number,
+      date,
+      amount,
+      ...(opts.memo ? { memo: opts.memo } : {}),
+      ...(opts.created_by ? { created_by: opts.created_by } : {}),
+      created_at: now,
+    }
+    await col('creditMemos', d).insertOne(credit, { session })
+    await col('invoices', d).updateOne(
+      { _id: invoiceId },
+      { $set: { credited, balance: newBalance, status, updated_at: now } },
+      { session },
+    )
+    await postEntry(
+      {
+        date,
+        memo: `Credit memo #${number} — Invoice #${inv.number}, ${inv.customer_name}`,
+        source: 'credit-memo',
+        source_ref: credit._id,
+        lines: creditMemoJournalLines(amount, { subtotal: inv.subtotal as Cents, tax: inv.tax as Cents }),
+        created_by: opts.created_by,
+      },
+      { session },
+    )
+    return { credit, invoice: { ...inv, _id: String(inv._id), credited, balance: newBalance, status } as Invoice }
+  })
+}
+
+/** Void an un-settled invoice: reverse its journal entry (dated today, so a
+ *  period lock on the original date doesn't block the correction) and mark it
+ *  void. Anything with payments or credits must be unwound those ways first. */
+export async function voidInvoice(invoiceId: string, opts: { created_by?: string } = {}): Promise<Invoice> {
+  const d = await getDb()
+  const inv = await col('invoices', d).findOne({ _id: invoiceId })
+  if (!inv) throw new Error(`No invoice ${invoiceId}`)
+  if (inv.status === 'void') return { ...inv, _id: String(inv._id) } as Invoice
+  if ((inv.paid as number) > 0) throw new Error('Cannot void an invoice with payments — refund or credit it instead')
+  if (((inv.credited as number) ?? 0) > 0) throw new Error('Cannot void an invoice with credit memos applied')
+
+  const entry = await col('journalEntries', d).findOne({ source: 'invoice', source_ref: invoiceId })
+  if (entry) {
+    await postReversal(String(entry._id), {
+      date: new Date().toISOString().slice(0, 10),
+      memo: `Void — Invoice #${inv.number}, ${inv.customer_name}`,
+      ...(opts.created_by ? { created_by: opts.created_by } : {}),
+    })
+  }
+  const now = new Date().toISOString()
+  await col('invoices', d).updateOne(
+    { _id: invoiceId },
+    { $set: { status: 'void', balance: 0, updated_at: now } },
+  )
+  return { ...inv, _id: String(inv._id), status: 'void', balance: 0 } as Invoice
 }

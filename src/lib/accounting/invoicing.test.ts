@@ -3,7 +3,7 @@ import { cents } from '$lib/money'
 import { isBalanced } from './ledger'
 import {
   ACCT, lineAmount, invoiceTotals, invoiceStatus, invoiceJournalLines, paymentJournalLines,
-  daysBetween, agingBucket, buildAging, dueDate, dueWithin, AGING_BUCKETS,
+  daysBetween, agingBucket, buildAging, dueDate, dueWithin, creditMemoJournalLines, AGING_BUCKETS,
 } from './invoicing'
 
 describe('lineAmount / invoiceTotals', () => {
@@ -123,5 +123,32 @@ describe('dueWithin', () => {
   it('is 0 for no rows and excludes everything with a 0-day window unless due today or earlier', () => {
     expect(dueWithin([], '2026-06-09', 7)).toBe(0)
     expect(dueWithin([r('2026-06-09', 500), r('2026-06-10', 900)], '2026-06-09', 0)).toBe(500)
+  })
+})
+
+describe('creditMemoJournalLines', () => {
+  it('untaxed invoice: Dr discounts / Cr A-R for the full amount', () => {
+    const lines = creditMemoJournalLines(cents(5000), { subtotal: cents(20000), tax: cents(0) })
+    expect(lines).toEqual([
+      { account_id: '4900', debit: 5000, credit: 0 },
+      { account_id: '1100', debit: 0, credit: 5000 },
+    ])
+  })
+  it('taxed invoice: splits the credit between discounts and sales tax in the invoice proportion, to the penny', () => {
+    // subtotal 10000, tax 600 → crediting 5300 splits 5000/300
+    const lines = creditMemoJournalLines(cents(5300), { subtotal: cents(10000), tax: cents(600) })
+    expect(lines).toEqual([
+      { account_id: '4900', debit: 5000, credit: 0 },
+      { account_id: '2200', debit: 300, credit: 0 },
+      { account_id: '1100', debit: 0, credit: 5300 },
+    ])
+    const dr = lines.reduce((s, l) => s + l.debit, 0)
+    const cr = lines.reduce((s, l) => s + l.credit, 0)
+    expect(dr).toBe(cr) // always balances, including under rounding
+  })
+  it('odd-penny splits still balance', () => {
+    const lines = creditMemoJournalLines(cents(1001), { subtotal: cents(997), tax: cents(61) })
+    expect(lines.reduce((s, l) => s + l.debit, 0)).toBe(1001)
+    expect(lines.reduce((s, l) => s + l.credit, 0)).toBe(1001)
   })
 })

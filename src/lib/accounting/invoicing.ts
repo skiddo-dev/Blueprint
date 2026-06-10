@@ -1,7 +1,7 @@
 // Pure invoicing/AR logic — no database. Totals, status, the journal lines an
 // invoice and a payment post, and A/R aging. The server module
 // (src/lib/server/invoicing.ts) persists; this is unit-tested in isolation.
-import { type Cents, cents, sum as sumCents, mul, add } from '$lib/money'
+import { type Cents, cents, sum as sumCents, mul, add, allocate } from '$lib/money'
 import type { JournalLine } from './types'
 
 // Ledger accounts the AR flow posts to (codes from the seeded chart of accounts).
@@ -10,6 +10,7 @@ export const ACCT = {
   ar: '1100',       // Accounts Receivable
   revenue: '4000',  // Contract Revenue
   salesTax: '2200', // Sales Tax Payable
+  salesDiscounts: '4900', // Sales Discounts & Credits (contra revenue — credit memos)
 } as const
 
 export type InvoiceLineInput = { description: string; quantity: number; unit_price: Cents }
@@ -112,4 +113,21 @@ export function dueDate(issueISO: string, netDays: number): string {
   const d = new Date(`${issueISO}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() + netDays)
   return d.toISOString().slice(0, 10)
+}
+
+/** Crediting an invoice: Dr Sales Discounts & Credits (and Sales Tax Payable for
+ *  the tax share) / Cr A/R. The credit splits between revenue-contra and tax in
+ *  the invoice's own subtotal:tax proportion via penny-safe allocation, so a
+ *  credit against a taxed invoice also unwinds its share of the tax liability. */
+export function creditMemoJournalLines(amount: Cents, inv: { subtotal: Cents; tax: Cents }): JournalLine[] {
+  const lines: JournalLine[] = []
+  if (inv.tax > 0) {
+    const [revShare, taxShare] = allocate(amount, [inv.subtotal, inv.tax])
+    lines.push({ account_id: ACCT.salesDiscounts, debit: revShare, credit: cents(0) })
+    if (taxShare > 0) lines.push({ account_id: ACCT.salesTax, debit: taxShare, credit: cents(0) })
+  } else {
+    lines.push({ account_id: ACCT.salesDiscounts, debit: amount, credit: cents(0) })
+  }
+  lines.push({ account_id: ACCT.ar, debit: cents(0), credit: amount })
+  return lines
 }

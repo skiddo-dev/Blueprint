@@ -5,11 +5,11 @@ import type { ClientSession } from 'mongodb'
 import { env } from '$env/dynamic/private'
 import { getDb } from './db'
 import { withTxn } from './txn'
-import { postEntry } from './accounting'
+import { postEntry, postReversal } from './accounting'
 import { type Cents, cents } from '$lib/money'
-import { billTotal, billJournalLines, billPaymentJournalLines } from '$lib/accounting/payables'
+import { billTotal, billJournalLines, billPaymentJournalLines, vendorCreditJournalLines } from '$lib/accounting/payables'
 import { invoiceStatus, dueDate, buildAging } from '$lib/accounting/invoicing'
-import type { Bill, BillLine, BillPayment, Vendor } from '$lib/accounting/types'
+import type { Bill, BillLine, BillPayment, Vendor, VendorCredit } from '$lib/accounting/types'
 
 const USE_MOCK = env.USE_MOCK_DATA === 'true'
 
@@ -258,4 +258,103 @@ export async function getApAging(asOf?: string) {
     })),
     asOfISO,
   )
+}
+
+// ── Vendor credits + void (V4 corrections parity) ─────────────────────────────
+async function getNextVendorCreditNumber(year: number, session?: ClientSession): Promise<number> {
+  const d = await getDb()
+  const res = await col('counters', d).findOneAndUpdate(
+    { _id: `vendor-credit:${year}` },
+    { $inc: { seq: 1 } },
+    { upsert: true, returnDocument: 'after', session },
+  )
+  return Number(res?.seq ?? res?.value?.seq ?? 1)
+}
+
+export async function listBillCredits(billId: string): Promise<VendorCredit[]> {
+  if (USE_MOCK) return []
+  const d = await getDb()
+  const rows = await col('vendorCredits', d).find({ bill_id: billId }).sort({ date: 1, created_at: 1 }).toArray()
+  return rows.map((c) => ({ ...c, _id: String(c._id) })) as VendorCredit[]
+}
+
+/** A vendor credit against a bill, applied immediately: we owe less (Dr A/P),
+ *  and the bill's expense accounts give back pro-rata. */
+export async function createVendorCredit(
+  billId: string,
+  amount: Cents,
+  date: string,
+  opts: { memo?: string; created_by?: string } = {},
+): Promise<{ credit: VendorCredit; bill: Bill }> {
+  if (amount <= 0) throw new Error('Credit amount must be positive')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('date must be ISO YYYY-MM-DD')
+
+  return withTxn(async (session) => {
+    const d = await getDb()
+    const bill = await col('bills', d).findOne({ _id: billId }, { session })
+    if (!bill) throw new Error(`No bill ${billId}`)
+    if (bill.status === 'void') throw new Error('Cannot credit a void bill')
+    if (amount > bill.balance) throw new Error(`Credit exceeds the open balance (${bill.balance})`)
+
+    const credited = ((bill.credited as number) ?? 0) + amount
+    const newBalance = (bill.total as number) - (bill.paid as number) - credited
+    const status = invoiceStatus(bill.total as Cents, cents((bill.paid as number) + credited))
+    const year = Number(date.slice(0, 4))
+    const number = await getNextVendorCreditNumber(year, session)
+    const now = new Date().toISOString()
+    const credit: VendorCredit = {
+      _id: crypto.randomUUID(),
+      bill_id: billId,
+      vendor_id: String(bill.vendor_id),
+      vendor_name: bill.vendor_name as string,
+      year,
+      number,
+      date,
+      amount,
+      ...(opts.memo ? { memo: opts.memo } : {}),
+      ...(opts.created_by ? { created_by: opts.created_by } : {}),
+      created_at: now,
+    }
+    await col('vendorCredits', d).insertOne(credit, { session })
+    await col('bills', d).updateOne(
+      { _id: billId },
+      { $set: { credited, balance: newBalance, status, updated_at: now } },
+      { session },
+    )
+    await postEntry(
+      {
+        date,
+        memo: `Vendor credit #${number} — Bill #${bill.number}, ${bill.vendor_name}`,
+        source: 'vendor-credit',
+        source_ref: credit._id,
+        lines: vendorCreditJournalLines(amount, bill.lines as BillLine[]),
+        created_by: opts.created_by,
+      },
+      { session },
+    )
+    return { credit, bill: { ...bill, _id: String(bill._id), credited, balance: newBalance, status } as Bill }
+  })
+}
+
+/** Void an un-settled bill: reverse its journal entry (dated today) and mark it
+ *  void. Bills with payments or credits must be unwound those ways first. */
+export async function voidBill(billId: string, opts: { created_by?: string } = {}): Promise<Bill> {
+  const d = await getDb()
+  const bill = await col('bills', d).findOne({ _id: billId })
+  if (!bill) throw new Error(`No bill ${billId}`)
+  if (bill.status === 'void') return { ...bill, _id: String(bill._id) } as Bill
+  if ((bill.paid as number) > 0) throw new Error('Cannot void a bill with payments — request a vendor credit instead')
+  if (((bill.credited as number) ?? 0) > 0) throw new Error('Cannot void a bill with vendor credits applied')
+
+  const entry = await col('journalEntries', d).findOne({ source: 'bill', source_ref: billId })
+  if (entry) {
+    await postReversal(String(entry._id), {
+      date: new Date().toISOString().slice(0, 10),
+      memo: `Void — Bill #${bill.number}, ${bill.vendor_name}`,
+      ...(opts.created_by ? { created_by: opts.created_by } : {}),
+    })
+  }
+  const now = new Date().toISOString()
+  await col('bills', d).updateOne({ _id: billId }, { $set: { status: 'void', balance: 0, updated_at: now } })
+  return { ...bill, _id: String(bill._id), status: 'void', balance: 0 } as Bill
 }
