@@ -5,6 +5,8 @@ import { env } from '$env/dynamic/private'
 import { getDb } from './db'
 import { getAccounts, getLedgerBalances } from './accounting'
 import { cashFlow, type CashFlowCategory, type CashFlowSection } from '$lib/accounting/cashflow'
+import { isCashLike } from '$lib/accounting/coa'
+import { dayBefore } from '$lib/accounting/format'
 import { type Cents, cents } from '$lib/money'
 import type { JournalEntry } from '$lib/accounting/types'
 
@@ -13,12 +15,6 @@ const USE_MOCK = env.USE_MOCK_DATA === 'true'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function col(name: string, d: Awaited<ReturnType<typeof getDb>>) { return d.collection<any>(name) }
 
-function dayBefore(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - 1)
-  return d.toISOString().slice(0, 10)
-}
-
 export async function getCashFlow(from: string, to: string): Promise<{
   sections: Record<CashFlowCategory, CashFlowSection>
   netChange: Cents
@@ -26,7 +22,10 @@ export async function getCashFlow(from: string, to: string): Promise<{
   endingCash: Cents
 }> {
   const accounts = await getAccounts()
-  const bankIds = new Set(accounts.filter((a) => a.subtype === 'bank').map((a) => a._id))
+  // Cash set = bank accounts + Undeposited Funds, so a payment into 1050 counts
+  // as operating inflow on its payment date and the later deposit entry
+  // (1000 <-> 1050, both in the set) nets to zero instead of double-counting.
+  const bankIds = new Set(accounts.filter(isCashLike).map((a) => a._id))
 
   if (USE_MOCK) {
     const cf = cashFlow([], bankIds, accounts)

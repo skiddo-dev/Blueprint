@@ -13,7 +13,7 @@ const SEED: Seed[] = [
   // ── Assets (debit-normal) ──
   { code: '1000', name: 'Cash — Operating', type: 'asset', normal: 'debit', subtype: 'bank' },
   { code: '1010', name: 'Cash — Payroll', type: 'asset', normal: 'debit', subtype: 'bank' },
-  { code: '1050', name: 'Undeposited Funds', type: 'asset', normal: 'debit', subtype: 'bank' },
+  { code: '1050', name: 'Undeposited Funds', type: 'asset', normal: 'debit', subtype: 'undeposited' },
   { code: '1100', name: 'Accounts Receivable', type: 'asset', normal: 'debit', subtype: 'receivable' },
   { code: '1200', name: 'Retainage Receivable', type: 'asset', normal: 'debit', subtype: 'receivable' },
   { code: '1300', name: 'Costs in Excess of Billings (WIP)', type: 'asset', normal: 'debit', subtype: 'current-asset' },
@@ -72,4 +72,12 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = SEED.map((a) => ({
  *  Exported so the seed's integrity is unit-tested against it. */
 export function expectedNormal(type: Account['type']): Account['normal'] {
   return type === 'asset' || type === 'expense' ? 'debit' : 'credit'
+}
+
+/** Accounts whose balance is "cash" for the cash-flow statement and the hub's
+ *  cash sparkline: real bank accounts plus Undeposited Funds (checks received
+ *  but not yet deposited ARE cash on hand). Reconciliation deliberately does
+ *  NOT use this — you reconcile real bank accounts (subtype 'bank') only. */
+export function isCashLike(a: Pick<import('./types').Account, 'subtype'>): boolean {
+  return a.subtype === 'bank' || a.subtype === 'undeposited'
 }

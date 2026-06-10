@@ -166,6 +166,12 @@ const MIGRATIONS: Migration[] = [
   { id: '0003-stamp-attachment-retention', up: stampAttachmentRetention },
   { id: '0004-seed-chart-of-accounts', up: seedChartOfAccounts },
   { id: '0005-backfill-task-rank-flow', up: backfillTaskRankAndFlow },
+  // 1050 Undeposited Funds is cash-like but NOT a reconcilable bank account —
+  // re-subtype it so the reconcile dropdown and quick-expense paid_from stop
+  // offering it (the cash-flow/cash-sparkline consumers use isCashLike instead).
+  { id: '0006-undeposited-funds-subtype', up: async (d) => {
+    await d.collection<{ _id: string; subtype?: string }>('accounts').updateOne({ _id: '1050', subtype: 'bank' }, { $set: { subtype: 'undeposited' } })
+  } },
 ]
 
 // 0005: seed the board-V2 ordering/flow fields on existing tasks. (a) `rank` —

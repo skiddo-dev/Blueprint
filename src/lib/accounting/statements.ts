@@ -9,6 +9,7 @@
 // their parent section but carry the opposite balance, so they net correctly.
 import { type Cents, cents } from '$lib/money'
 import type { Account, AccountType } from './types'
+import { isCashLike } from './coa'
 
 export type Balance = { account_id: string; debit: Cents; credit: Cents }
 export type StatementLine = { account_id: string; name: string; amount: Cents }
@@ -129,7 +130,7 @@ export type MonthActivity = {
  *  Months with no postings are absent — the caller decides how to pad. Contra
  *  accounts net correctly for the same reason as the statements above. */
 export function monthlyActivity(rows: PeriodBalance[], accounts: Account[]): MonthActivity[] {
-  const kind = new Map(accounts.map((a) => [a._id, { type: a.type, bank: a.type === 'asset' && a.subtype === 'bank' }]))
+  const kind = new Map(accounts.map((a) => [a._id, { type: a.type, bank: a.type === 'asset' && isCashLike(a) }]))
   const byMonth = new Map<string, { revenue: number; expenses: number; bankNet: number }>()
   for (const r of rows) {
     const k = kind.get(r.account_id)

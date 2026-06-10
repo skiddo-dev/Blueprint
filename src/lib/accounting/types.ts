@@ -17,7 +17,7 @@ export interface Account {
 }
 
 // ── Double-entry journal ───────────────────────────────────────────────────────
-export type JournalSource = 'manual' | 'invoice' | 'payment' | 'bill' | 'bill-payment' | 'closing' | 'credit-memo' | 'vendor-credit' | 'expense' | 'sales-tax-remittance'
+export type JournalSource = 'manual' | 'invoice' | 'payment' | 'bill' | 'bill-payment' | 'closing' | 'credit-memo' | 'vendor-credit' | 'expense' | 'sales-tax-remittance' | 'deposit'
 
 // One leg of an entry. Exactly one of debit/credit is > 0; the other is 0.
 export interface JournalLine {
@@ -113,6 +113,8 @@ export interface Payment {
   amount: Cents
   date: string            // ISO YYYY-MM-DD
   method?: string         // free-form: "check", "ACH", …
+  deposit_to?: string     // account the cash landed in; absent = legacy = '1000'
+  deposit_id?: string     // set once an undeposited payment is grouped into a Deposit
   created_by?: string
   created_at: string
 }
