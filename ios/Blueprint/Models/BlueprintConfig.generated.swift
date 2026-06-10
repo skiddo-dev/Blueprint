@@ -39,6 +39,17 @@ enum BlueprintConfig {
         "Lost": QuoteStatusMeta(color: 0xEF4444, bg: 0xFEE2E2, text: 0xDC2626),
     ]
 
+    /// Flow signals (board V2): days in an active column before the aging
+    /// chip turns amber / rose; soft per-status WIP limits (advisory); days
+    /// after which finished cards auto-archive. Same values as /api/config.
+    static let agingWarnDays: Int = 7
+    static let agingAlertDays: Int = 14
+    static let wipLimits: [String: Int] = [
+        "In Progress": 5,
+        "Review": 4,
+    ]
+    static let archiveAfterDays: Int = 30
+
     static let prospectStatuses: [String] = ["new", "contacted", "qualified", "dead"]
 
     static let prospectStatusMeta: [String: ProspectStatusMeta] = [

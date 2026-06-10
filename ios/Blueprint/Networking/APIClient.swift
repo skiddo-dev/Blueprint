@@ -42,6 +42,52 @@ struct APIClient {
         try Self.check(response)
     }
 
+    /// PATCH /api/tasks/{id} for array-valued fields (e.g. `co_assignees`,
+    /// which the server resolves to identities alongside the names).
+    func update(taskId: String, field: String, value: [String]) async throws {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks/\(taskId)"))
+        req.httpMethod = "PATCH"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["field": field, "value": value])
+        let (_, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+    }
+
+    // ── Checklist (shared punch list; see /api/tasks/[id]/checklist) ─────────
+
+    /// POST /api/tasks/{id}/checklist — add an item; the server generates the
+    /// id and returns the stored item (201).
+    func addChecklistItem(taskId: String, text: String) async throws -> ChecklistItem {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks/\(taskId)/checklist"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["text": text])
+        let (data, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+        struct Created: Decodable { let item: ChecklistItem }
+        return try JSONDecoder().decode(Created.self, from: data).item
+    }
+
+    /// PATCH /api/tasks/{id}/checklist/{itemId} — toggle done (the server
+    /// stamps who checked it; unchecking clears the stamp).
+    func setChecklistItem(taskId: String, itemId: String, done: Bool) async throws {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks/\(taskId)/checklist/\(itemId)"))
+        req.httpMethod = "PATCH"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: ["done": done])
+        let (_, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+    }
+
+    /// DELETE /api/tasks/{id}/checklist/{itemId}
+    func deleteChecklistItem(taskId: String, itemId: String) async throws {
+        var req = URLRequest(url: baseURL.appendingPathComponent("api/tasks/\(taskId)/checklist/\(itemId)"))
+        req.httpMethod = "DELETE"
+        let (_, response) = try await URLSession.shared.data(for: req, delegate: RedirectBlocker())
+        try Self.check(response)
+    }
+
     /// POST /api/tasks — create a task. The server stamps identity/store-numbers
     /// and returns the created document (201), which we decode straight back.
     func createTask(_ body: NewTask) async throws -> BoardTask {
