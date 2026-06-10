@@ -16,6 +16,7 @@
 <AccountingShell {user} title="📊 Income Statement" maxWidth="760px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Profit & Loss' }]}>
   {#snippet actions()}
+    <a class="btn-secondary" href={`/api/accounting/export/income-statement?from=${data.from}&to=${data.to}`}>⬇ CSV</a>
     <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
   {/snippet}
 

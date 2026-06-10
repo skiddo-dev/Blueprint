@@ -34,6 +34,7 @@
     <span class="badge" class:ok={st.balanced} class:bad={!st.balanced}>
       {st.balanced ? '✓ Balanced' : '✕ Out of balance'}
     </span>
+    <a class="btn-secondary" href={`/api/accounting/export/balance-sheet?asOf=${data.asOf}`}>⬇ CSV</a>
     <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
   {/snippet}
 

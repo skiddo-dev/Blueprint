@@ -41,6 +41,7 @@
         {/each}
       </select>
     </label>
+    <a class="btn-secondary" href={`/api/accounting/export/register/${account._id}?from=${data.from}&to=${data.to}`}>⬇ CSV</a>
   </div>
   <DateRange from={data.from} to={data.to} base={`/accounting/register/${account._id}`} />
 
