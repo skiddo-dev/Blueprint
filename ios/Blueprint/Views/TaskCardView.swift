@@ -63,10 +63,19 @@ struct TaskCardView: View {
                     QuoteChip(amount: quote, status: task.quoteStatusLabel)
                 }
 
-                if let date = task.date, !date.isEmpty {
-                    Label(date, systemImage: task.isOverdue ? "calendar.badge.exclamationmark" : "calendar")
-                        .font(.caption)
-                        .foregroundStyle(task.isOverdue ? Color.overdueDate : Color.secondary)
+                HStack(spacing: 8) {
+                    if let date = task.date, !date.isEmpty {
+                        Label(date, systemImage: task.isOverdue ? "calendar.badge.exclamationmark" : "calendar")
+                            .font(.caption)
+                            .foregroundStyle(task.isOverdue ? Color.overdueDate : Color.secondary)
+                    }
+                    if task.aging != .none {
+                        // ⏳ days-in-column — amber past warn, rose past alert
+                        // (mirrors the web's aging chip; thresholds from config).
+                        Label("\(task.daysInColumn)d", systemImage: "hourglass")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(task.aging == .alert ? Color(hex: 0xB06A72) : Color(hex: 0x92670E))
+                    }
                 }
 
                 Label {
@@ -80,10 +89,19 @@ struct TaskCardView: View {
 
                 HStack(spacing: 8) {
                     if !task.assignedTo.isEmpty {
-                        Label(task.assignedTo, systemImage: "person.fill")
+                        // Primary assignee, with a +N for co-assignees (full
+                        // names in the detail sheet).
+                        Label(task.coAssignees.isEmpty ? task.assignedTo : "\(task.assignedTo) +\(task.coAssignees.count)",
+                              systemImage: task.coAssignees.isEmpty ? "person.fill" : "person.2.fill")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                    }
+                    if !task.checklist.isEmpty {
+                        Label("\(task.checklistDone)/\(task.checklist.count)", systemImage: "checklist")
+                            .font(.caption2)
+                            .foregroundStyle(task.checklistDone == task.checklist.count
+                                             ? Color(hex: 0x10B981) : Color.secondary)
                     }
                     if task.commentCount > 0 {
                         Label("\(task.commentCount)", systemImage: "text.bubble")

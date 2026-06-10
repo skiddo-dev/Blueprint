@@ -32,6 +32,9 @@ import {
   QUOTE_STATUS_META,
   PROSPECT_STATUSES,
   PROSPECT_STATUS_META,
+  AGING_THRESHOLDS,
+  WIP_LIMITS,
+  ARCHIVE_AFTER_DAYS,
 } from '../src/lib/constants.ts'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -89,6 +92,18 @@ for (const s of QUOTE_STATUSES) {
   p(`        ${str(s)}: QuoteStatusMeta(color: ${hex(m.color)}, bg: ${hex(m.bg)}, text: ${hex(m.text)}),`)
 }
 p('    ]')
+p('')
+p('    /// Flow signals (board V2): days in an active column before the aging')
+p('    /// chip turns amber / rose; soft per-status WIP limits (advisory); days')
+p('    /// after which finished cards auto-archive. Same values as /api/config.')
+p(`    static let agingWarnDays: Int = ${AGING_THRESHOLDS.warnDays}`)
+p(`    static let agingAlertDays: Int = ${AGING_THRESHOLDS.alertDays}`)
+p('    static let wipLimits: [String: Int] = [')
+for (const [s, n] of Object.entries(WIP_LIMITS)) {
+  p(`        ${str(s)}: ${n},`)
+}
+p('    ]')
+p(`    static let archiveAfterDays: Int = ${ARCHIVE_AFTER_DAYS}`)
 p('')
 p(`    static let prospectStatuses: [String] = ${arr(PROSPECT_STATUSES)}`)
 p('')

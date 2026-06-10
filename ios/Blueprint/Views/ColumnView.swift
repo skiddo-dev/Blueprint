@@ -57,6 +57,16 @@ struct ColumnView: View {
             Text(status.icon).foregroundStyle(status.accent)
             Text(status.rawValue).font(.headline)
             Spacer()
+            // Soft WIP limit (advisory) — amber pill when the column's real
+            // load exceeds it. Mirrors the web header; limits from config.
+            if let limit = BlueprintConfig.wipLimits[status.rawValue], tasks.count > limit {
+                Text("WIP \(tasks.count)/\(limit)")
+                    .font(.system(size: 10, weight: .bold))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(Color(hex: 0xFEF3C7), in: Capsule())
+                    .foregroundStyle(Color(hex: 0x92400E))
+            }
             Text("\(tasks.count)")
                 .font(.caption.bold())
                 .padding(.horizontal, 8)

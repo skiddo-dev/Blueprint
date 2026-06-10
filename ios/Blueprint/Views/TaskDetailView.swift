@@ -18,6 +18,8 @@ struct TaskDetailView: View {
     @State private var assignee: String
     @State private var date: String
     @State private var notes: String
+    @State private var coAssignees: [String]
+    @State private var newCoAssignee = ""
     @State private var saving = false
     @State private var deleting = false
     @State private var showDeleteConfirm = false
@@ -33,6 +35,7 @@ struct TaskDetailView: View {
         _assignee = State(initialValue: task.assignedTo)
         _date = State(initialValue: task.date ?? "")
         _notes = State(initialValue: task.notes ?? "")
+        _coAssignees = State(initialValue: task.coAssignees)
     }
 
     /// Non-comment timeline entries (created / email / attachment), newest first.
@@ -64,6 +67,38 @@ struct TaskDetailView: View {
                         .textInputAutocapitalization(.words)
                     TextField("Date (e.g. 2026-06-30)", text: $date)
                         .autocorrectionDisabled()
+                }
+
+                // Co-assignees — extra people on the task (assigned_to stays
+                // primary). Saved with the other fields on Save; the server
+                // resolves names to identities so My Work follows.
+                Section("Also assigned") {
+                    ForEach(coAssignees, id: \.self) { name in
+                        HStack {
+                            Label(name, systemImage: "person.2")
+                            Spacer()
+                            Button(role: .destructive) {
+                                coAssignees.removeAll { $0 == name }
+                            } label: {
+                                Image(systemName: "minus.circle").foregroundStyle(.red)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    HStack {
+                        TextField("Add person", text: $newCoAssignee)
+                            .textInputAutocapitalization(.words)
+                            .onSubmit(addCoAssignee)
+                        Button(action: addCoAssignee) {
+                            Image(systemName: "plus.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(newCoAssignee.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+
+                Section("Checklist\(task.checklist.isEmpty ? "" : " (\(task.checklistDone)/\(task.checklist.count))")") {
+                    ChecklistSectionView(taskId: task.id, items: task.checklist)
                 }
 
                 Section("Notes") {
@@ -155,12 +190,16 @@ struct TaskDetailView: View {
             if notes != (task.notes ?? "") {
                 try await client.update(taskId: task.id, field: "notes", value: notes)
             }
+            if coAssignees != task.coAssignees {
+                try await client.update(taskId: task.id, field: "co_assignees", value: coAssignees)
+            }
 
             var updated = task
             updated.status = status
             updated.assignedTo = assignee
             updated.date = date.isEmpty ? nil : date
             updated.notes = notes.isEmpty ? nil : notes
+            updated.coAssignees = coAssignees
 
             saving = false
             onSave(updated)
@@ -172,6 +211,16 @@ struct TaskDetailView: View {
             saving = false
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func addCoAssignee() {
+        let name = newCoAssignee.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty, !coAssignees.contains(name), name != assignee else {
+            newCoAssignee = ""
+            return
+        }
+        coAssignees.append(name)
+        newCoAssignee = ""
     }
 
     @MainActor
@@ -192,6 +241,125 @@ struct TaskDetailView: View {
             session.signOut()
         } catch {
             deleting = false
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+/// The shared punch list for a task: toggle (the server stamps who checked it),
+/// add, delete — each hitting the API and updating in place, mirroring the web
+/// detail sheet's Checklist section. Changes are local to this sheet; the
+/// board's ☑ count refreshes on its next load (same model as attachments).
+struct ChecklistSectionView: View {
+    let taskId: String
+
+    @Environment(AppConfig.self) private var config
+    @Environment(SessionStore.self) private var session
+
+    @State private var items: [ChecklistItem]
+    @State private var newText = ""
+    @State private var busy = false
+    @State private var errorMessage: String?
+
+    init(taskId: String, items: [ChecklistItem]) {
+        self.taskId = taskId
+        _items = State(initialValue: items)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if items.isEmpty {
+                Text("No items yet.").font(.callout).foregroundStyle(.secondary)
+            }
+            ForEach(items) { item in
+                HStack(spacing: 10) {
+                    Button { Task { await toggle(item) } } label: {
+                        Image(systemName: item.done ? "checkmark.square.fill" : "square")
+                            .foregroundStyle(item.done ? Color(hex: 0x10B981) : Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(item.text)
+                            .font(.callout)
+                            .strikethrough(item.done)
+                            .foregroundStyle(item.done ? .secondary : .primary)
+                        if item.done, let by = item.doneBy, !by.isEmpty {
+                            Text("Done by \(by)").font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer(minLength: 6)
+
+                    Button(role: .destructive) { Task { await remove(item) } } label: {
+                        Image(systemName: "trash").foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            HStack {
+                TextField("Add an item", text: $newText)
+                    .onSubmit { Task { await add() } }
+                Button { Task { await add() } } label: {
+                    Image(systemName: "plus.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .disabled(busy || newText.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+
+            if let errorMessage {
+                Text(errorMessage).font(.caption).foregroundStyle(.red)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .disabled(busy)
+    }
+
+    @MainActor
+    private func add() async {
+        let text = newText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty, let base = config.baseURL else { return }
+        busy = true
+        errorMessage = nil
+        do {
+            let item = try await APIClient(baseURL: base).addChecklistItem(taskId: taskId, text: text)
+            items.append(item)
+            newText = ""
+        } catch APIClient.APIError.notAuthenticated {
+            session.signOut()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        busy = false
+    }
+
+    @MainActor
+    private func toggle(_ item: ChecklistItem) async {
+        guard let base = config.baseURL, let idx = items.firstIndex(of: item) else { return }
+        let done = !item.done
+        items[idx].done = done // optimistic; reverted on failure
+        do {
+            try await APIClient(baseURL: base).setChecklistItem(taskId: taskId, itemId: item.id, done: done)
+            items[idx].doneBy = done ? (session.displayName ?? "") : nil
+        } catch APIClient.APIError.notAuthenticated {
+            session.signOut()
+        } catch {
+            if let i = items.firstIndex(where: { $0.id == item.id }) { items[i].done = !done }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func remove(_ item: ChecklistItem) async {
+        guard let base = config.baseURL else { return }
+        errorMessage = nil
+        do {
+            try await APIClient(baseURL: base).deleteChecklistItem(taskId: taskId, itemId: item.id)
+            items.removeAll { $0.id == item.id }
+        } catch APIClient.APIError.notAuthenticated {
+            session.signOut()
+        } catch {
             errorMessage = error.localizedDescription
         }
     }

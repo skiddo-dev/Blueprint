@@ -36,6 +36,15 @@ struct BoardTask: Identifiable, Codable, Hashable {
     var quote: String?
     var quoteStatus: String?
     var po: String?
+    /// Additional people on the task (`assigned_to` stays the primary).
+    var coAssignees: [String]
+    /// Shared punch list (board V2); the card face shows a ☑ done/total chip.
+    var checklist: [ChecklistItem]
+    /// Fractional per-column sort key — the server returns tasks already in
+    /// rank order, so the board must NOT re-sort; kept for round-tripping.
+    var rank: String?
+    /// When the card last changed column — drives the aging chip.
+    var statusChangedAt: String?
 
     enum CodingKeys: String, CodingKey {
         case id = "_id"
@@ -58,6 +67,10 @@ struct BoardTask: Identifiable, Codable, Hashable {
         case quote
         case quoteStatus = "quote_status"
         case po
+        case coAssignees = "co_assignees"
+        case checklist
+        case rank
+        case statusChangedAt = "status_changed_at"
     }
 
     /// Human-posted comments, oldest-first — the subset of `timeline` the card's
@@ -119,6 +132,34 @@ struct BoardTask: Identifiable, Codable, Hashable {
         return s.isEmpty ? "Draft" : s
     }
 
+    var checklistDone: Int { checklist.lazy.filter(\.done).count }
+
+    /// Whole days the card has sat in its current column (falls back to
+    /// created_at for docs that predate the backfill). Mirrors `$lib/aging`.
+    var daysInColumn: Int {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoNoFrac = ISO8601DateFormatter()
+        let raw = statusChangedAt ?? createdAt ?? ""
+        guard let since = iso.date(from: raw) ?? isoNoFrac.date(from: raw) else { return 0 }
+        return max(0, Int(Date().timeIntervalSince(since) / 86_400))
+    }
+
+    /// Aging level for the ⏳ chip. Only ACTIVE columns age — Done/Cancelled are
+    /// finished and On Hold is parked on purpose. Thresholds come from the
+    /// generated config (same source as the web + /api/config).
+    enum AgingLevel { case none, warn, alert }
+    var aging: AgingLevel {
+        switch status {
+        case .done, .cancelled, .onHold: return .none
+        default: break
+        }
+        let days = daysInColumn
+        if days >= BlueprintConfig.agingAlertDays { return .alert }
+        if days >= BlueprintConfig.agingWarnDays { return .warn }
+        return .none
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
@@ -141,6 +182,43 @@ struct BoardTask: Identifiable, Codable, Hashable {
         quote = try? c.decode(String.self, forKey: .quote)
         quoteStatus = try? c.decode(String.self, forKey: .quoteStatus)
         po = try? c.decode(String.self, forKey: .po)
+        coAssignees = (try? c.decode([String].self, forKey: .coAssignees)) ?? []
+        checklist = (try? c.decode([ChecklistItem].self, forKey: .checklist)) ?? []
+        rank = try? c.decode(String.self, forKey: .rank)
+        statusChangedAt = try? c.decode(String.self, forKey: .statusChangedAt)
+    }
+}
+
+/// One punch-list item on a card, mirroring `ChecklistItem` in
+/// `src/lib/types.ts`. Defensive decode: only `id` required.
+struct ChecklistItem: Identifiable, Codable, Hashable {
+    let id: String
+    var text: String
+    var done: Bool
+    var doneBy: String?
+    var doneAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, text, done
+        case doneBy = "done_by"
+        case doneAt = "done_at"
+    }
+
+    init(id: String, text: String, done: Bool = false, doneBy: String? = nil, doneAt: String? = nil) {
+        self.id = id
+        self.text = text
+        self.done = done
+        self.doneBy = doneBy
+        self.doneAt = doneAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        text = (try? c.decode(String.self, forKey: .text)) ?? ""
+        done = (try? c.decode(Bool.self, forKey: .done)) ?? false
+        doneBy = try? c.decode(String.self, forKey: .doneBy)
+        doneAt = try? c.decode(String.self, forKey: .doneAt)
     }
 }
 
@@ -224,7 +302,9 @@ extension BoardTask {
          date: String? = nil, status: TaskStatus, createdBy: String = "preview",
          attachmentIds: [String] = [], attachments: [Attachment] = [], timeline: [TimelineEntry] = [],
          exchangeId: String? = nil, senderName: String? = nil, senderEmail: String? = nil,
-         quote: String? = nil, quoteStatus: String? = nil, po: String? = nil) {
+         quote: String? = nil, quoteStatus: String? = nil, po: String? = nil,
+         coAssignees: [String] = [], checklist: [ChecklistItem] = [],
+         rank: String? = nil, statusChangedAt: String? = nil) {
         self.id = id
         self.title = title
         self.description = description
@@ -245,6 +325,10 @@ extension BoardTask {
         self.quote = quote
         self.quoteStatus = quoteStatus
         self.po = po
+        self.coAssignees = coAssignees
+        self.checklist = checklist
+        self.rank = rank
+        self.statusChangedAt = statusChangedAt
     }
 
     static let samples: [BoardTask] = [
@@ -258,6 +342,12 @@ extension BoardTask {
                                   author: "Bob", mentions: ["Riley"], reactions: ["👍": ["Mike"]]),
                     TimelineEntry(id: "c2", kind: .comment, text: "Confirmed. Good to proceed.",
                                   author: "Riley", parentId: "c1"),
+                  ],
+                  coAssignees: ["Riley", "Kris"],
+                  checklist: [
+                    ChecklistItem(id: "cl1", text: "Confirm crane access window", done: true, doneBy: "Mike"),
+                    ChecklistItem(id: "cl2", text: "Order curb adapter", done: false),
+                    ChecklistItem(id: "cl3", text: "Schedule electrical disconnect", done: false),
                   ]),
         BoardTask(id: "4", title: "Permit resubmittal — electrical", assignedTo: "Riley", date: "2026-06-09", status: .review),
         BoardTask(id: "5", title: "Final walkthrough punch list", assignedTo: "Kris", status: .done),
