@@ -57,7 +57,10 @@ export async function updateVendor(id: string, patch: { name?: string; email?: s
   if (Object.keys(set).length) update.$set = set
   if (Object.keys(unset).length) update.$unset = unset
   const res = await col('vendors', d).updateOne({ _id: id }, update)
-  if (set.name) await col('bills', d).updateMany({ vendor_id: id }, { $set: { vendor_name: set.name } })
+  if (set.name) {
+    await col('bills', d).updateMany({ vendor_id: id }, { $set: { vendor_name: set.name } })
+    await col('purchaseOrders', d).updateMany({ vendor_id: id }, { $set: { vendor_name: set.name } })
+  }
   if (res.matchedCount > 0) {
     const fields = [...Object.keys(set), ...Object.keys(unset)].filter((k) => k !== 'name_lower')
     await writeAudit({
@@ -130,6 +133,7 @@ export interface CreateBillInput {
   lines: BillLine[]
   vendor_invoice_no?: string
   po?: string
+  po_id?: string
   job?: string
   memo?: string
   created_by?: string
@@ -163,6 +167,7 @@ export async function createBill(input: CreateBillInput): Promise<Bill> {
       status: 'open',
       ...(input.vendor_invoice_no ? { vendor_invoice_no: input.vendor_invoice_no } : {}),
       ...(input.po ? { po: input.po } : {}),
+      ...(input.po_id ? { po_id: input.po_id } : {}),
       ...(input.job ? { job: input.job.trim() } : {}),
       ...(input.memo ? { memo: input.memo } : {}),
       ...(input.created_by ? { created_by: input.created_by } : {}),
