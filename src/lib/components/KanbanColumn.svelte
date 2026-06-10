@@ -1,6 +1,7 @@
 <script lang="ts">
   import { dragHandleZone, TRIGGERS } from 'svelte-dnd-action'
   import TaskCard from './TaskCard.svelte'
+  import TaskCardDetailed from './TaskCardDetailed.svelte'
   import type { Task, TaskStatus } from '$lib/types'
   import type { BoardFilters } from '$lib/boardFilters'
   import { defaultFilters, taskMatchesFilters, anyFilterActive } from '$lib/boardFilters'
@@ -22,10 +23,22 @@
     view = 'mine',
     myName = '',
     isAdmin = false,
+    cardView = 'compact',
+    assignees = [],
+    mentionCandidates = [],
+    currentUserName = '',
     onMoved,
     onDragStateChange,
     onStoreFilter,
     onOpen,
+    onFieldUpdate,
+    onDelete,
+    onComment,
+    onEditComment,
+    onDeleteComment,
+    onReact,
+    onUploadAttachment,
+    onDeleteAttachment,
   }: {
     status: TaskStatus
     items: Task[]
@@ -34,10 +47,24 @@
     view?: 'mine' | 'all'
     myName?: string
     isAdmin?: boolean
+    /** Card density: compact summary faces (default) or the classic
+     *  everything-on-the-card detailed faces. */
+    cardView?: 'compact' | 'detailed'
+    assignees?: string[]
+    mentionCandidates?: string[]
+    currentUserName?: string
     onMoved: (status: TaskStatus, taskId: string, rank: string) => void
     onDragStateChange: (dragging: boolean) => void
     onStoreFilter?: (n: string) => void
     onOpen: (id: string) => void
+    onFieldUpdate: (id: string, field: string, value: unknown) => void
+    onDelete: (id: string) => void
+    onComment?: (id: string, text: string, parentId?: string) => void
+    onEditComment?: (id: string, commentId: string, text: string) => void
+    onDeleteComment?: (id: string, commentId: string) => void
+    onReact?: (id: string, commentId: string, emoji: string) => void
+    onUploadAttachment?: (id: string, file: File) => Promise<void> | void
+    onDeleteAttachment?: (id: string, attId: string) => void
   } = $props()
 
   const meta = $derived(STATUS_META[status])
@@ -112,14 +139,37 @@
            original `_id`. Keying by `_id` makes the shadow collide with the real
            card and the card disappears mid-drag. (id === String(_id).) -->
       {#each items as task (task.id)}
-        <TaskCard
-          {task}
-          {isAdmin}
-          {onOpen}
-          {onStoreFilter}
-          activeStores={filters.stores}
-          hidden={!matches(task)}
-        />
+        {#if cardView === 'detailed'}
+          <TaskCardDetailed
+            {task}
+            {assignees}
+            {mentionCandidates}
+            {currentUserName}
+            {currentUserEmail}
+            {isAdmin}
+            {onFieldUpdate}
+            {onDelete}
+            {onOpen}
+            {onStoreFilter}
+            {onComment}
+            {onEditComment}
+            {onDeleteComment}
+            {onReact}
+            {onUploadAttachment}
+            {onDeleteAttachment}
+            activeStores={filters.stores}
+            hidden={!matches(task)}
+          />
+        {:else}
+          <TaskCard
+            {task}
+            {isAdmin}
+            {onOpen}
+            {onStoreFilter}
+            activeStores={filters.stores}
+            hidden={!matches(task)}
+          />
+        {/if}
       {/each}
     </div>
 
