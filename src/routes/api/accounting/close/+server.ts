@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { getCloseThrough, setCloseThrough } from '$lib/server/accounting'
-import { requireAdmin } from '$lib/server/authz'
+import { requireAdmin, actorOf } from '$lib/server/authz'
 import { writeAudit } from '$lib/server/audit'
 
 // Admin-only. GET returns the current close-through date; POST sets it (or clears
@@ -22,7 +22,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
   await setCloseThrough(through || null)
   await writeAudit({
-    actor: (user.email as string) ?? (user.displayName as string),
+    actor: actorOf(user),
     action: through ? 'close.lock' : 'close.unlock',
     entity_type: 'close',
     entity_id: through || 'cleared',

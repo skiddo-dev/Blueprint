@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { postEntry, getAccounts } from '$lib/server/accounting'
 import { writeAudit } from '$lib/server/audit'
+import { actorOf } from '$lib/server/authz'
 import { usd } from '$lib/accounting/format'
 import { parseMoney, cents } from '$lib/money'
 
@@ -51,7 +52,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       created_by: (user.email as string) ?? (user.displayName as string),
     })
     await writeAudit({
-      actor: (user.email as string) ?? (user.displayName as string),
+      actor: actorOf(user),
       action: 'expense.create',
       entity_type: 'journal-entry',
       entity_id: entry._id,
