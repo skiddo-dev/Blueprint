@@ -16,9 +16,6 @@
   let {
     status,
     items = $bindable(),
-    assignees,
-    mentionCandidates = [],
-    currentUserName = '',
     currentUserEmail = '',
     storeFilter = null,
     view = 'mine',
@@ -26,21 +23,11 @@
     isAdmin = false,
     onMoved,
     onDragStateChange,
-    onFieldUpdate,
-    onDelete,
     onStoreFilter,
-    onComment,
-    onEditComment,
-    onDeleteComment,
-    onReact,
-    onUploadAttachment,
-    onDeleteAttachment,
+    onOpen,
   }: {
     status: TaskStatus
     items: Task[]
-    assignees: string[]
-    mentionCandidates?: string[]
-    currentUserName?: string
     currentUserEmail?: string
     storeFilter?: string | null
     view?: 'mine' | 'all'
@@ -48,15 +35,8 @@
     isAdmin?: boolean
     onMoved: (status: TaskStatus, taskId: string, rank: string) => void
     onDragStateChange: (dragging: boolean) => void
-    onFieldUpdate: (id: string, field: string, value: unknown) => void
-    onDelete: (id: string) => void
     onStoreFilter?: (n: string) => void
-    onComment: (id: string, text: string, parentId?: string) => void
-    onEditComment: (id: string, commentId: string, text: string) => void
-    onDeleteComment: (id: string, commentId: string) => void
-    onReact: (id: string, commentId: string, emoji: string) => void
-    onUploadAttachment: (id: string, file: File) => Promise<void> | void
-    onDeleteAttachment: (id: string, attId: string) => void
+    onOpen: (id: string) => void
   } = $props()
 
   const meta = $derived(STATUS_META[status])
@@ -97,8 +77,8 @@
       } catch {
         rank = rankBetween(items[idx - 1]?.rank ?? null, null)
       }
-      // Optimistic: stamp the new rank + column on the moved card so its status
-      // select flips immediately and a follow-up drag computes from fresh ranks.
+      // Optimistic: stamp the new rank + column on the moved card so a
+      // follow-up drag computes from fresh ranks.
       items[idx] = { ...items[idx], rank, status }
       onMoved(status, id, rank)
     }
@@ -117,8 +97,8 @@
        every direct child of a zone as a draggable item. -->
   <div class="dropzone-wrap">
     <!-- A drag is initiated ONLY from the ⠿⠿ handle in each card (use:dragHandle
-         in TaskCard). This keeps the whole card body — quote dropdown, selects,
-         notes, links — tappable and the board scrollable on touch, instead of a
+         in TaskCard). This keeps the whole card body tappable (it opens the
+         detail sheet) and the board scrollable on touch, instead of a
          tap/scroll accidentally grabbing the card. -->
     <div
       class="dropzone"
@@ -133,20 +113,9 @@
       {#each items as task (task.id)}
         <TaskCard
           {task}
-          {assignees}
-          {mentionCandidates}
-          {currentUserName}
-          {currentUserEmail}
           {isAdmin}
-          {onFieldUpdate}
-          {onDelete}
+          {onOpen}
           {onStoreFilter}
-          {onComment}
-          {onEditComment}
-          {onDeleteComment}
-          {onReact}
-          {onUploadAttachment}
-          {onDeleteAttachment}
           activeStore={storeFilter}
           hidden={!matches(task)}
         />
@@ -237,8 +206,8 @@
     .column { min-width: 100%; width: 100%; }
     /* The 60vh drop target exists so EMPTY desktop columns can catch a dragged
        card's centre. On phones only one column shows at a time and moves happen
-       via the card's Status dropdown, so that tall minimum just leaves a big
-       dead gap under a short column — shrink it to hug the cards. */
+       via the detail sheet's Status select, so that tall minimum just leaves a
+       big dead gap under a short column — shrink it to hug the cards. */
     .dropzone { min-height: 96px; }
     .col-header { margin-bottom: 8px; padding: 8px 12px; }
   }
