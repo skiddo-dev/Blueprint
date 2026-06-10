@@ -22,7 +22,7 @@
 
 <svelte:head><title>Purchase Orders · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📑 Purchase Orders" maxWidth="940px"
+<AccountingShell {user} title="Purchase Orders" maxWidth="940px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Purchase orders' }]}>
   {#snippet actions()}
     <a class="btn-primary" href="/accounting/purchase-orders/new">+ New PO</a>

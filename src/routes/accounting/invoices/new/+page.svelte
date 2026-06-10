@@ -146,7 +146,7 @@
 
 <svelte:head><title>New invoice · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📄 New invoice" maxWidth="860px"
+<AccountingShell {user} title="New invoice" maxWidth="860px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Invoices', href: '/accounting/invoices' }, { label: 'New' }]}>
   <section class="card">
     {#if wonQuotes.length}

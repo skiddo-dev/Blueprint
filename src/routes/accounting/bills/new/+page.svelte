@@ -115,7 +115,7 @@
 
 <svelte:head><title>New bill · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🧾 New bill" maxWidth="860px"
+<AccountingShell {user} title="New bill" maxWidth="860px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Bills', href: '/accounting/bills' }, { label: 'New' }]}>
   <section class="card">
     <div class="meta-grid">

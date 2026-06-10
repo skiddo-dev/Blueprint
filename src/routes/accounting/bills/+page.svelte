@@ -50,7 +50,7 @@
 
 <svelte:head><title>Bills · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🧾 Bills" maxWidth="1000px"
+<AccountingShell {user} title="Bills" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Bills' }]}>
   {#snippet actions()}
     <a class="btn-primary" href="/accounting/bills/new">+ New bill</a>

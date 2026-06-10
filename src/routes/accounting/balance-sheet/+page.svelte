@@ -28,7 +28,7 @@
 
 <svelte:head><title>Balance Sheet · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🏦 Balance Sheet" maxWidth="760px"
+<AccountingShell {user} title="Balance Sheet" maxWidth="760px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: `As of ${asOf}` }]}>
   {#snippet actions()}
     <span class="badge" class:ok={st.balanced} class:bad={!st.balanced}>

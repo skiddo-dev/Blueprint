@@ -80,7 +80,7 @@
 
 <svelte:head><title>{num} · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📑 {num}" maxWidth="820px"
+<AccountingShell {user} title={num} maxWidth="820px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Purchase orders', href: '/accounting/purchase-orders' }, { label: num }]}>
   {#snippet actions()}
     <span class="chip">{po.status.replace('-', ' ')}</span>

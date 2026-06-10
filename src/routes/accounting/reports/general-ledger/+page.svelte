@@ -12,7 +12,7 @@
 
 <svelte:head><title>General Ledger · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📚 General Ledger" maxWidth="900px"
+<AccountingShell {user} title="General Ledger" maxWidth="900px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: 'General ledger' }]}>
   {#snippet actions()}
     <a class="btn-secondary" href={`/api/accounting/export/general-ledger?from=${data.from}&to=${data.to}`}>⬇ CSV</a>

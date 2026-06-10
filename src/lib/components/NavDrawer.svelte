@@ -1,7 +1,9 @@
 <script lang="ts">
   import { page } from '$app/state'
   import ThemeToggle from './ThemeToggle.svelte'
+  import Icon from './Icon.svelte'
   import { openSearch } from '$lib/search.svelte'
+  import type { IconName } from '$lib/icons'
   import type { Snippet } from 'svelte'
 
   // Shared navigation drawer used by every page (board, dashboard, quotes).
@@ -19,16 +21,16 @@
     children?: Snippet
   } = $props()
 
-  // Icon is kept separate from the label (not baked into the string) so a native
-  // client can map each route to an SF Symbol while the web renders the emoji.
-  const NAV = [
-    { href: '/', icon: '🏗️', label: 'Kanban Board' },
-    { href: '/dashboard', icon: '📊', label: 'Dashboard' },
-    { href: '/quotes', icon: '💰', label: 'Quote Generator' },
-    { href: '/accounting', icon: '📒', label: 'Accounting' },
-    { href: '/infra', icon: '💸', label: 'Infra Spend' },
-    { href: '/prospects', icon: '🏭', label: 'Prospects' },
-    { href: '/competitive-landscape', icon: '🗺️', label: 'Competitive Landscape' },
+  // Semantic glyph names from Blueprint's custom icon set ($lib/icons.ts); a
+  // native client can map the same names to SF Symbols instead of the SVGs.
+  const NAV: { href: string; icon: IconName; label: string }[] = [
+    { href: '/', icon: 'board', label: 'Kanban Board' },
+    { href: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+    { href: '/quotes', icon: 'quote', label: 'Quote Generator' },
+    { href: '/accounting', icon: 'ledger', label: 'Accounting' },
+    { href: '/infra', icon: 'spend', label: 'Infra Spend' },
+    { href: '/prospects', icon: 'prospects', label: 'Prospects' },
+    { href: '/competitive-landscape', icon: 'map', label: 'Competitive Landscape' },
   ]
   const isActive = (href: string) =>
     href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href)
@@ -48,16 +50,21 @@
 {/if}
 
 <aside class="sidebar" class:open>
+  <div class="brand">
+    <span class="brand-mark"><Icon name="logo" size={17} /></span>
+    <span class="brand-name">Blueprint</span>
+  </div>
+
   <div class="user-info">
     <div class="user-meta">
       <div class="user-name">{user.name}</div>
       <span class="role-badge">{user.role === 'admin' ? 'Admin' : 'PM'}</span>
     </div>
-    <button class="sidebar-close" onclick={() => (open = false)} aria-label="Close menu">✕</button>
+    <button class="sidebar-close" onclick={() => (open = false)} aria-label="Close menu"><Icon name="x" size={16} /></button>
   </div>
 
   <button class="nav-search" type="button" onclick={() => { openSearch(); open = false }}>
-    <span>🔎 Search</span>
+    <span class="nav-search-label"><Icon name="search" size={14} /> Search</span>
     <kbd>⌘K</kbd>
   </button>
 
@@ -68,7 +75,7 @@
     rel="noopener"
     onclick={() => (open = false)}
   >
-    📖 Help &amp; Guide
+    <Icon name="guide" size={14} /> Help &amp; Guide
   </a>
 
   <form action="/auth/signout" method="POST">
@@ -88,7 +95,7 @@
           aria-current={isActive(item.href) ? 'page' : undefined}
           onclick={() => (open = false)}
         >
-          <span class="nav-icon" aria-hidden="true">{item.icon}</span>{item.label}
+          <span class="nav-icon" aria-hidden="true"><Icon name={item.icon} size={15} /></span>{item.label}
         </a>
       {/each}
     </nav>
@@ -120,6 +127,30 @@
     inset: 0;
     background: var(--backdrop);
     z-index: 39; /* just under the drawer (40) */
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 2px 4px;
+  }
+  .brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .brand-name {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--text);
   }
 
   .user-info {
@@ -165,10 +196,13 @@
     border-radius: 7px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
   }
   .nav-search:hover { border-color: var(--primary); color: var(--primary-text); }
+  .nav-search-label { display: inline-flex; align-items: center; gap: 7px; }
 
   .nav-help {
-    display: block;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
     width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
@@ -187,7 +221,8 @@
 
   .nav-links { display: flex; flex-direction: column; gap: 4px; }
   .nav-link {
-    display: block;
+    display: flex;
+    align-items: center;
     padding: 8px 10px;
     font-size: 13px;
     font-weight: 500;
@@ -206,8 +241,11 @@
     color: var(--primary-dark);
     font-weight: 600;
   }
-  /* Decorative leading glyph; kept out of the label text (see NAV). */
-  .nav-icon { margin-right: 8px; }
+  /* Decorative leading glyph; kept out of the label text (see NAV). Muted by
+     default, tints with the link on hover/active via currentColor. */
+  .nav-icon { display: inline-flex; margin-right: 8px; color: var(--text-faint); }
+  .nav-link:hover .nav-icon,
+  .nav-link.active .nav-icon { color: inherit; }
 
   @media (max-width: 768px) {
     .sidebar {

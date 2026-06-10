@@ -19,7 +19,7 @@
 
 <svelte:head><title>Competitive Landscape · Blueprint</title></svelte:head>
 
-<PageShell {user} title="🗺️ Competitive Landscape">
+<PageShell {user} title="Competitive Landscape">
   <iframe
     class="report"
     title="Raves Construction — Competitive Landscape"

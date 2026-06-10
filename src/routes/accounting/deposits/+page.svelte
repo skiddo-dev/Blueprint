@@ -56,7 +56,7 @@
 
 <svelte:head><title>Deposits · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🏦 Deposits" maxWidth="940px"
+<AccountingShell {user} title="Deposits" maxWidth="940px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Deposits' }]}>
 
   <p class="report-hint">Checks recorded to Undeposited Funds wait here; group the ones you took to the bank into one deposit so the register shows the single line your statement will. Payments straight to a bank account never appear here.</p>

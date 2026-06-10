@@ -1,6 +1,8 @@
 <script lang="ts">
   import PageShell from '$lib/components/PageShell.svelte'
+  import Icon from '$lib/components/Icon.svelte'
   import { page } from '$app/state'
+  import type { IconName } from '$lib/icons'
   import type { Snippet } from 'svelte'
   // Shared V2 styling for every accounting page. Imported here (once) so the
   // `.acct`-scoped rules apply wherever this shell wraps content.
@@ -37,30 +39,31 @@
     return path === href || path.startsWith(href + '/')
   }
 
-  const NAV: { label: string; items: { href: string; ico: string; label: string }[] }[] = [
-    { label: 'Overview', items: [{ href: '/accounting', ico: '📒', label: 'Overview' }] },
+  // Glyph names from Blueprint's custom icon set ($lib/icons.ts).
+  const NAV: { label: string; items: { href: string; ico: IconName; label: string }[] }[] = [
+    { label: 'Overview', items: [{ href: '/accounting', ico: 'ledger', label: 'Overview' }] },
     { label: 'Receivables', items: [
-      { href: '/accounting/invoices', ico: '📄', label: 'Invoices' },
-      { href: '/accounting/customers', ico: '🤝', label: 'Customers' },
-      { href: '/accounting/aging', ico: '📈', label: 'A/R Aging' },
+      { href: '/accounting/invoices', ico: 'invoice', label: 'Invoices' },
+      { href: '/accounting/customers', ico: 'users', label: 'Customers' },
+      { href: '/accounting/aging', ico: 'trend-up', label: 'A/R Aging' },
     ] },
     { label: 'Payables', items: [
-      { href: '/accounting/bills', ico: '🧾', label: 'Bills' },
-      { href: '/accounting/purchase-orders', ico: '📑', label: 'POs' },
-      { href: '/accounting/vendors', ico: '🏗️', label: 'Vendors' },
-      { href: '/accounting/ap-aging', ico: '📉', label: 'A/P Aging' },
+      { href: '/accounting/bills', ico: 'bill', label: 'Bills' },
+      { href: '/accounting/purchase-orders', ico: 'po', label: 'POs' },
+      { href: '/accounting/vendors', ico: 'vendors', label: 'Vendors' },
+      { href: '/accounting/ap-aging', ico: 'trend-down', label: 'A/P Aging' },
     ] },
     { label: 'Reports', items: [
-      { href: '/accounting/reports', ico: '📊', label: 'Reports' },
-      { href: '/accounting/budgets', ico: '🎯', label: 'Budgets' },
-      { href: '/accounting/sales-tax', ico: '🏛️', label: 'Sales tax' },
-      { href: '/accounting/audit', ico: '🛡️', label: 'Audit log' },
+      { href: '/accounting/reports', ico: 'reports', label: 'Reports' },
+      { href: '/accounting/budgets', ico: 'budget', label: 'Budgets' },
+      { href: '/accounting/sales-tax', ico: 'tax', label: 'Sales tax' },
+      { href: '/accounting/audit', ico: 'audit', label: 'Audit log' },
     ] },
     { label: 'Banking', items: [
-      { href: '/accounting/deposits', ico: '🏦', label: 'Deposits' },
-      { href: '/accounting/reconcile', ico: '✅', label: 'Reconcile' },
-      { href: '/accounting/recurring', ico: '🔁', label: 'Recurring' },
-      { href: '/accounting/assets', ico: '🚚', label: 'Assets' },
+      { href: '/accounting/deposits', ico: 'deposit', label: 'Deposits' },
+      { href: '/accounting/reconcile', ico: 'reconcile', label: 'Reconcile' },
+      { href: '/accounting/recurring', ico: 'recurring', label: 'Recurring' },
+      { href: '/accounting/assets', ico: 'asset', label: 'Assets' },
     ] },
   ]
 </script>
@@ -90,7 +93,7 @@
         <span class="group" role="group" aria-label={group.label}>
           {#each group.items as it (it.href)}
             <a href={it.href} class:active={isActive(it.href)} aria-current={isActive(it.href) ? 'page' : undefined}>
-              <span class="ico">{it.ico}</span>{it.label}
+              <span class="ico"><Icon name={it.ico} size={14} /></span>{it.label}
             </a>
           {/each}
         </span>

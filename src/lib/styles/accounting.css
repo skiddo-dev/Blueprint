@@ -54,7 +54,10 @@
 .acct-nav a:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary-text); }
 .acct-nav a.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 .acct-nav a.active:hover { color: #fff; filter: brightness(1.05); }
-.acct-nav .ico { font-size: 13px; line-height: 1; }
+/* Leading glyph (custom icon set); slightly muted so the label leads, but
+   full-strength on the solid active pill. */
+.acct-nav .ico { display: inline-flex; line-height: 1; opacity: 0.75; }
+.acct-nav a.active .ico { opacity: 1; }
 
 /* ── Cards ── */
 .acct .card {

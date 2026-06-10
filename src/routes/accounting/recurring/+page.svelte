@@ -48,7 +48,7 @@
 
 <svelte:head><title>Recurring · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🔁 Recurring" maxWidth="1000px"
+<AccountingShell {user} title="Recurring" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Recurring' }]}>
   {#snippet actions()}
     <button class="btn-secondary" type="button" onclick={runNow} disabled={busy}>▶ Run now</button>

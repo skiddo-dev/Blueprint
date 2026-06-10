@@ -69,7 +69,7 @@
 
 <svelte:head><title>Fixed Assets · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🚚 Fixed Assets" maxWidth="940px"
+<AccountingShell {user} title="Fixed Assets" maxWidth="940px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Fixed assets' }]}>
   {#snippet actions()}
     <button class="btn-primary" type="button" onclick={() => (showNew = !showNew)}>{showNew ? 'Close' : '+ Add asset'}</button>

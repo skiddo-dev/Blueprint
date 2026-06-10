@@ -29,7 +29,7 @@
 
 <svelte:head><title>Register · {account.name} · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📒 Account register" maxWidth="1000px"
+<AccountingShell {user} title="Account register" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Register' }, { label: `${account.code} · ${account.name}` }]}>
   <p class="report-hint">Every transaction that touched this account, oldest first, with a running balance — like a checkbook for any line on the chart of accounts.</p>
 

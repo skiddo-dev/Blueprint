@@ -1,5 +1,6 @@
 <script lang="ts">
   import NavDrawer from './NavDrawer.svelte'
+  import Icon from './Icon.svelte'
   import type { Task, TaskStatus, AppSession } from '$lib/types'
   import { KANBAN_STATUSES, STATUS_META } from '$lib/constants'
 
@@ -137,7 +138,7 @@
     <!-- Access requests (only shown when there are pending ones) -->
     {#if accessRequests.length}
       <details open>
-        <summary class="expander-title">🔔 Access Requests <span class="req-badge">{accessRequests.length}</span></summary>
+        <summary class="expander-title"><Icon name="bell" size={14} /> Access Requests <span class="req-badge">{accessRequests.length}</span></summary>
         <div class="expander-body">
           {#each accessRequests as r (r.email)}
             <div class="req-row">
@@ -147,8 +148,8 @@
                 {#if r.note}<span class="req-note">“{r.note}”</span>{/if}
               </div>
               <div class="req-actions">
-                <button class="secondary" onclick={() => onApproveRequest?.(r.email, r.name)}>✓ Approve</button>
-                <button class="ghost" title="Dismiss" onclick={() => onDismissRequest?.(r.email)}>✕</button>
+                <button class="secondary" onclick={() => onApproveRequest?.(r.email, r.name)}><Icon name="check" size={12} /> Approve</button>
+                <button class="ghost" title="Dismiss" aria-label="Dismiss request" onclick={() => onDismissRequest?.(r.email)}><Icon name="x" size={12} /></button>
               </div>
             </div>
           {/each}
@@ -158,7 +159,7 @@
 
     <!-- View as -->
     <details>
-      <summary class="expander-title">👁️ View User Activity</summary>
+      <summary class="expander-title"><Icon name="eye" size={14} /> View User Activity</summary>
       <div class="expander-body">
         <select
           value={viewAsUser ?? 'All tasks'}
@@ -177,7 +178,7 @@
 
     <!-- User access -->
     <details>
-      <summary class="expander-title">👥 User Access</summary>
+      <summary class="expander-title"><Icon name="users" size={14} /> User Access</summary>
       <div class="expander-body">
         <p class="hint">
           {activeThisWeek} of {users.length} active this week · Display Name must match the "Assign to" dropdown.
@@ -187,7 +188,7 @@
             <span class="user-email">{u.name || u._id}</span>
             <span class="user-active" title={u.lastActiveAt ? `Last active ${u.lastActiveAt}` : 'Never signed in'}>{relTime(u.lastActiveAt)}</span>
             <span class="user-role">{u.role}</span>
-            <button class="ghost" onclick={() => onDeleteUser(u._id)}>✕</button>
+            <button class="ghost" aria-label="Remove user" onclick={() => onDeleteUser(u._id)}><Icon name="x" size={12} /></button>
           </div>
         {/each}
         <hr />
@@ -215,14 +216,14 @@
             }
           }}
         >
-          ➕ Add / Update
+          <Icon name="plus" size={13} /> Add / Update
         </button>
       </div>
     </details>
 
     <!-- Import tasks from CSV -->
     <details>
-      <summary class="expander-title">📥 Import Tasks (CSV)</summary>
+      <summary class="expander-title"><Icon name="import" size={14} /> Import Tasks (CSV)</summary>
       <div class="expander-body">
         <p class="hint">
           Columns match <strong>Export</strong> (title, status, assigned_to, date, notes…).
@@ -231,7 +232,7 @@
         <input type="file" accept=".csv,text/csv" onchange={handleCsvFile} />
         <textarea bind:value={csvText} rows="4" placeholder="…or paste CSV here"></textarea>
         <button class="secondary full-w" disabled={importing || !csvText.trim()} onclick={runImport}>
-          {importing ? 'Importing…' : '📥 Import'}
+          {#if importing}Importing…{:else}<Icon name="import" size={13} /> Import{/if}
         </button>
         {#if importResult}<p class="hint">{importResult}</p>{/if}
         <a class="hint dl-link" href="/api/tasks/export" download>⬇ Download current tasks (use as a template)</a>
@@ -240,7 +241,7 @@
 
     <!-- Danger zone -->
     <details>
-      <summary class="expander-title danger">⚠️ Danger Zone</summary>
+      <summary class="expander-title danger"><Icon name="warning" size={14} /> Danger Zone</summary>
       <div class="expander-body">
         <label class="checkbox-label">
           <input type="checkbox" bind:checked={confirmClear} />
@@ -251,7 +252,7 @@
           disabled={!confirmClear}
           onclick={() => { if (confirmClear) onClearAll() }}
         >
-          🗑️ Clear All Tasks
+          <Icon name="trash" size={13} /> Clear All Tasks
         </button>
       </div>
     </details>

@@ -22,7 +22,7 @@
 
 <svelte:head><title>Reports · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📊 Reports" maxWidth="1000px"
+<AccountingShell {user} title="Reports" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports' }]}>
   <p class="report-hint">Financial statements plus the working reports your accountant asks for at tax time. Every report prints clean.</p>
 

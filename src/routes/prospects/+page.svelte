@@ -289,9 +289,9 @@
 
 <svelte:head><title>Prospects · Blueprint</title></svelte:head>
 
-<PageShell {user} title="🏭 Prospects">
+<PageShell {user} title="Prospects">
   {#snippet head()}
-    <h1 class="page-title">🏭 Warehouse Prospects</h1>
+    <h1 class="page-title">Warehouse Prospects</h1>
     <p class="page-sub">
       Warehouse properties within {radiusMiles} mi of {center.label} · Admin only
       {#if !data.live}<span class="badge mock">Demo data — set USE_MOCK_DATA=false for live results</span>{/if}
