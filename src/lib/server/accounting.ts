@@ -58,22 +58,26 @@ export async function postEntry(
   if (problems.length) {
     throw new Error(`Refusing to post an invalid journal entry: ${problems.join('; ')}`)
   }
-  // Don't let anything post into a closed period (guards manual entries, invoices,
-  // payments, bills — every path funnels through here).
-  const closedThrough = await getCloseThrough()
-  if (isPeriodClosed(input.date, closedThrough)) {
-    throw new Error(`Accounting period is closed through ${closedThrough}; cannot post an entry dated ${input.date}`)
-  }
   const d = await getDb()
   const entries = col('journalEntries', d)
 
-  // Idempotency fast-path: a source-generated entry posts at most once.
+  // Idempotency fast-path FIRST: a source-generated entry posts at most once,
+  // and RETURNING an already-posted entry is not "posting into a closed
+  // period" — recurring catch-up and depreciation replays across a close must
+  // resolve to the existing entry instead of throwing.
   if (input.source_ref) {
     const existing = await entries.findOne(
       { source: input.source, source_ref: input.source_ref },
       { session: opts.session },
     )
     if (existing) return { ...existing, _id: String(existing._id) } as JournalEntry
+  }
+
+  // Don't let anything post into a closed period (guards manual entries, invoices,
+  // payments, bills — every path funnels through here).
+  const closedThrough = await getCloseThrough()
+  if (isPeriodClosed(input.date, closedThrough)) {
+    throw new Error(`Accounting period is closed through ${closedThrough}; cannot post an entry dated ${input.date}`)
   }
 
   const entry: JournalEntry = {

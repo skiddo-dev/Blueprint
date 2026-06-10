@@ -40,6 +40,7 @@ const SEED: Seed[] = [
   { code: '4000', name: 'Contract Revenue', type: 'income', normal: 'credit', subtype: 'revenue' },
   { code: '4010', name: 'Change Order Revenue', type: 'income', normal: 'credit', subtype: 'revenue' },
   { code: '4020', name: 'Service & T&M Revenue', type: 'income', normal: 'credit', subtype: 'revenue' },
+  { code: '4950', name: 'Gain/Loss on Asset Disposal', type: 'income', normal: 'credit' },
   { code: '4900', name: 'Sales Discounts & Credits', type: 'income', normal: 'debit', subtype: 'revenue', contra: true },
 
   // ── Cost of goods sold / job costs (debit-normal) ──

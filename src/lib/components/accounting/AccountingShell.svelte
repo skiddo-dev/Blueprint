@@ -60,6 +60,7 @@
       { href: '/accounting/deposits', ico: '🏦', label: 'Deposits' },
       { href: '/accounting/reconcile', ico: '✅', label: 'Reconcile' },
       { href: '/accounting/recurring', ico: '🔁', label: 'Recurring' },
+      { href: '/accounting/assets', ico: '🚚', label: 'Assets' },
     ] },
   ]
 </script>
