@@ -6,6 +6,7 @@
   import NewTaskModal from './NewTaskModal.svelte'
   import CardDetailSheet from './CardDetailSheet.svelte'
   import FilterBar from './FilterBar.svelte'
+  import StoreLanes from './StoreLanes.svelte'
   import type { Task, TaskStatus, AppSession } from '$lib/types'
   import { KANBAN_STATUSES, STATUS_META, SUPERVISORS } from '$lib/constants'
   import { defaultFilters, taskMatchesFilters, taskStores, anyFilterActive } from '$lib/boardFilters'
@@ -211,6 +212,17 @@
     try { localStorage.setItem('blueprint:cardView', v) } catch { /* ignore */ }
   }
 
+  // Board lens: the classic status board, or lanes grouped by store — a
+  // review surface for "everything happening at store #X" (drag is off in
+  // lanes; cards still open the sheet). Remembered per browser.
+  let lens = $state<'none' | 'store'>('none')
+  function setLens(v: 'none' | 'store') {
+    lens = v
+    try { localStorage.setItem('blueprint:boardLens', v) } catch { /* ignore */ }
+  }
+  // The lens consumes the post-view+filter board flat (lanes regroup it).
+  let visibleTasks = $derived(KANBAN_STATUSES.flatMap(s => columns[s].filter(matchesView)))
+
   // Deep-link from global search: `/?task=<id>` reveals + flashes that card and
   // opens its detail sheet. Show All Tasks, clear the store filter, switch to
   // the card's column (mobile), then scroll it into view and pulse a highlight
@@ -344,6 +356,8 @@
     if (savedView === 'mine' || savedView === 'all') view = savedView
     const savedCardView = localStorage.getItem('blueprint:cardView')
     if (savedCardView === 'compact' || savedCardView === 'detailed') cardView = savedCardView
+    const savedLens = localStorage.getItem('blueprint:boardLens')
+    if (savedLens === 'none' || savedLens === 'store') lens = savedLens
     // Restore the saved filters, tolerating older/garbled shapes (merge over
     // defaults so a missing field never leaves the UI half-initialized).
     try {
@@ -734,6 +748,14 @@
       ▤ Detailed
     </button>
   </div>
+  <div class="view-toggle" role="group" aria-label="Board lens">
+    <button class="vt-btn" class:active={lens === 'none'} aria-pressed={lens === 'none'} title="Classic status board" onclick={() => setLens('none')}>
+      📊 Board
+    </button>
+    <button class="vt-btn" class:active={lens === 'store'} aria-pressed={lens === 'store'} title="One lane per store — everything happening at each site" onclick={() => setLens('store')}>
+      📍 By store
+    </button>
+  </div>
 </div>
 
 <FilterBar
@@ -751,6 +773,21 @@
     <button class="link-btn" onclick={() => setShowArchived(false)}>← Back to the board</button>
   </div>
 {/if}
+
+{#if lens === 'store'}
+  <!-- The "by store" lens replaces the status board: one collapsible lane per
+       store, crossing only its non-empty statuses. Review surface — drag is
+       off; cards open the sheet, filters/My Work/selection all compose. -->
+  <p class="lens-hint">Grouped by store — drag is off in this view; click a card to edit it.</p>
+  <StoreLanes
+    tasks={visibleTasks}
+    isAdmin={role === 'admin'}
+    {selectedIds}
+    onOpen={(id) => (openTaskId = id)}
+    onToggleSelect={toggleSelect}
+    onStoreFilter={toggleStore}
+  />
+{:else}
 
 <!-- Mobile-only top bar: a menu button (opens the sidebar drawer) + a column
      switcher. Phones stack the board to one column at a time (a 6-column
@@ -824,6 +861,7 @@
     </div>
   {/each}
 </div>
+{/if}
 {/if}
 
 <style>
@@ -948,6 +986,12 @@
   .bb-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-text); }
   .bb-btn:disabled { opacity: 0.6; cursor: default; }
   .bb-danger:hover:not(:disabled) { border-color: #fca5a5; color: #dc2626; }
+
+  .lens-hint {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin: -2px 0 10px;
+  }
 
   .archived-banner {
     background: var(--bg);
