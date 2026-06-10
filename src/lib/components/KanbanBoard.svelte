@@ -93,6 +93,18 @@
     [...new Set(KANBAN_STATUSES.flatMap(s => columns[s].flatMap(taskStores)))].sort(),
   )
 
+  // ── Archived view ─────────────────────────────────────────────────────
+  // Swaps the board's dataset to auto-archived (stale Done/Cancelled) cards.
+  // Restoring is just a status change or a drag — the server clears
+  // archived_at and the card disappears from this view on the next poll.
+  let showArchived = $state(false)
+  const tasksUrl = () => (showArchived ? '/api/tasks?archived=1' : '/api/tasks')
+  // Refetch immediately on toggle (don't wait for a signature change).
+  function setShowArchived(v: boolean) {
+    showArchived = v
+    fetch(tasksUrl()).then(r => (r.ok ? r.json() : null)).then(t => { if (t) columns = group(t) }).catch(() => {})
+  }
+
   // ── "My Work" view (default) ─────────────────────────────────────────
   // Each user lands on just their assigned tasks (the board-of-everything is a
   // manager view); a toggle flips to all. Remembered per browser. Composes with
@@ -176,7 +188,7 @@
     const { sig } = await r.json()
     if (sig !== currentSig) {
       currentSig = sig
-      const r2 = await fetch('/api/tasks')
+      const r2 = await fetch(tasksUrl())
       if (r2.ok) columns = group(await r2.json())
     }
   }
@@ -406,7 +418,7 @@
       const r = await fetch('/api/sync', { method: 'POST' })
       const data = await r.json()
       syncMessage = data.message ?? 'Done'
-      const r2 = await fetch('/api/tasks')
+      const r2 = await fetch(tasksUrl())
       if (r2.ok) columns = group(await r2.json())
     } catch (e) {
       syncMessage = `Error: ${e}`
@@ -488,9 +500,11 @@
   <div class="sync-toast">{syncMessage}</div>
 {/if}
 
-{#if total === 0}
+{#if total === 0 && !showArchived}
   <!-- First-run / fully-empty board: explain where cards come from instead of
-       showing six empty columns, and point to the first actions + the guide. -->
+       showing six empty columns, and point to the first actions + the guide.
+       (Not in the archived view — an empty archive is normal, and the banner
+       above already explains the mode.) -->
   <div class="board-empty">
     <div class="be-icon" aria-hidden="true">🗂️</div>
     <h2>No tasks yet</h2>
@@ -535,10 +549,19 @@
 
 <FilterBar
   bind:filters
-  assigneeOptions={assignees}
+  bind:showArchived={() => showArchived, setShowArchived}
   {storeOptions}
+  assigneeOptions={assignees}
   {matchCount}
 />
+
+{#if showArchived}
+  <div class="archived-banner">
+    🗄 Viewing archived tasks — finished cards are auto-archived after 30 days.
+    Change a card's status (or drag it to a column) to restore it.
+    <button class="link-btn" onclick={() => setShowArchived(false)}>← Back to the board</button>
+  </div>
+{/if}
 
 <!-- Mobile-only top bar: a menu button (opens the sidebar drawer) + a column
      switcher. Phones stack the board to one column at a time (a 6-column
@@ -683,6 +706,16 @@
     padding: 10px 14px;
     font-size: 13px;
     color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .archived-banner {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    color: var(--text-soft);
     margin-bottom: 10px;
   }
   .link-btn {

@@ -25,7 +25,7 @@ describe('POST /api/tasks/[id]/move — drag-drop persistence', () => {
     vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'To Do' } as never)
     const res = await POST(ev('t1', { status: 'To Do', rank: 'ai' }))
     expect(await res.json()).toEqual({ ok: true })
-    expect(patchTask).toHaveBeenCalledWith('t1', { rank: 'ai' })
+    expect(patchTask).toHaveBeenCalledWith('t1', { rank: 'ai' }, undefined, undefined)
   })
 
   it('cross-column move writes status + rank and restarts the aging clock', async () => {
@@ -36,7 +36,17 @@ describe('POST /api/tasks/[id]/move — drag-drop persistence', () => {
       rank: 'r5',
       status: 'In Progress',
       status_changed_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
-    })
+    }, undefined, undefined)
+  })
+
+  it('dragging an archived card restores it (clears archived_at)', async () => {
+    vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'Done', archived_at: '2026-05-01T00:00:00Z' } as never)
+    await POST(ev('t1', { status: 'In Progress', rank: 'r5' }))
+    expect(patchTask).toHaveBeenCalledWith('t1', {
+      rank: 'r5',
+      status: 'In Progress',
+      status_changed_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+    }, undefined, ['archived_at'])
   })
 
   it('404s for a missing task', async () => {

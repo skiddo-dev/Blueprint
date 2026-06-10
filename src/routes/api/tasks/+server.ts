@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
-import { getTasks, getTasksForUser, getUserEmailByName, insertTask, deleteTask, resolveCoAssignees } from '$lib/server/db'
+import { getTasks, getTasksForUser, getUserEmailByName, insertTask, deleteTask, resolveCoAssignees, archiveStaleClosedTasks } from '$lib/server/db'
 import { extractStoreNumbers } from '$lib/storeNumbers'
 import { newTaskSchema, readValidated } from '$lib/server/validation'
 import { statusOnAssign } from '$lib/taskRules'
@@ -11,18 +11,28 @@ export const GET: RequestHandler = async ({ locals, url }) => {
   if (!session?.user) throw error(401)
   const user = session.user as Record<string, unknown>
 
+  // Lazy archive sweep (hourly-throttled in the db layer). Best-effort: a
+  // sweep hiccup must never take the board down.
+  try {
+    await archiveStaleClosedTasks()
+  } catch { /* logged downstream; serve the board regardless */ }
+
+  // ?archived=1 flips to the archive (stale Done/Cancelled) — same role
+  // scoping as the live board.
+  const opts = { archived: url.searchParams.get('archived') === '1' }
+
   // Only admins may view other users' tasks via ?user=. Non-admins are always
   // scoped to their own tasks (assigned to OR created by them), regardless of
   // any ?user= param they try to pass.
   if (user.role === 'admin') {
     const filterUser = url.searchParams.get('user')
-    if (!filterUser) return json(await getTasks())
-    return json(await getTasksForUser(await getUserEmailByName(filterUser), filterUser))
+    if (!filterUser) return json(await getTasks(opts))
+    return json(await getTasksForUser(await getUserEmailByName(filterUser), filterUser, opts))
   }
 
   const name = (user.displayName as string) ?? (user.name as string) ?? ''
   const email = (user.email as string | undefined) ?? null
-  return json(await getTasksForUser(email, name))
+  return json(await getTasksForUser(email, name, opts))
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {

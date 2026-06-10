@@ -7,6 +7,7 @@
   import type { Task } from '$lib/types'
   import { QUOTE_STATUS_META, STATUS_META } from '$lib/constants'
   import { extractStoreNumbers } from '$lib/storeNumbers'
+  import { agingLevel, daysInColumn } from '$lib/aging'
 
   let {
     task,
@@ -55,6 +56,10 @@
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
   })
   let dueShort = $derived(shortDate(task.date))
+
+  // Aging: how long the card has sat in this column (active columns only).
+  let aging = $derived(agingLevel(task, new Date()))
+  let agedDays = $derived(daysInColumn(task, new Date()))
 
   let coCount = $derived((task.co_assignees ?? []).length)
   let attCount = $derived(task.attachments?.length || (task.attachment_ids ?? []).length || 0)
@@ -119,6 +124,9 @@
     {/if}
     {#if dueShort}
       <span class="due-chip" class:overdue title={overdue ? 'Overdue' : 'Due date'}>📅 {dueShort}</span>
+    {/if}
+    {#if aging !== 'none'}
+      <span class="aging-chip" class:alert={aging === 'alert'} title="In {task.status} for {agedDays} days">⏳ {agedDays}d</span>
     {/if}
     {#if task.quote}
       <span class="quote-chip" title="Quote · {qStatus}">
@@ -269,6 +277,22 @@
     color: #b06a72;
     background: transparent;
     font-weight: 600;
+  }
+  /* Aging: the card has sat in this column past the warn threshold (amber),
+     then the alert threshold (rose). Same calm tone family as overdue. */
+  .aging-chip {
+    font-size: 11px;
+    font-weight: 600;
+    color: #92670e;
+    background: transparent;
+    border: 1px solid #fde68a;
+    border-radius: 20px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+  .aging-chip.alert {
+    color: #b06a72;
+    border-color: #fecaca;
   }
   .quote-chip {
     display: inline-flex;

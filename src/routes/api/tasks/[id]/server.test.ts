@@ -42,14 +42,24 @@ describe('PATCH /api/tasks/[id] — field allowlist (mass-assignment guard)', ()
       status: 'Done',
       status_changed_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
       rank: 'top1', // a dropdown move lands the card at the top of its new column
-    })
+    }, undefined, undefined)
 
     // Re-selecting the same status must NOT reset status_changed_at — a stale
     // card would suddenly look fresh to the aging signal.
     vi.clearAllMocks()
     vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'Done' } as never)
     await PATCH(ev('t1', { field: 'status', value: 'Done' }))
-    expect(patchTask).toHaveBeenCalledWith('t1', { status: 'Done' })
+    expect(patchTask).toHaveBeenCalledWith('t1', { status: 'Done' }, undefined, undefined)
+  })
+
+  it('a status change restores an archived card (clears archived_at)', async () => {
+    vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'Done', archived_at: '2026-05-01T00:00:00Z' } as never)
+    await PATCH(ev('t1', { field: 'status', value: 'To Do' }))
+    expect(patchTask).toHaveBeenCalledWith('t1', {
+      status: 'To Do',
+      status_changed_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      rank: 'top1',
+    }, undefined, ['archived_at'])
   })
 
   it('rejects an invalid value for an allowlisted field', async () => {
@@ -58,6 +68,9 @@ describe('PATCH /api/tasks/[id] — field allowlist (mass-assignment guard)', ()
   })
 
   it('reassigning refreshes assignee identity (patchTask with resolved email)', async () => {
+    // Explicit: no current task → no auto-start side effects (and no reliance
+    // on whichever getTask implementation an earlier test left behind).
+    vi.mocked(getTask).mockResolvedValue(null as never)
     const res = await PATCH(ev('t1', { field: 'assigned_to', value: 'Dana' }))
     expect(await res.json()).toEqual({ ok: true })
     expect(getUserEmailByName).toHaveBeenCalledWith('Dana')

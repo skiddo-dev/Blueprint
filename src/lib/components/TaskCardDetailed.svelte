@@ -11,6 +11,7 @@
   import type { Task, Attachment } from '$lib/types'
   import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, QUOTE_STATUS_META, STATUS_META } from '$lib/constants'
   import { extractStoreNumbers } from '$lib/storeNumbers'
+  import { agingLevel, daysInColumn } from '$lib/aging'
   import CardComments from './CardComments.svelte'
   import CardAttachments from './CardAttachments.svelte'
 
@@ -97,6 +98,10 @@
     task.status !== 'Done' &&
     task.status !== 'Cancelled',
   )
+
+  // Aging: how long the card has sat in this column (active columns only).
+  let aging = $derived(agingLevel(task, new Date()))
+  let agedDays = $derived(daysInColumn(task, new Date()))
   let source = $derived(
     task.exchange_id
       ? `📩 ${task.sender_name || task.sender_email || 'Email'}`
@@ -192,6 +197,9 @@
     <span class="source">{source}</span>
     {#if createdShort}
       <span class="created-chip" title="Created {createdFull}">🗓 {createdShort}</span>
+    {/if}
+    {#if aging !== 'none'}
+      <span class="aging-chip" class:alert={aging === 'alert'} title="In {task.status} for {agedDays} days">⏳ {agedDays}d</span>
     {/if}
     {#if task.assigned_to && task.assigned_to !== 'Unassigned'}
       <span class="chip">👤 {task.assigned_to}</span>
@@ -490,6 +498,20 @@
   }
   .unassigned { font-size: 11px; color: var(--text-faint); }
   .created-chip { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+  /* Aging: past the warn threshold (amber) / alert threshold (rose) in this column. */
+  .aging-chip {
+    font-size: 11px;
+    font-weight: 600;
+    color: #92670e;
+    border: 1px solid #fde68a;
+    border-radius: 20px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+  .aging-chip.alert {
+    color: #b06a72;
+    border-color: #fecaca;
+  }
   /* Co-assignee chip: same pill as the primary, plus an inline remove ✕. */
   .co-chip { display: inline-flex; align-items: center; gap: 4px; }
   .co-remove {

@@ -7,11 +7,14 @@
 
   let {
     filters = $bindable(),
+    showArchived = $bindable(false),
     assigneeOptions = [],
     storeOptions = [],
     matchCount,
   }: {
     filters: BoardFilters
+    /** Swap the board to the archive (auto-archived Done/Cancelled cards). */
+    showArchived?: boolean
     assigneeOptions?: string[]
     storeOptions?: string[]
     /** Tasks visible under the current view + filters (for the result ribbon). */
@@ -198,6 +201,16 @@
       </div>
     {/if}
   </div>
+
+  <!-- Archive view toggle — sits with the filters but swaps the dataset. -->
+  <button
+    type="button"
+    class="ft-btn"
+    class:on={showArchived}
+    aria-pressed={showArchived}
+    title="Finished cards auto-archive after 30 days — view and restore them here"
+    onclick={() => (showArchived = !showArchived)}
+  >🗄 Archived</button>
 
   {#if active}
     <span class="ft-result">{matchCount} match{matchCount === 1 ? '' : 'es'}</span>

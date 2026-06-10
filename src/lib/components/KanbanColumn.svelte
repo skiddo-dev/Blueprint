@@ -5,7 +5,7 @@
   import type { Task, TaskStatus } from '$lib/types'
   import type { BoardFilters } from '$lib/boardFilters'
   import { defaultFilters, taskMatchesFilters, anyFilterActive } from '$lib/boardFilters'
-  import { STATUS_META } from '$lib/constants'
+  import { STATUS_META, WIP_LIMITS } from '$lib/constants'
   import { isOwnedBy } from '$lib/ownership'
   import { rankBetween } from '$lib/rank'
 
@@ -70,6 +70,12 @@
   const meta = $derived(STATUS_META[status])
   const flipDurationMs = 200
 
+  // Soft WIP limit: advisory only. Evaluated on the column's REAL load (all
+  // cards, not the filtered view) — hiding cards with a filter doesn't reduce
+  // the work actually in flight.
+  const wipLimit = $derived(WIP_LIMITS[status])
+  const overWip = $derived(wipLimit !== undefined && items.length > wipLimit)
+
   // View (My Work / All) + filter visibility. Non-matching cards are hidden
   // via CSS (kept in the dnd `items` list so the bound array — and drag/drop —
   // stays intact).
@@ -118,7 +124,14 @@
     <span class="col-title" style:color={meta.text}>
       {meta.icon}&nbsp;{status}
     </span>
-    <span class="count" style:background={meta.color}>{visibleCount}</span>
+    <span class="header-right">
+      {#if overWip}
+        <span class="wip-pill" title="Over the soft WIP limit — {items.length} cards in {status}, limit {wipLimit}">
+          WIP {items.length}/{wipLimit}
+        </span>
+      {/if}
+      <span class="count" style:background={meta.color}>{visibleCount}</span>
+    </span>
   </div>
 
   <!-- Empty hint is an overlay OUTSIDE the dndzone: svelte-dnd-action treats
@@ -216,6 +229,19 @@
     font-weight: 700;
     min-width: 26px;
     text-align: center;
+  }
+  .header-right { display: inline-flex; align-items: center; gap: 6px; }
+  /* Soft WIP limit exceeded — amber, advisory, never blocks a drop. */
+  .wip-pill {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
   }
 
   .dropzone-wrap {
