@@ -52,7 +52,11 @@ export function periodOf(dateISO: string): string {
 /** Build the reversing entry for a posted entry: swap debit and credit on every
  *  line. Corrections are reversals, never edits. The reversal deliberately drops
  *  `source_ref` so it doesn't collide with the original's idempotency slot; the
- *  caller links the two via reverses/reversed_by. */
+ *  caller links the two via reverses/reversed_by.
+ *
+ *  The reversal KEEPS the original's `source` — source-filtered reports (sales
+ *  tax activity, the cash-basis DROP set) rely on that to net voids out
+ *  automatically. Don't change it without updating those consumers. */
 export function buildReversingEntry(
   original: JournalEntry,
   opts: { date?: string; memo?: string } = {},
