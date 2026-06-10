@@ -126,8 +126,9 @@
 
 <PageShell {user} title="📝 Quote Generator" maxWidth="860px">
   {#snippet head()}
-    <h1>Quote Generator</h1>
-    <p class="sub">RAVES Construction proposals — branded PDF, logged to the quote log and dashboard analytics</p>
+    <h1 class="page-title">📝 Quote Generator</h1>
+    <p class="page-sub">RAVES Construction proposals — branded PDF, logged to the quote log and dashboard analytics · Admin only</p>
+    <hr style="margin: 12px 0 20px" />
   {/snippet}
 
   <section class="card">
@@ -287,8 +288,8 @@
 </PageShell>
 
 <style>
-  h1 { font-size: 20px; font-weight: 800; color: var(--text); }
-  .sub { font-size: 12.5px; color: var(--text-muted); margin: 2px 0 18px; }
+  .page-title { font-size: 22px; font-weight: 800; color: var(--text); }
+  .page-sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
 
   .card {
     background: var(--card-bg);
