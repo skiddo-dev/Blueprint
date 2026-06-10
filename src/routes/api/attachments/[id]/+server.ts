@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit'
+import { Binary } from 'mongodb'
 import type { RequestHandler } from './$types'
 import { getAttachment } from '$lib/server/db'
 import { assertCanAccessTask } from '$lib/server/authz'
@@ -20,7 +21,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
     throw error(410, 'This attachment was removed under the 30-day email-attachment retention policy.')
   }
 
-  return new Response(new Uint8Array(att.data as Buffer), {
+  // The driver deserializes a stored Buffer as BSON Binary, and
+  // `new Uint8Array(someBinary)` is silently ZERO-LENGTH (Binary's `length` is a
+  // method, not a property) — serving it shipped 0-byte downloads. Unwrap first.
+  const bytes = att.data instanceof Binary ? att.data.value() : (att.data as Uint8Array)
+
+  return new Response(new Uint8Array(bytes), {
     headers: {
       'Content-Type': (att.content_type as string) ?? 'application/octet-stream',
       'Content-Disposition': contentDisposition(String(att.filename ?? 'attachment')),

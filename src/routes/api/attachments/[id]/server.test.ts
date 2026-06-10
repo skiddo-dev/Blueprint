@@ -7,10 +7,13 @@ vi.mock('$lib/server/db', () => ({
   normName: (s: string | null | undefined) => (s ?? '').trim().toLowerCase(),
 }))
 
+import { Binary } from 'mongodb'
 import { GET } from './+server'
 import { getAttachment, getTask } from '$lib/server/db'
 
-const ATT = { _id: 'a1', task_id: 't1', data: Buffer.from('hi'), content_type: 'text/plain', filename: 'f.txt' }
+// `data` is a BSON Binary — the type the driver actually hands back for a stored
+// Buffer. Mocking a plain Buffer here is what hid the 0-byte-download bug.
+const ATT = { _id: 'a1', task_id: 't1', data: new Binary(Buffer.from('hi')), content_type: 'text/plain', filename: 'f.txt' }
 const TASK = { _id: 't1', assigned_to: 'Bob', created_by: 'Carol' }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,6 +34,18 @@ describe('GET /api/attachments/[id] — ownership (IDOR guard)', () => {
   it('serves the file to an admin', async () => {
     const res = await GET(ev({ role: 'admin' }))
     expect(res.status).toBe(200)
+  })
+
+  it('serves the stored bytes when the driver returns BSON Binary (0-byte regression)', async () => {
+    const res = await GET(ev({ role: 'admin' }))
+    expect(Buffer.from(await res.arrayBuffer()).toString()).toBe('hi')
+  })
+
+  it('serves the stored bytes when `data` is a plain Buffer', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(getAttachment as any).mockResolvedValue({ ...ATT, data: Buffer.from('hi') })
+    const res = await GET(ev({ role: 'admin' }))
+    expect(Buffer.from(await res.arrayBuffer()).toString()).toBe('hi')
   })
 
   it('serves the file to the assignee/creator', async () => {
