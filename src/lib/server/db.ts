@@ -181,6 +181,9 @@ const MIGRATIONS: Migration[] = [
       [{ $set: { owner_type: 'task', owner_id: '$task_id' } }],
     )
   } },
+  // 4950 Gain/Loss on Asset Disposal joined the chart; the seeder inserts only
+  // missing codes, so a re-run is the whole migration.
+  { id: '0008-reseed-coa', up: async (d) => { await seedChartOfAccounts(d) } },
 ]
 
 // 0005: seed the board-V2 ordering/flow fields on existing tasks. (a) `rank` —
