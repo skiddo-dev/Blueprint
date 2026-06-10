@@ -54,7 +54,7 @@
 
 <svelte:head><title>{a.name} · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🚚 {a.name}" maxWidth="760px"
+<AccountingShell {user} title={a.name} maxWidth="760px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Fixed assets', href: '/accounting/assets' }, { label: a.name }]}>
   {#snippet actions()}
     <span class="chip">{a.status}</span>

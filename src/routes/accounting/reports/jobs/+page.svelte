@@ -12,7 +12,7 @@
 
 <svelte:head><title>Job profitability · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🏗️ Job profitability" maxWidth="900px"
+<AccountingShell {user} title="Job profitability" maxWidth="900px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: 'Jobs' }]}>
   {#snippet actions()}
     <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>

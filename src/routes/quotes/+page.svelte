@@ -124,9 +124,9 @@
 
 <svelte:head><title>Quote Generator · Blueprint</title></svelte:head>
 
-<PageShell {user} title="📝 Quote Generator" maxWidth="860px">
+<PageShell {user} title="Quote Generator" maxWidth="860px">
   {#snippet head()}
-    <h1 class="page-title">📝 Quote Generator</h1>
+    <h1 class="page-title">Quote Generator</h1>
     <p class="page-sub">RAVES Construction proposals — branded PDF, logged to the quote log and dashboard analytics · Admin only</p>
     <hr style="margin: 12px 0 20px" />
   {/snippet}

@@ -15,7 +15,7 @@
 
 <svelte:head><title>A/R Aging · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📈 A/R Aging" maxWidth="1000px"
+<AccountingShell {user} title="A/R Aging" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Receivables by age' }]}>
   <p class="report-hint">Money customers owe you, grouped by how many days past due each invoice is — the further right, the longer it's been waiting and the harder you should chase it.</p>
   <div class="aging-top">

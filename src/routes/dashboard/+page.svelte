@@ -571,9 +571,9 @@
 
 <svelte:head><title>Dashboard · Blueprint</title></svelte:head>
 
-<PageShell {user} title="📊 Dashboard">
+<PageShell {user} title="Dashboard">
   {#snippet head()}
-    <h1 class="page-title">📊 Dashboard</h1>
+    <h1 class="page-title">Dashboard</h1>
     <p class="page-sub">Quote insights from the RAVES quote log · Admin only</p>
     <hr style="margin: 12px 0 20px" />
   {/snippet}

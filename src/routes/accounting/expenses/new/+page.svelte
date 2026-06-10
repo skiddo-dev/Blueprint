@@ -87,7 +87,7 @@
 
 <svelte:head><title>Record expense · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="💸 Record expense" maxWidth="640px"
+<AccountingShell {user} title="Record expense" maxWidth="640px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Record expense' }]}>
   <p class="report-hint">Money spent without a vendor bill — fuel, supplies, a permit paid on the spot. Posts one balanced entry: the expense account up, the bank account down.</p>
 

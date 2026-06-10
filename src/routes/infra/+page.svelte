@@ -55,11 +55,11 @@
 
 <svelte:head><title>Infra Spend · Blueprint</title></svelte:head>
 
-<PageShell {user} title="💸 Infra Spend" maxWidth="980px">
+<PageShell {user} title="Infra Spend" maxWidth="980px">
   {#snippet head()}
     <div class="head-row">
       <div>
-        <h1>💸 Infra Spend</h1>
+        <h1>Infra Spend</h1>
         <p class="sub">Live billing from MongoDB Atlas, Azure, OpenAI &amp; GitHub</p>
       </div>
       <button class="btn-secondary" type="button" onclick={refresh} disabled={refreshing}>

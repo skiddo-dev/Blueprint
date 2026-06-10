@@ -20,7 +20,7 @@
 
 <svelte:head><title>Budget vs Actual · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🎯 Budget vs Actual" maxWidth="1000px"
+<AccountingShell {user} title="Budget vs Actual" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: 'Budget vs actual' }]}>
   {#snippet actions()}
     <a class="btn-secondary" href={`/api/accounting/export/budget-vs-actual?year=${data.year}&through=${data.through}`}>⬇ CSV</a>

@@ -104,7 +104,7 @@
 
 <svelte:head><title>New journal entry · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📒 New journal entry" maxWidth="820px"
+<AccountingShell {user} title="New journal entry" maxWidth="820px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Journal entry' }]}>
   <p class="form-hint">Debits must equal credits before you can post.</p>
 

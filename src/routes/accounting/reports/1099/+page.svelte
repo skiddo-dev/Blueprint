@@ -16,7 +16,7 @@
 
 <svelte:head><title>1099 Payments · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📋 1099 Payments" maxWidth="900px"
+<AccountingShell {user} title="1099 Payments" maxWidth="900px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: '1099' }]}>
   {#snippet actions()}
     <a class="btn-secondary" href={`/api/accounting/export/1099?year=${data.year}`}>⬇ CSV</a>

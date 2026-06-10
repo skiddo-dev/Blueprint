@@ -15,7 +15,7 @@
 
 <svelte:head><title>Cash Flow · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="💵 Cash Flow" maxWidth="760px"
+<AccountingShell {user} title="Cash Flow" maxWidth="760px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Statement of Cash Flows' }]}>
   {#snippet actions()}
     <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>

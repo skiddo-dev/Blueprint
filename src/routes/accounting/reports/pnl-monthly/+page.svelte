@@ -15,7 +15,7 @@
 
 <svelte:head><title>P&L by month · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📅 P&L by month" maxWidth="1100px"
+<AccountingShell {user} title="P&L by month" maxWidth="1100px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: 'P&L by month' }]}>
   {#snippet actions()}
     <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>

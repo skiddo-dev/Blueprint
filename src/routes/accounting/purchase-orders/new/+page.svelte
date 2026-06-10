@@ -70,7 +70,7 @@
 
 <svelte:head><title>New purchase order · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📑 New purchase order" maxWidth="860px"
+<AccountingShell {user} title="New purchase order" maxWidth="860px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Purchase orders', href: '/accounting/purchase-orders' }, { label: 'New' }]}>
   <section class="card">
     <p class="report-hint">Commits spend with a vendor — nothing posts to the books until you convert it to a bill.</p>

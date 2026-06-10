@@ -1,5 +1,6 @@
 <script lang="ts">
   import NavDrawer from './NavDrawer.svelte'
+  import Icon from './Icon.svelte'
   import type { Snippet } from 'svelte'
 
   // Shared shell for the admin routes (dashboard / quotes / prospects): the
@@ -31,7 +32,7 @@
   <main class="main-content" style:max-width={maxWidth ?? null}>
     <!-- Mobile-only: ☰ opens the drawer; the title stands in for the desktop heading. -->
     <div class="mobile-topbar">
-      <button class="menu-btn" onclick={() => (open = true)} aria-label="Open menu">☰</button>
+      <button class="menu-btn" onclick={() => (open = true)} aria-label="Open menu"><Icon name="menu" size={18} /></button>
       <span class="topbar-title">{title}</span>
     </div>
 

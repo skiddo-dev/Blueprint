@@ -61,7 +61,7 @@
 
 <svelte:head><title>Sales Tax · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🧾 Sales Tax" maxWidth="900px"
+<AccountingShell {user} title="Sales Tax" maxWidth="900px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Sales tax' }]}>
   {#snippet actions()}
     <a class="btn-secondary" href="/api/accounting/export/sales-tax">⬇ CSV</a>

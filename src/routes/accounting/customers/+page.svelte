@@ -49,7 +49,7 @@
 
 <svelte:head><title>Customers · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🤝 Customers" maxWidth="940px"
+<AccountingShell {user} title="Customers" maxWidth="940px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Customers' }]}>
   <section class="card flush">
     <div class="card-head">

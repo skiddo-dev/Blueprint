@@ -13,7 +13,7 @@
 
 <svelte:head><title>Journal entry · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🧾 Journal entry" maxWidth="720px"
+<AccountingShell {user} title="Journal entry" maxWidth="720px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Journal', href: '/accounting/reports/journal' }, { label: e.date }]}>
 
   <section class="card">

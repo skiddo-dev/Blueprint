@@ -96,7 +96,7 @@
 
 <svelte:head><title>Invoice {num} · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📄 Invoice {num}" maxWidth="820px"
+<AccountingShell {user} title="Invoice {num}" maxWidth="820px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Invoices', href: '/accounting/invoices' }, { label: num }]}>
   {#snippet actions()}
     <StatusBadge status={inv.status} />

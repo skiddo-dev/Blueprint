@@ -81,7 +81,7 @@
 
 <svelte:head><title>Reconcile · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="✅ Bank Reconciliation" maxWidth="900px"
+<AccountingShell {user} title="Bank Reconciliation" maxWidth="900px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Match the ledger to a bank statement' }]}>
   {#if data.accounts.length === 0}
     <section class="card flush"><p class="empty">No bank accounts in the chart of accounts.</p></section>

@@ -41,7 +41,7 @@
 
 <svelte:head><title>Audit Log · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="🛡️ Audit Log" maxWidth="1000px"
+<AccountingShell {user} title="Audit Log" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Audit log' }]}>
 
   <p class="report-hint">Every accounting action with who did it and when. The ledger itself is immutable (corrections post as reversals); this is the who-and-why layer on top.</p>

@@ -7,6 +7,7 @@
   import CardDetailSheet from './CardDetailSheet.svelte'
   import FilterBar from './FilterBar.svelte'
   import StoreLanes from './StoreLanes.svelte'
+  import Icon from './Icon.svelte'
   import type { Task, TaskStatus, AppSession } from '$lib/types'
   import { KANBAN_STATUSES, STATUS_META, SUPERVISORS, WIP_LIMITS } from '$lib/constants'
   import { defaultFilters, taskMatchesFilters, taskStores, anyFilterActive, activeFilterCount } from '$lib/boardFilters'
@@ -694,7 +695,7 @@
 
 <div class="board-toolbar">
   <div class="toolbar-left">
-    <h1 class="board-title">🏗️ Blueprint</h1>
+    <h1 class="board-title"><Icon name="logo" size={17} /> Blueprint</h1>
     <p class="board-sub">Email-to-Task Kanban · Grocery Construction</p>
   </div>
   <div class="toolbar-right">
@@ -705,10 +706,10 @@
         disabled={syncing}
         title="Flagged email syncs automatically — tap to pull it in right now"
       >
-        {syncing ? '⏳ Refreshing…' : '🔄 Refresh now'}
+        {#if syncing}Refreshing…{:else}<Icon name="refresh" size={13} /> Refresh now{/if}
       </button>
     {/if}
-    <button class="primary" onclick={() => { showNewTask = true }}>✏️ New Task</button>
+    <button class="primary" onclick={() => { showNewTask = true }}><Icon name="pencil" size={13} /> New Task</button>
   </div>
 </div>
 
@@ -722,14 +723,14 @@
        (Not in the archived view — an empty archive is normal, and the banner
        above already explains the mode.) -->
   <div class="board-empty">
-    <div class="be-icon" aria-hidden="true">🗂️</div>
+    <div class="be-icon" aria-hidden="true"><Icon name="board" size={40} /></div>
     <h2>No tasks yet</h2>
     <p>Flagged vendor emails sync in automatically and land here as cards — or add the first one yourself.</p>
     <div class="be-actions">
-      <button class="primary" onclick={() => { showNewTask = true }}>✏️ New Task</button>
+      <button class="primary" onclick={() => { showNewTask = true }}><Icon name="pencil" size={13} /> New Task</button>
       {#if role === 'admin'}
         <button class="secondary" onclick={syncEmails} disabled={syncing}>
-          {syncing ? '⏳ Refreshing…' : '🔄 Refresh now'}
+          {#if syncing}Refreshing…{:else}<Icon name="refresh" size={13} /> Refresh now{/if}
         </button>
       {/if}
     </div>
@@ -739,18 +740,18 @@
       target="_blank"
       rel="noopener"
     >
-      📖 Read the {role === 'admin' ? 'admin' : 'PM'} guide
+      <Icon name="guide" size={14} /> Read the {role === 'admin' ? 'admin' : 'PM'} guide
     </a>
   </div>
 {:else}
 <div class="toggles-row">
   <div class="view-toggle" role="group" aria-label="Board view">
     <button class="vt-btn" class:active={view === 'mine'} aria-pressed={view === 'mine'} onclick={() => setView('mine')}>
-      🙋 My Work
+      <Icon name="person" size={13} /> My Work
       {#if myOverdue > 0}<span class="vt-overdue">{myOverdue} overdue</span>{/if}
     </button>
     <button class="vt-btn" class:active={view === 'all'} aria-pressed={view === 'all'} onclick={() => setView('all')}>
-      📋 All Tasks
+      <Icon name="list" size={13} /> All Tasks
     </button>
   </div>
   <!-- Mobile-only: everything below the My Work toggle folds behind this. -->
@@ -760,7 +761,7 @@
     aria-expanded={controlsOpen}
     onclick={() => (controlsOpen = !controlsOpen)}
   >
-    ⚙️ View{#if viewBadge}<span class="cb-badge">{viewBadge}</span>{/if}
+    <Icon name="sliders" size={13} /> View{#if viewBadge}<span class="cb-badge">{viewBadge}</span>{/if}
     {controlsOpen ? '▴' : '▾'}
   </button>
 
@@ -824,7 +825,7 @@
      Status dropdown. The whole bar is hidden on desktop, where the sidebar is
      always visible and all columns show side by side. -->
 <div class="mobile-topbar">
-  <button class="menu-btn" onclick={() => onMenu?.()} aria-label="Open menu">☰</button>
+  <button class="menu-btn" onclick={() => onMenu?.()} aria-label="Open menu"><Icon name="menu" size={18} /></button>
   <nav class="col-tabs" aria-label="Switch board column">
     {#each KANBAN_STATUSES as status}
       {@const m = STATUS_META[status]}
@@ -1072,7 +1073,7 @@
     border: 1px dashed var(--border);
     border-radius: 16px;
   }
-  .be-icon { font-size: 40px; margin-bottom: 8px; }
+  .be-icon { color: var(--text-faint); margin-bottom: 8px; }
   .board-empty h2 { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 8px; }
   .board-empty p { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin: 0 0 18px; }
   .be-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }

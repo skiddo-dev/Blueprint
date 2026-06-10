@@ -73,7 +73,7 @@
 
 <svelte:head><title>Accounting · Blueprint</title></svelte:head>
 
-<AccountingShell {user} title="📒 Accounting" crumbs={[{ label: 'Blueprint Books' }]}>
+<AccountingShell {user} title="Accounting" crumbs={[{ label: 'Blueprint Books' }]}>
   {#snippet actions()}
     <a class="btn-primary" href="/accounting/journal/new">+ New journal entry</a>
   {/snippet}
