@@ -451,6 +451,40 @@
     await persist(jsonReq(`/api/tasks/${id}/comments/${commentId}/react`, 'POST', { emoji }))
   }
 
+  // ── Checklist (optimistic) ──────────────────────────────────────────────
+  // Add awaits the server (it generates the item id); toggle/delete mutate
+  // locally first and reconcile via the poll, like comments.
+  async function handleAddChecklist(id: string, text: string) {
+    try {
+      const r = await jsonReq(`/api/tasks/${id}/checklist`, 'POST', { text })
+      if (!r.ok) throw new Error(`checklist ${r.status}`)
+      const { item } = await r.json()
+      patchLocal(id, t => ({ ...t, checklist: [...(t.checklist ?? []), item] }))
+      online = true
+    } catch {
+      online = false
+      saveToast = '⚠️ Couldn’t add that checklist item — check your connection and try again.'
+      clearTimeout(saveToastTimer)
+      saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
+    }
+  }
+
+  async function handleToggleChecklist(id: string, itemId: string, done: boolean) {
+    patchLocal(id, t => ({
+      ...t,
+      checklist: (t.checklist ?? []).map(i =>
+        i.id === itemId
+          ? { ...i, done, done_by: done ? userName : undefined, done_at: done ? new Date().toISOString() : undefined }
+          : i),
+    }))
+    await persist(jsonReq(`/api/tasks/${id}/checklist/${itemId}`, 'PATCH', { done }))
+  }
+
+  async function handleDeleteChecklist(id: string, itemId: string) {
+    patchLocal(id, t => ({ ...t, checklist: (t.checklist ?? []).filter(i => i.id !== itemId) }))
+    await persist(jsonReq(`/api/tasks/${id}/checklist/${itemId}`, 'DELETE'))
+  }
+
   // ── Attachments ─────────────────────────────────────────────────────────
   // Upload posts multipart/form-data; the server returns the stored metadata,
   // which we splice into the card so the new file shows without waiting for the
@@ -550,6 +584,9 @@
     onReact={handleReact}
     onUploadAttachment={handleUploadAttachment}
     onDeleteAttachment={handleDeleteAttachment}
+    onAddChecklist={handleAddChecklist}
+    onToggleChecklist={handleToggleChecklist}
+    onDeleteChecklist={handleDeleteChecklist}
   />
 {/if}
 

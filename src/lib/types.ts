@@ -19,6 +19,16 @@ export interface TimelineEntry {
   reactions?: Record<string, string[]>             // emoji → reactor display names, e.g. { "👍": ["Ben"] }
 }
 
+// One punch-list item on a card. Anyone with task access can add/check/delete
+// (a shared crew list, unlike comments which only their author may edit).
+export interface ChecklistItem {
+  id: string
+  text: string
+  done: boolean
+  done_by?: string   // display name of who checked it off
+  done_at?: string
+}
+
 export interface Task {
   _id: string
   id: string  // mirrors _id — required by svelte-dnd-action
@@ -53,6 +63,7 @@ export interface Task {
   attachment_ids: string[]     // attachment _ids (legacy; mirrors attachments[].id)
   attachments?: Attachment[]   // uploaded-file metadata for display (filename/size)
   timeline?: TimelineEntry[]   // activity log (created / replies / parsed attachments)
+  checklist?: ChecklistItem[]  // punch list (☑ n/m chip on the card face)
   created_at: string
   updated_at?: string
 }

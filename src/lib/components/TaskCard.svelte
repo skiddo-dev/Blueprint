@@ -68,6 +68,8 @@
   let agedDays = $derived(daysInColumn(task, new Date()))
 
   let coCount = $derived((task.co_assignees ?? []).length)
+  let clTotal = $derived((task.checklist ?? []).length)
+  let clDone = $derived((task.checklist ?? []).filter(i => i.done).length)
   let attCount = $derived(task.attachments?.length || (task.attachment_ids ?? []).length || 0)
   let commentCount = $derived((task.timeline ?? []).filter(e => e.kind === 'comment').length)
   let hasNote = $derived(!!(task.notes ?? '').trim())
@@ -175,6 +177,7 @@
     </span>
     <span class="created" title="Created {createdFull}">🗓 {createdShort}</span>
     <span class="counts">
+      {#if clTotal}<span class="count" class:cl-complete={clDone === clTotal} title="Checklist — {clDone} of {clTotal} done">☑{clDone}/{clTotal}</span>{/if}
       {#if hasNote}<span class="count" title="Has a note">📝</span>{/if}
       {#if attCount}<span class="count" title="{attCount} attachment{attCount === 1 ? '' : 's'}">📎{attCount}</span>{/if}
       {#if commentCount}<span class="count" title="{commentCount} comment{commentCount === 1 ? '' : 's'}">💬{commentCount}</span>{/if}
@@ -411,6 +414,7 @@
   .created { font-size: 11px; color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }
   .counts { display: inline-flex; gap: 5px; flex-shrink: 0; }
   .count { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+  .count.cl-complete { color: #10b981; font-weight: 600; }
 
   @media (max-width: 768px) {
     .card:hover { transform: none; box-shadow: var(--shadow); }

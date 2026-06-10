@@ -29,6 +29,9 @@
     onReact,
     onUploadAttachment,
     onDeleteAttachment,
+    onAddChecklist,
+    onToggleChecklist,
+    onDeleteChecklist,
   }: {
     task: Task
     assignees: string[]
@@ -46,6 +49,9 @@
     onReact?: (id: string, commentId: string, emoji: string) => void
     onUploadAttachment?: (id: string, file: File) => Promise<void> | void
     onDeleteAttachment?: (id: string, attId: string) => void
+    onAddChecklist?: (id: string, text: string) => Promise<void> | void
+    onToggleChecklist?: (id: string, itemId: string, done: boolean) => void
+    onDeleteChecklist?: (id: string, itemId: string) => void
   } = $props()
 
   let meta = $derived(STATUS_META[task.status] ?? STATUS_META['To Do'])
@@ -98,6 +104,34 @@
   }
   const removeCoAssignee = (name: string) =>
     onFieldUpdate(task._id, 'co_assignees', coAssignees.filter(n => n !== name))
+
+  // ── Checklist (shared punch list) ───────────────────────────────────────────
+  let clItems = $derived(task.checklist ?? [])
+  let clDone = $derived(clItems.filter(i => i.done).length)
+  let clText = $state('')
+  let clBusy = $state(false)
+  async function addChecklistItem() {
+    const t = clText.trim()
+    if (!t || !onAddChecklist) return
+    clBusy = true
+    try {
+      await onAddChecklist(task._id, t)
+      clText = ''
+    } finally {
+      clBusy = false
+    }
+  }
+  function clKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      addChecklistItem()
+    }
+  }
+  const doneTip = (i: { done_by?: string; done_at?: string }) => {
+    if (!i.done_by && !i.done_at) return undefined
+    const when = i.done_at ? new Date(i.done_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
+    return `Done${i.done_by ? ` by ${i.done_by}` : ''}${when ? ` · ${when}` : ''}`
+  }
 
   // ── Activity log (system timeline: created / replies / parsed files) ───────
   let activity = $derived((task.timeline ?? []).filter(e => e.kind !== 'comment'))
@@ -285,6 +319,43 @@
       onblur={saveNotes}
     ></textarea>
   </section>
+
+  {#if onAddChecklist}
+    <section class="sect">
+      <h3 class="sect-title">☑ Checklist{#if clItems.length}&nbsp;({clDone}/{clItems.length}){/if}</h3>
+      <div class="cl-list">
+        {#each clItems as item (item.id)}
+          <div class="cl-row" class:done={item.done}>
+            <input
+              type="checkbox"
+              id="cl-{item.id}"
+              checked={item.done}
+              onchange={() => onToggleChecklist?.(task._id, item.id, !item.done)}
+            />
+            <label class="cl-text" for="cl-{item.id}" title={doneTip(item)}>{item.text}</label>
+            {#if onDeleteChecklist}
+              <button
+                type="button"
+                class="cl-del"
+                onclick={() => onDeleteChecklist?.(task._id, item.id)}
+                aria-label="Remove checklist item"
+                title="Remove"
+              >✕</button>
+            {/if}
+          </div>
+        {/each}
+      </div>
+      <input
+        class="cl-add"
+        type="text"
+        maxlength="300"
+        placeholder="Add an item — Enter to save"
+        bind:value={clText}
+        disabled={clBusy}
+        onkeydown={clKeydown}
+      />
+    </section>
+  {/if}
 
   {#if task.full_body}
     <section class="sect">
@@ -523,6 +594,53 @@
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
+
+  /* Checklist rows: checkbox + text (struck when done) + hover delete. */
+  .cl-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+  .cl-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 4px;
+    border-radius: 6px;
+  }
+  .cl-row:hover { background: var(--bg); }
+  .cl-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: var(--primary);
+    align-self: center;
+  }
+  .cl-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    color: var(--text-body);
+    line-height: 1.45;
+    cursor: pointer;
+    word-break: break-word;
+  }
+  .cl-row.done .cl-text {
+    color: var(--text-faint);
+    text-decoration: line-through;
+  }
+  .cl-del {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    color: var(--text-faint);
+    min-height: 0;
+    flex-shrink: 0;
+    opacity: 0;
+  }
+  .cl-row:hover .cl-del, .cl-del:focus-visible { opacity: 1; }
+  .cl-del:hover { color: #ef4444; background: #fee2e2; }
 
   .email-body {
     font-size: 12px;

@@ -157,6 +157,10 @@
   // ── Comments (rendered by CardComments; the count feeds the 💬 chip) ───────
   let commentCount = $derived((task.timeline ?? []).filter(e => e.kind === 'comment').length)
 
+  // ── Checklist (managed in the detail sheet; the ☑ chip opens it) ──────────
+  let clTotal = $derived((task.checklist ?? []).length)
+  let clDone = $derived((task.checklist ?? []).filter(i => i.done).length)
+
   // ── Footer tool bar (accordion) ─────────────────────────────────────────────
   // The Email / Note / Attachments / Comments disclosures collapse into a single
   // horizontal chip row; tapping a chip opens its panel below and closes the
@@ -347,6 +351,9 @@
     {/if}
     {#if onComment}
       <button type="button" class="tool-chip" class:active={openPanel === 'comments'} aria-expanded={openPanel === 'comments'} aria-label="Comments" title="Comments" onclick={() => togglePanel('comments')}>💬{#if commentCount}&nbsp;{commentCount}{/if}</button>
+    {/if}
+    {#if clTotal}
+      <button type="button" class="tool-chip" aria-label="Checklist — {clDone} of {clTotal} done (open details)" title="Checklist — {clDone}/{clTotal} (manage in details)" onclick={() => onOpen?.(task._id)}>☑&nbsp;{clDone}/{clTotal}</button>
     {/if}
     {#if onOpen}
       <button type="button" class="tool-chip" aria-label="Open full details" title="Open full details" onclick={() => onOpen?.(task._id)}>⤢</button>

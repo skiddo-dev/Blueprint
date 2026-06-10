@@ -107,6 +107,13 @@ export function generateMockTasks(count = 35): Task[] {
       source_mailbox: pick(MOCK_INBOXES),
       created_by: 'system',
       attachment_ids: [],
+      // A slice of cards carries a punch list so the ☑ n/m chip + sheet
+      // section render in mock mode (varied progress).
+      checklist: i % 3 === 0 ? [
+        { id: `cl_${i}_1`, text: 'Order materials', done: true, done_by: 'Ben', done_at: new Date(Date.now() - randInt(5) * DAY_MS).toISOString() },
+        { id: `cl_${i}_2`, text: 'Confirm store access window', done: i % 2 === 0 },
+        { id: `cl_${i}_3`, text: 'Final walkthrough photos', done: false },
+      ] : [],
       timeline,
       created_at: createdAt,
       // Aging clock: entered its column sometime in the last 3 weeks, so the
