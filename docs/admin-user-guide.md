@@ -3,7 +3,7 @@
 A complete walkthrough of Blueprint for **Administrators**. Admins have the full
 app: the whole Kanban board (everyone's tasks), user management, email sync, and
 the five admin-only workspaces — **Dashboard**, **Quote Generator**,
-**📒 Accounting (Blueprint Books)**, **Prospects**, and **Competitive Landscape**.
+**Accounting (Blueprint Books)**, **Prospects**, and **Competitive Landscape**.
 
 > **Two roles.** Blueprint has **Admin** and **PM**. PMs are limited to their own
 > tasks on the board; admins see and run everything. If you're looking for the
@@ -23,7 +23,7 @@ You have admin rights if **either**:
 - your email is in the server's **`ADMIN_EMAILS`** list (these accounts are
   *always* admin — this is the bootstrap so the first person can provision
   everyone else), **or**
-- an existing admin has set your role to **admin** in **👥 User Access**.
+- an existing admin has set your role to **admin** in **User Access**.
 
 A signed-in person with **no role** sees a *"request access"* screen until an
 admin provisions them.
@@ -50,17 +50,17 @@ What's different with admin rights:
 
 ### Admin controls in the sidebar / toolbar
 
-- **🔄 Refresh now** (board toolbar) — pull flagged email right now (see
+- **Refresh now** (board toolbar) — pull flagged email right now (see
   §4; flagged mail also syncs on its own in the background).
-- **🔔 Access Requests** — appears only when someone has asked for access;
+- **Access Requests** — appears only when someone has asked for access;
   **approve** or **dismiss** each request right here (§3).
-- **👁️ View User Activity** — pick a person to filter the board to **their**
+- **View User Activity** — pick a person to filter the board to **their**
   tasks; choose **All tasks** to go back. A read-only way to see any one PM's load.
-- **👥 User Access** — add, update, and remove users, set their role, and see who's
+- **User Access** — add, update, and remove users, set their role, and see who's
   **active this week** and each person's **last-active** time (§3).
-- **📥 Import Tasks (CSV)** — bulk-create tasks from a spreadsheet (§3).
-- **⚠️ Danger Zone → Clear All Tasks** — bulk-delete (§10).
-- **📖 Help & Guide** — opens this guide (the PDF) in a new tab. PMs get the PM
+- **Import Tasks (CSV)** — bulk-create tasks from a spreadsheet (§3).
+- **Danger Zone → Clear All Tasks** — bulk-delete (§10).
+- **Help & Guide** — opens this guide (the PDF) in a new tab. PMs get the PM
   guide from the same link.
 
 ---
@@ -69,9 +69,9 @@ What's different with admin rights:
 
 Three sidebar panels manage your people and bulk data.
 
-### 👥 User Access — add / update / remove people
+### User Access — add / update / remove people
 
-Open the sidebar → **👥 User Access**.
+Open the sidebar → **User Access**.
 
 **To add or update someone:**
 
@@ -96,28 +96,28 @@ sign in.
 > this panel won't break their My Work. Admins listed in `ADMIN_EMAILS` are resolved
 > to that same email identity, so their assigned tasks carry through too.
 
-### 🔔 Access Requests — approve people who asked to get in
+### Access Requests — approve people who asked to get in
 
 When someone signs in but hasn't been provisioned, they now land on an **"Access
 Pending"** screen where they can **request access** (with an optional note about who
-they are). Each pending request shows up in the sidebar under **🔔 Access Requests**
+they are). Each pending request shows up in the sidebar under **Access Requests**
 (with a count badge):
 
 - **✓ Approve** — provisions them on the spot (defaulting to the **pm** role; adjust
-  in **👥 User Access** afterward if they should be an admin).
+  in **User Access** afterward if they should be an admin).
 - **✕ Dismiss** — clears the request without granting access.
 
 The panel only appears while there are pending requests.
 
-### 📥 Import Tasks (CSV) — bulk-create from a spreadsheet
+### Import Tasks (CSV) — bulk-create from a spreadsheet
 
-Open **📥 Import Tasks (CSV)** in the sidebar to create many tasks at once.
+Open **Import Tasks (CSV)** in the sidebar to create many tasks at once.
 
 1. **Upload** a `.csv` file or **paste** CSV text into the box.
 2. The columns mirror the board's **Export** file — `title`, `status`,
    `assigned_to`, `date`, `notes`, and more. Only **`title`** is required; unknown
    columns are ignored.
-3. Click **📥 Import**. You'll get a result line like *"✅ 12 created, 1 skipped."*
+3. Click **Import**. You'll get a result line like *"✅ 12 created, 1 skipped."*
 
 Tip: use **⬇ Download current tasks** (in the same panel) to grab a correctly
 shaped file to use as your template.
@@ -132,7 +132,7 @@ parsing the date, assignee, quote, and a summary with AI, and attaching any file
 - **Automatic** — the server keeps a Microsoft Graph push subscription alive and
   also runs a safety-net sync every ~10 minutes, so flagging an email is normally
   all that's needed; the task appears on its own.
-- **Manual** — click **🔄 Refresh now** on the board to pull immediately (useful
+- **Manual** — click **Refresh now** on the board to pull immediately (useful
   right after flagging something). It shows a short result message when done.
 
 A newly synced task carries its **source** (📩 sender), the parsed fields, the
@@ -160,7 +160,7 @@ summary, marked with **📎**, so nobody has to open the file to know what's in 
 
 ---
 
-## 5. 📊 Dashboard
+## 5. Dashboard
 
 *Quote insights from the RAVES quote log plus quoted tasks from the board.*
 Everything reacts live to the filter bar at the top.
@@ -200,7 +200,7 @@ with it. Filter the list by **open / won / lost / all**.
 
 ---
 
-## 6. 💰 Quote Generator
+## 6. Quote Generator
 
 Create a professional **proposal PDF** matching the RAVES Construction template.
 Each one you generate is **auto-logged** (with a sequential Quote #/year) into the
@@ -229,7 +229,7 @@ Click **Generate proposal PDF**, then **⬇ Download proposal PDF**. Use
 
 ---
 
-## 7. 🏭 Prospects
+## 7. Prospects
 
 A warehouse **lead pipeline** that pulls **live, key-less** data near the configured
 search center. It now uses a free hybrid source — **OpenStreetMap** (Overpass) for
@@ -268,7 +268,7 @@ data instead and shows a **"Demo data"** badge.
 
 ---
 
-## 8. 🗺️ Competitive Landscape
+## 8. Competitive Landscape
 
 A self-contained, blueprint-themed **market sheet** embedded in the page
 (read-only). Use it for the at-a-glance competitive/market picture; there's
@@ -276,7 +276,7 @@ nothing to edit here.
 
 ---
 
-## 9. 📒 Blueprint Books — Accounting
+## 9. Blueprint Books — Accounting
 
 Blueprint's built-in **double-entry bookkeeping**: invoices and receivables,
 vendor bills and payables, financial statements, bank reconciliation, and a
@@ -287,7 +287,7 @@ than one click from any part of the books.
 
 ### The Overview hub
 
-Open **📒 Accounting** in the nav. The top of the page answers *"how are we
+Open **Accounting** in the nav. The top of the page answers *"how are we
 doing?"* at a glance:
 
 - **KPI tiles** — **Cash on hand** (with this month's change and a 6-month
@@ -316,11 +316,14 @@ doing?"* at a glance:
   *Create invoice →* link) so the amounts and PO carry over.
 - **Invoice detail** — record payments (amount / date / method) as they arrive;
   status moves **open → partial → paid** automatically and every payment posts
-  its own journal entry. **⬇ PDF** downloads a client-ready invoice. Made a
-  mistake? **Void** reverses an untouched invoice outright (the reversal is
-  dated today, so it works even into a locked period), and **"Issue a credit
-  memo…"** reduces what's owed on a settled-in-part invoice — credits
-  interleave with payments in one history and recompute the status.
+  its own journal entry. **⬇ PDF** downloads a client-ready invoice. Attach
+  supporting documents (**📎 Attachments** at the bottom of the detail page); an
+  AI receipt scan runs on uploaded images and appends the key details to the
+  description automatically. Made a mistake? **Void** reverses an untouched
+  invoice outright (the reversal is dated today, so it works even into a locked
+  period), and **"Issue a credit memo…"** reduces what's owed on a
+  settled-in-part invoice — credits interleave with payments in one history and
+  recompute the status.
 - **🤝 Customers** — one line per customer with invoice count, total invoiced,
   and outstanding balance; edit names/emails inline (renames propagate to their
   invoices). Any customer with a balance gets a **Statement** link — a PDF of
@@ -331,44 +334,76 @@ doing?"* at a glance:
 
 ### Bills & what you owe (Payables)
 
-Mirrors receivables: **🧾 Bills** (same filters, urgency dates, progress bars),
+Mirrors receivables: **Bills** (same filters, urgency dates, progress bars),
 **+ New bill** (each line books to an expense account — job materials,
-subcontractors, rent…), bill detail with payments, **vendor credits**, and
-**Void** (same rules as invoices), **⬇ PDF**, **🏗️ Vendors** directory, and
-**📉 A/P Aging**.
+subcontractors, rent…), bill detail with payments and **📎 document attachments**
+(AI-reads uploaded receipts and appends key figures), **vendor credits**, and
+**Void** (same rules as invoices), **⬇ PDF**, **Vendors** directory, and
+**A/P Aging**.
+
+**+ New purchase order (PO)** — create a PO for a vendor before the bill arrives:
+line items with quantities, unit prices, and a linked expense account. Once the
+goods or work come in, **convert the PO → bill** in one click. The PO list
+(**POs** in the section nav) shows outstanding, received, and closed orders with
+a running total.
 
 ### Reports
 
-**📊 Reports** in the section nav opens the report index. The three financial
+**Reports** in the section nav opens the report index. The three financial
 statements come first, each with **one-click period buttons**
 (*This month · Last month · This quarter · YTD* — the balance sheet gets
 *Today · End of last month · End of last year*), a plain-English line explaining
-what the report shows, and a **🖨 Print** button that strips the app chrome for
-a clean handoff to your bank or accountant:
+what the report shows, a **🖨 Print** button that strips the app chrome for a
+clean handoff to your bank or accountant, and a **⬇ CSV** export on every report
+(income statement, balance sheet, cash flow, P&L by month, job profitability,
+general ledger, journal, A/R aging, A/P aging).
 
-- **📊 Income Statement** — revenue − cost of goods sold = gross profit, less
-  operating expenses = **net income**.
-- **🏦 Balance Sheet** — what the business owns vs owes on a date, with a
-  **✓ Balanced** badge.
-- **💵 Cash Flow** — where cash actually moved: operations, equipment,
-  financing.
+- **Income Statement** — revenue − cost of goods sold = gross profit, less
+  operating expenses = **net income**. Toggle **Cash basis** (top of the page)
+  to switch from accrual to cash-basis recognition — the same statements, different
+  timing of revenue and expense.
+- **Balance Sheet** — what the business owns vs owes on a date, with a
+  **✓ Balanced** badge. Also respects the cash-basis toggle.
+- **Cash Flow** — where cash actually moved: operations, equipment, financing.
 
 Beyond the statements, the index carries the **working reports**:
 
-- **📒 Account register** — any account's transaction history with a running
+- **Account register** — any account's transaction history with a running
   balance (a checkbook for every line of the chart); drill in from the trial
   balance, the General Ledger, or the register's own account picker.
-- **📅 P&L by month** — the income statement spread one column per month
+- **P&L by month** — the income statement spread one column per month
   (3 / 6 / 12-month windows) — the fastest way to spot a margin drift.
-- **🏗️ Job profitability** — profit and margin per job. Tag invoices, bills,
-  and expenses with a **job** name as you enter them (the field suggests every
-  job already in use; invoices created from a won quote prefill it) and the
-  per-job P&L builds itself.
-- **📚 General Ledger** and **🧾 Journal** — every posting grouped by account
-  with totals, and every entry in date order with full debit/credit detail.
-  The pair your accountant reconciles against at tax time.
+- **Job profitability** — profit and margin per job. Tag invoices, bills, and
+  expenses with a **job** name as you enter them (the field suggests every job
+  already in use; invoices created from a won quote prefill it) and the per-job
+  P&L builds itself.
+- **General Ledger** and **Journal** — every posting grouped by account with
+  totals, and every entry in date order with full debit/credit detail. The pair
+  your accountant reconciles against at tax time.
 
-### ✅ Bank reconciliation
+Three additional reports appear in the section nav under Reports:
+
+- **Budgets** — build an annual (or any-period) budget by account. Enter monthly
+  or lump-sum targets, then view the **Budget vs. Actual** report — each account
+  line shows budgeted, actual, variance, and percentage — so you can spot where
+  the year is tracking ahead or behind.
+- **Sales tax** — track collected sales tax by jurisdiction and filing period.
+  When a period is ready, **mark it filed** to lock those entries and reset the
+  running total. The **1099** sub-tab lists vendors whose bill totals cross the
+  reporting threshold, with totals ready to hand to your accountant.
+- **Audit log** — a time-ordered ledger of every create / edit / void / payment /
+  close action in the books, who did it, when, and the before/after values.
+  Non-editable; useful for disputes, reviews, and year-end attestation.
+
+### Bank deposits
+
+Record **Undeposited Funds** — payments received but not yet physically deposited.
+When money comes in you post it to Undeposited Funds, then **make a deposit** to
+bundle one or more of those payments into a single bank line that matches what
+actually hits your statement. **Deposits** in the section nav lists every deposit
+with its date, bank account, total, and the payments included.
+
+### Bank reconciliation
 
 Match the books to a bank statement: pick the bank account, enter the
 **statement date and ending balance**, then tick transactions until the
@@ -376,7 +411,18 @@ Match the books to a bank statement: pick the bank account, enter the
 Optionally **paste your bank's CSV export** and Blueprint auto-ticks the
 matching amounts. Past reconciliations are listed per account.
 
-### 🔁 Recurring transactions
+### Fixed assets & depreciation
+
+Track long-lived property under **Assets** in the section nav. Create an asset
+record with its **purchase date, cost, useful life, and depreciation method**
+(straight-line or declining balance); Blueprint computes the annual/monthly
+depreciation schedule and shows **book value** and **accumulated depreciation** at
+any point. **Post depreciation** for a period to push the journal entries into the
+books, or use a **recurring journal entry** (see below) to post automatically.
+When you retire or sell an asset, record the **disposal** — proceeds vs. book
+value — and Blueprint posts the gain or loss.
+
+### Recurring transactions
 
 Monthly rent, retainer invoices, standing vendor bills, depreciation — set them
 once and Blueprint posts them on schedule:
@@ -415,7 +461,7 @@ prospects** (PMs only get their own tasks). Match by store #, PO, vendor,
 assignee, customer, address, and more; **↑/↓** to move, **Enter** to open,
 **Esc** to close. A task result jumps to it on the board and flashes the card.
 
-**⚠️ Danger Zone → Clear All Tasks** — in the sidebar. This **permanently deletes
+**Danger Zone → Clear All Tasks** — in the sidebar. This **permanently deletes
 every task** on the board. You must tick the confirmation checkbox before the
 button enables. Use with care — there's no undo.
 
@@ -428,7 +474,7 @@ for the details:
 
 - **Task cards** — statuses/colors, drag-to-move, inline editing, store filters,
   delete, and a bottom **tool-chip bar** (📄 full email · 📝 note · 📎 attachments ·
-  💬 comments) that opens one panel at a time. **Attachments** can now be
+  💬 comments · ☑ checklist) that opens one panel at a time. **Attachments** can be
   **uploaded and removed**, not just downloaded — email-sourced files are purged
   after **30 days** (the entry stays, marked *expired*), while uploaded files are
   kept. Assigning a real person to a **To Do** task **auto-advances it to In
@@ -439,9 +485,9 @@ for the details:
 - **Mobile** — ☰ menu, column pills, bottom-sheet dialogs.
 - **Saving & offline** — auto-save, ~2s live refresh, offline banner with
   re-sync on reconnect.
-- **Help & first run** — a **📖 Help & Guide** link in the sidebar opens this guide
+- **Help & first run** — a **Help & Guide** link in the sidebar opens this guide
   (PDF). On a brand-new, empty board you'll see a **"No tasks yet"** prompt with
-  **✏️ New Task**, **🔄 Refresh now**, and a link to the guide instead of six empty
+  **✏️ New Task**, **Refresh now**, and a link to the guide instead of six empty
   columns.
 
 ---
@@ -452,21 +498,22 @@ for the details:
 
 | Area | What it's for |
 | --- | --- |
-| **🔄 Refresh now** | Pull flagged email on demand |
-| **🔔 Access Requests** | Approve / dismiss people asking for access |
-| **👁️ View User Activity** | Filter the board to one person's tasks |
-| **👥 User Access** | Add / update / remove users + roles; last-active & WAU |
-| **📥 Import Tasks (CSV)** | Bulk-create tasks from a spreadsheet |
-| **⚠️ Clear All Tasks** | Permanently delete all tasks |
-| **📊 Dashboard** | Quote analytics, win rates, pipeline |
-| **💰 Quote Generator** | Proposal PDFs with labor/total print toggles (auto-logged to analytics) |
-| **📒 Accounting** | Blueprint Books — invoices/A-R, bills/A-P, statements, reconciliation, period close |
-| **🏭 Prospects** | Warehouse lead pipeline + map (live OSM + county data) |
-| **🗺️ Competitive Landscape** | Embedded market sheet |
+| **Refresh now** | Pull flagged email on demand |
+| **Access Requests** | Approve / dismiss people asking for access |
+| **View User Activity** | Filter the board to one person's tasks |
+| **User Access** | Add / update / remove users + roles; last-active & WAU |
+| **Import Tasks (CSV)** | Bulk-create tasks from a spreadsheet |
+| **Danger Zone → Clear All Tasks** | Permanently delete all tasks |
+| **Dashboard** | Quote analytics, win rates, pipeline |
+| **Quote Generator** | Proposal PDFs with labor/total print toggles (auto-logged to analytics) |
+| **Accounting** | Blueprint Books — invoices/A-R, bills/A-P, purchase orders, budgets, sales tax/1099, audit log, bank deposits, fixed assets, statements, reconciliation, period close |
+| **Prospects** | Warehouse lead pipeline + map (live OSM + county data) |
+| **Competitive Landscape** | Embedded market sheet |
+| **Infra Spend** | Live Azure + Atlas + OpenAI + GitHub billing at a glance (admin-only) |
 
 **Admin extras on the board**
 
-- See **all** tasks; **assign to anyone**; see **📥 inbox** chips.
+- See **all** tasks; **assign to anyone**; see **📥 inbox** chips (synced cards).
 - **Search** covers tasks **+ quotes + prospects**.
 - **Edit / delete any** comment.
 
@@ -477,11 +524,11 @@ for the details:
 
 ## Admin responsibilities & troubleshooting
 
-- **Provisioning** — keep **👥 User Access** current; make sure each person's
-  **Display Name** matches their **Assign to** name. Clear the **🔔 Access Requests**
+- **Provisioning** — keep **User Access** current; make sure each person's
+  **Display Name** matches their **Assign to** name. Clear the **Access Requests**
   queue so nobody's left waiting.
 - **Sync looks stale?** — flagged mail auto-syncs, but you can always hit
-  **🔄 Refresh now**. If nothing comes in at all, it's usually a deploy-side
+  **Refresh now**. If nothing comes in at all, it's usually a deploy-side
   config issue (mailbox / Graph permissions / keys) — see the README & DEPLOY doc.
 - **An old flagged email never became a task** — expected: only mail flagged on or
   after the **`EMAIL_SYNC_CUTOFF`** date syncs (§4).
