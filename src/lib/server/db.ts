@@ -6,6 +6,7 @@ import { PROSPECT_CENTER, PROSPECT_DEFAULTS } from '$lib/constants'
 import { requireInProd } from './config'
 import { ensureAccountingIndexes, ensureAccountingConstraints, seedChartOfAccounts } from './accounting-schema'
 import { tombstoneKeysForTask } from './syncLogic'
+import { rankBetween, spreadRanks } from '$lib/rank'
 import { log } from './log'
 
 let client: MongoClient | null = null
@@ -118,6 +119,7 @@ async function ensureIndexes(d: Db): Promise<void> {
     await Promise.all([
       col(d, 'tasks').createIndex({ updated_at: -1 }),             // getTasksSignature — polled ~every 2s by every open client
       col(d, 'tasks').createIndex({ created_at: -1 }),             // getTasks / getTasksForUser sort
+      col(d, 'tasks').createIndex({ status: 1, rank: 1 }),         // per-column order + insertTask's top-of-column rank lookup
       col(d, 'tasks').createIndex({ created_by_email: 1 }),        // getTasksForUser (My Work) — identity match
       col(d, 'tasks').createIndex({ assignee_email: 1 }),          // getTasksForUser (My Work) — identity match
       col(d, 'tasks').createIndex({ co_assignee_emails: 1 }),      // getTasksForUser (My Work) — co-assignee identity match (multikey)
@@ -163,7 +165,40 @@ const MIGRATIONS: Migration[] = [
   { id: '0002-seed-quote-counters', up: seedQuoteCounters },
   { id: '0003-stamp-attachment-retention', up: stampAttachmentRetention },
   { id: '0004-seed-chart-of-accounts', up: seedChartOfAccounts },
+  { id: '0005-backfill-task-rank-flow', up: backfillTaskRankAndFlow },
 ]
+
+// 0005: seed the board-V2 ordering/flow fields on existing tasks. (a) `rank` —
+// per status column, evenly spaced keys assigned in the board's current display
+// order (created_at desc), so the day this ships nothing visibly moves. (b)
+// `status_changed_at` — best available proxy for when the card entered its
+// column: updated_at, else created_at. Idempotent: only fills missing fields.
+async function backfillTaskRankAndFlow(d: Db): Promise<void> {
+  const tasks = await col(d, 'tasks')
+    .find({}, { projection: { _id: 1, status: 1, rank: 1, created_at: 1, updated_at: 1, status_changed_at: 1 } })
+    .toArray()
+  const byStatus = new Map<string, typeof tasks>()
+  for (const t of tasks) {
+    const s = String(t.status ?? 'To Do')
+    const list = byStatus.get(s) ?? []
+    list.push(t)
+    byStatus.set(s, list)
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ops: any[] = []
+  const now = new Date().toISOString()
+  for (const list of byStatus.values()) {
+    list.sort((a, b) => String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')))
+    const ranks = spreadRanks(list.length)
+    list.forEach((t, i) => {
+      const set: Record<string, string> = {}
+      if (!t.rank) set.rank = ranks[i]
+      if (!t.status_changed_at) set.status_changed_at = String(t.updated_at ?? t.created_at ?? now)
+      if (Object.keys(set).length) ops.push({ updateOne: { filter: { _id: t._id }, update: { $set: set } } })
+    })
+  }
+  if (ops.length) await col(d, 'tasks').bulkWrite(ops, { ordered: false })
+}
 
 // 0003: prepare existing attachments for the retention policy. (a) Date + tag
 // every legacy attachment doc that predates retention — manual upload is brand
@@ -386,13 +421,30 @@ export async function getTasksSignature(): Promise<string> {
   return `${count}:${(latest?.updated_at as string) ?? ''}`
 }
 
+/** A rank that sorts a card to the top of `status`'s column (above its current
+ *  smallest rank). One indexed point-read on {status, rank}. */
+export async function topRankForStatus(status: string): Promise<string> {
+  const d = await getDb()
+  const top = await col(d, 'tasks')
+    .find({ status, rank: { $type: 'string' } }, { projection: { rank: 1 } })
+    .sort({ rank: 1 })
+    .limit(1)
+    .toArray()
+  return rankBetween(null, (top[0]?.rank as string) ?? null)
+}
+
 export async function insertTask(task: Record<string, unknown>): Promise<string> {
   const d = await getDb()
   const id = crypto.randomUUID()
   const now = new Date().toISOString()
+  // New cards (manual or email-synced) land at the top of their column, and
+  // their aging clock starts now.
+  const rank = (task.rank as string) ?? await topRankForStatus(String(task.status ?? 'To Do'))
   await col(d, 'tasks').insertOne({
     ...task,
     _id: id,
+    rank,
+    status_changed_at: task.status_changed_at ?? now,
     created_at: task.created_at ?? now,
     updated_at: now,
     attachment_ids: (task.attachment_ids as string[]) ?? [],

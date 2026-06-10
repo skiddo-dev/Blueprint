@@ -28,9 +28,26 @@ describe('PATCH /api/tasks/[id] — field allowlist (mass-assignment guard)', ()
   beforeEach(() => vi.clearAllMocks())
 
   it('writes an allowlisted field', async () => {
+    const res = await PATCH(ev('t1', { field: 'notes', value: 'call the vendor' }))
+    expect(await res.json()).toEqual({ ok: true })
+    expect(updateTaskField).toHaveBeenCalledWith('t1', 'notes', 'call the vendor')
+  })
+
+  it('a status edit stamps the aging clock only when the column actually changes', async () => {
+    vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'To Do' } as never)
     const res = await PATCH(ev('t1', { field: 'status', value: 'Done' }))
     expect(await res.json()).toEqual({ ok: true })
-    expect(updateTaskField).toHaveBeenCalledWith('t1', 'status', 'Done')
+    expect(patchTask).toHaveBeenCalledWith('t1', {
+      status: 'Done',
+      status_changed_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+    })
+
+    // Re-selecting the same status must NOT reset status_changed_at — a stale
+    // card would suddenly look fresh to the aging signal.
+    vi.clearAllMocks()
+    vi.mocked(getTask).mockResolvedValue({ _id: 't1', status: 'Done' } as never)
+    await PATCH(ev('t1', { field: 'status', value: 'Done' }))
+    expect(patchTask).toHaveBeenCalledWith('t1', { status: 'Done' })
   })
 
   it('rejects an invalid value for an allowlisted field', async () => {
@@ -71,6 +88,8 @@ describe('PATCH /api/tasks/[id] — assigning starts the task', () => {
       assigned_to: 'Dana',
       assignee_email: 'dana@x.com',
       status: 'In Progress',
+      // Auto-start is a column change, so the aging clock restarts with it.
+      status_changed_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
     })
   })
 

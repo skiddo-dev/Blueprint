@@ -31,7 +31,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     // Assigning work starts it: a "To Do" task auto-advances to "In Progress".
     const current = await getTask(params.id)
     const nextStatus = current ? statusOnAssign(current.status, checked) : null
-    if (nextStatus) set.status = nextStatus
+    if (nextStatus) {
+      set.status = nextStatus
+      set.status_changed_at = new Date().toISOString() // column change → restart the aging clock
+    }
     // Promoting a co-assignee to primary removes them from the co-list (one
     // person shouldn't hold both slots).
     if (current?.co_assignees?.length) {
@@ -46,6 +49,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     const current = await getTask(params.id)
     const resolved = await resolveCoAssignees(checked as string[], current?.assigned_to)
     const ok = await patchTask(params.id, { ...resolved })
+    return json({ ok })
+  }
+  // A status edit is a column move — stamp status_changed_at (the aging clock)
+  // only when the column actually changes, so re-selecting the same status
+  // doesn't make a stale card look fresh.
+  if (field === 'status') {
+    const current = await getTask(params.id)
+    const set: Record<string, unknown> = { status: checked }
+    if (current && current.status !== checked) set.status_changed_at = new Date().toISOString()
+    const ok = await patchTask(params.id, set)
     return json({ ok })
   }
   const ok = await updateTaskField(params.id, field, checked)
