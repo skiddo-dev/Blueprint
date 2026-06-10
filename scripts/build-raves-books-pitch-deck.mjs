@@ -393,7 +393,7 @@ function addCommercialSlide(presentation) {
   })
   smallCard(slide, 'Books Complete', '$28,000 adds bank reconciliation, cash-flow statement, data migration from current books, and 30-day hypercare.', 646, 246, 250, 172, C.amber)
   smallCard(slide, 'Books Care', 'Optional monthly lane for month-end review, reconciliation checks, and small accounting changes.', 930, 246, 250, 172, C.green)
-  smallCard(slide, 'Builds on what is shipped', 'The ledger, A/R, A/P, registers, job costing, statements, recurring, bank rec, period close, and invoice/bill/statement PDFs are already built. This phase tailors and rolls them out for Raves.', 646, 456, 534, 120, C.blue)
+  smallCard(slide, 'Builds on what is shipped', 'The ledger, A/R, A/P, registers, job costing, statements, recurring, period close, and invoice/bill/statement PDFs are already built. This phase tailors and rolls them out for Raves.', 646, 456, 534, 120, C.blue)
   addFooter(slide, 9)
 }
 
