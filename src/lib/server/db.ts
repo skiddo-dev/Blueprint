@@ -125,6 +125,7 @@ async function ensureIndexes(d: Db): Promise<void> {
       col(d, 'tasks').createIndex({ co_assignee_emails: 1 }),      // getTasksForUser (My Work) — co-assignee identity match (multikey)
       col(d, 'attachments').createIndex({ task_id: 1 }),           // deleteTask cascade + per-task attachment lookups
       col(d, 'attachments').createIndex({ source: 1, created_at: 1 }), // retention sweep — find expired email attachments cheaply
+      col(d, 'attachments').createIndex({ owner_type: 1, owner_id: 1 }), // per-document attachment lists
       col(d, 'quotes').createIndex({ created_at: -1 }),            // getQuotes sort
       col(d, 'quotes').createIndex({ year: 1, quote_number: -1 }), // legacy quote-number lookup
       col(d, 'prospects').createIndex({ distance_miles: 1 }),      // getProspects sort
@@ -171,6 +172,14 @@ const MIGRATIONS: Migration[] = [
   // offering it (the cash-flow/cash-sparkline consumers use isCashLike instead).
   { id: '0006-undeposited-funds-subtype', up: async (d) => {
     await d.collection<{ _id: string; subtype?: string }>('accounts').updateOne({ _id: '1050', subtype: 'bank' }, { $set: { subtype: 'undeposited' } })
+  } },
+  // Attachments grew owner_type/owner_id so accounting documents can hold files
+  // too; existing rows are all task-owned. task_id stays for legacy queries.
+  { id: '0007-attachment-owners', up: async (d) => {
+    await d.collection('attachments').updateMany(
+      { owner_type: { $exists: false } },
+      [{ $set: { owner_type: 'task', owner_id: '$task_id' } }],
+    )
   } },
 ]
 
@@ -819,6 +828,61 @@ export async function updateProspectFields(
   return res.matchedCount > 0
 }
 
+/** Document owners an attachment can belong to. Tasks keep their legacy
+ *  task_id field alongside owner_type/owner_id; accounting owners use the
+ *  owner fields only. The retention sweep is owner-agnostic (it keys on
+ *  source==='email', and accounting uploads are always 'upload'). */
+export type AttachmentOwner = { type: 'task' | 'invoice' | 'bill' | 'journal-entry'; id: string }
+
+/** Core attachment insert, shared by task uploads/email-sync and the
+ *  accounting document attachments. */
+export async function saveOwnedAttachment(
+  owner: AttachmentOwner,
+  filename: string,
+  content: Buffer,
+  size: number,
+  contentType: string,
+  source: 'email' | 'upload' = 'upload',
+): Promise<Attachment> {
+  const d = await getDb()
+  const attId = crypto.randomUUID()
+  await col(d, 'attachments').insertOne({
+    _id: attId,
+    owner_type: owner.type,
+    owner_id: owner.id,
+    ...(owner.type === 'task' ? { task_id: owner.id } : {}), // legacy task-path queries
+    filename,
+    size,
+    content_type: contentType,
+    source,
+    created_at: new Date().toISOString(),  // retention clock
+    data: content,
+  })
+  return { id: attId, filename, size, content_type: contentType, source, purged: false }
+}
+
+/** Attachment metadata for one owner, blob excluded. */
+export async function listAttachmentsByOwner(type: AttachmentOwner['type'], id: string): Promise<Attachment[]> {
+  const d = await getDb()
+  const rows = await col(d, 'attachments')
+    .find({ owner_type: type, owner_id: id }, { projection: { data: 0 } })
+    .sort({ created_at: 1 })
+    .toArray()
+  return rows.map((a) => ({
+    id: String(a._id), filename: a.filename as string, size: a.size as number,
+    content_type: a.content_type as string, source: (a.source as 'email' | 'upload') ?? 'upload',
+    purged: !!a.data_purged_at,
+  }))
+}
+
+/** Scoped delete for non-task owners (tasks go through deleteAttachment, which
+ *  also maintains the card manifest). Returns true if the doc existed. */
+export async function deleteOwnedAttachment(owner: AttachmentOwner, attId: string): Promise<boolean> {
+  const d = await getDb()
+  const res = await col(d, 'attachments').deleteOne({ _id: attId, owner_type: owner.type, owner_id: owner.id })
+  return res.deletedCount > 0
+}
+
 export async function saveAttachment(
   taskId: string,
   filename: string,
@@ -831,18 +895,8 @@ export async function saveAttachment(
   source: 'email' | 'upload' = 'upload',
 ): Promise<Attachment> {
   const d = await getDb()
-  const attId = crypto.randomUUID()
-  await col(d, 'attachments').insertOne({
-    _id: attId,
-    task_id: taskId,
-    filename,
-    size,
-    content_type: contentType,
-    source,
-    created_at: new Date().toISOString(),  // retention clock
-    data: content,
-  })
-  const meta: Attachment = { id: attId, filename, size, content_type: contentType, source, purged: false }
+  const meta = await saveOwnedAttachment({ type: 'task', id: taskId }, filename, content, size, contentType, source)
+  const attId = meta.id
   // Push the id (legacy array still read by older docs) AND the display metadata
   // (filename/size/source) so the card can label the file — and later mark it
   // expired — without fetching the blob.

@@ -175,7 +175,7 @@ describe('buildThreadPatch', () => {
 
 describe('buildAttachmentPatch', () => {
   const doc = (p: Partial<ParsedDoc> = {}): ParsedDoc => ({
-    doc_type: null, po: null, amount: null, store_numbers: [], summary: '', pertinent: false, confidence: 0, ...p,
+    doc_type: null, po: null, amount: null, vendor: null, doc_date: null, store_numbers: [], summary: '', pertinent: false, confidence: 0, ...p,
   })
 
   it('fills empty po/quote and logs the find', () => {

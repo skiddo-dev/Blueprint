@@ -13,16 +13,18 @@ import { normalizeStoreNumbers } from '$lib/storeNumbers'
 const TEXT_CAP = 8000
 
 export interface ParsedDoc {
-  doc_type: 'Purchase Order' | 'Quote/Bid' | 'Scope of Work' | 'Invoice' | 'Drawing' | 'Other' | null
+  doc_type: 'Purchase Order' | 'Quote/Bid' | 'Scope of Work' | 'Invoice' | 'Receipt' | 'Drawing' | 'Other' | null
   po: string | null
   amount: string | null            // "$12,300" exactly as written
+  vendor: string | null            // who issued the document (seller/payee)
+  doc_date: string | null          // ISO YYYY-MM-DD when clearly printed
   store_numbers: string[]
   summary: string                  // ≤160 chars
   pertinent: boolean               // worth surfacing on the card summary
   confidence: number               // 0–1
 }
 
-const DOC_TYPES = ['Purchase Order', 'Quote/Bid', 'Scope of Work', 'Invoice', 'Drawing', 'Other']
+const DOC_TYPES = ['Purchase Order', 'Quote/Bid', 'Scope of Work', 'Invoice', 'Receipt', 'Drawing', 'Other']
 
 function isType(filename: string, contentType: string | undefined, ext: string, mime: RegExp): boolean {
   return filename.toLowerCase().endsWith(ext) || (!!contentType && mime.test(contentType))
@@ -64,7 +66,7 @@ function buildSchema() {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['doc_type', 'po', 'amount', 'store_numbers', 'summary', 'pertinent', 'confidence'],
+    required: ['doc_type', 'po', 'amount', 'vendor', 'doc_date', 'store_numbers', 'summary', 'pertinent', 'confidence'],
     properties: {
       doc_type: {
         type: ['string', 'null'],
@@ -78,6 +80,14 @@ function buildSchema() {
       amount: {
         type: ['string', 'null'],
         description: 'The total / quoted dollar amount exactly as written, e.g. "$12,300.00". Null if none.',
+      },
+      vendor: {
+        type: ['string', 'null'],
+        description: 'The business that issued the document (the seller/payee on a receipt or invoice). Null if unclear.',
+      },
+      doc_date: {
+        type: ['string', 'null'],
+        description: 'The document date as ISO YYYY-MM-DD, only when a date is clearly printed. Null otherwise.',
       },
       store_numbers: {
         type: 'array',
@@ -111,7 +121,8 @@ Write "summary" as the concrete facts a project manager needs (what work, which 
 Set "pertinent" true only when the document adds real project information worth surfacing on the task card.`
 
 const EMPTY: ParsedDoc = {
-  doc_type: null, po: null, amount: null, store_numbers: [], summary: '', pertinent: false, confidence: 0,
+  doc_type: null, po: null, amount: null, vendor: null, doc_date: null,
+  store_numbers: [], summary: '', pertinent: false, confidence: 0,
 }
 
 type UserContent = string | OpenAI.Chat.Completions.ChatCompletionContentPart[]
@@ -141,6 +152,8 @@ async function extractWithLLM(userContent: UserContent): Promise<ParsedDoc> {
       doc_type: data.doc_type ?? null,
       po: data.po ?? null,
       amount: data.amount ?? null,
+      vendor: data.vendor ?? null,
+      doc_date: typeof data.doc_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.doc_date) ? data.doc_date : null,
       store_numbers: normalizeStoreNumbers(Array.isArray(data.store_numbers) ? data.store_numbers : []),
       summary: String(data.summary ?? '').slice(0, 160),
       pertinent: data.pertinent === true,

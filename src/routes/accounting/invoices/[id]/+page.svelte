@@ -2,6 +2,7 @@
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
   import ActivityFeed from '$lib/components/accounting/ActivityFeed.svelte'
+  import AttachmentsPanel from '$lib/components/accounting/AttachmentsPanel.svelte'
   import { usd } from '$lib/accounting/format'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
@@ -182,6 +183,11 @@
     {:else if inv.status === 'paid'}
       <p class="paid-note">✓ Settled in full{(inv.credited ?? 0) > 0 ? ' (includes credits)' : ''}.</p>
     {/if}
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Files</h2></div>
+    <AttachmentsPanel ownerType="invoice" ownerId={inv._id} attachments={data.attachments} />
   </section>
 
   <section class="card">
