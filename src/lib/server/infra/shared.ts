@@ -1,6 +1,6 @@
 import type { InfraProvider, ProviderSpend, SpendLine } from './types'
 
-// Small pure helpers shared by the three provider clients: month bucketing,
+// Small pure helpers shared by the provider clients: month bucketing,
 // breakdown ranking, and the "empty" card used for both the not-configured and
 // the fetch-failed states. Kept dependency-free so they're trivially unit-tested.
 
