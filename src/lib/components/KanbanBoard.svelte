@@ -227,7 +227,12 @@
   // the first card. Desktop always shows everything (the button is hidden and
   // the wrappers render as display:contents). The badge counts every
   // non-default setting so a hidden active filter is never a mystery.
+  // Open/closed is remembered per browser, like the other view toggles.
   let controlsOpen = $state(false)
+  function setControlsOpen(v: boolean) {
+    controlsOpen = v
+    try { localStorage.setItem('blueprint:controlsOpen', v ? '1' : '0') } catch { /* ignore */ }
+  }
   let viewBadge = $derived(
     activeFilterCount(filters) +
     (cardView !== 'compact' ? 1 : 0) +
@@ -372,6 +377,7 @@
     if (savedCardView === 'compact' || savedCardView === 'detailed') cardView = savedCardView
     const savedLens = localStorage.getItem('blueprint:boardLens')
     if (savedLens === 'none' || savedLens === 'store') lens = savedLens
+    controlsOpen = localStorage.getItem('blueprint:controlsOpen') === '1'
     // Restore the saved filters, tolerating older/garbled shapes (merge over
     // defaults so a missing field never leaves the UI half-initialized).
     try {
@@ -759,7 +765,7 @@
     type="button"
     class="controls-btn"
     aria-expanded={controlsOpen}
-    onclick={() => (controlsOpen = !controlsOpen)}
+    onclick={() => setControlsOpen(!controlsOpen)}
   >
     <Icon name="sliders" size={13} /> View{#if viewBadge}<span class="cb-badge">{viewBadge}</span>{/if}
     {controlsOpen ? '▴' : '▾'}

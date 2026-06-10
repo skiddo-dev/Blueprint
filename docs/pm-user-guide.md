@@ -17,7 +17,7 @@ collaborating on the tasks that are yours.
 1. Open Blueprint in your browser. The sign-in screen recaps what Blueprint does —
    flagged vendor emails become tasks, everything lives on one board, and ⌘K finds
    anything fast.
-2. Click **🔐 Sign in with Microsoft** and use your **company Microsoft account**.
+2. Click **Sign in with Microsoft** and use your **company Microsoft account**.
 3. You land on the **Kanban Board**.
 
 If you sign in and see an **"Access Pending"** screen instead of the board, your
