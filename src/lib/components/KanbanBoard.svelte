@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte'
+  import { SvelteSet } from 'svelte/reactivity'
   import { page } from '$app/state'
   import KanbanColumn from './KanbanColumn.svelte'
   import NewTaskModal from './NewTaskModal.svelte'
@@ -92,6 +93,89 @@
   let storeOptions = $derived(
     [...new Set(KANBAN_STATUSES.flatMap(s => columns[s].flatMap(taskStores)))].sort(),
   )
+
+  // ── Multi-select + bulk actions ───────────────────────────────────────
+  // Selection is a set of task ids (survives polls; ids that vanish are just
+  // ignored). The bulk bar appears while anything is selected; actions go
+  // through POST /api/tasks/bulk, then the board refetches.
+  let selectedIds = new SvelteSet<string>()
+  let bulkBusy = $state(false)
+  let bulkMessage = $state('')
+  function toggleSelect(id: string) {
+    if (selectedIds.has(id)) selectedIds.delete(id)
+    else selectedIds.add(id)
+  }
+  async function runBulk(action: 'status' | 'assign' | 'archive' | 'delete', value?: string) {
+    if (!selectedIds.size || bulkBusy) return
+    bulkBusy = true
+    try {
+      const r = await fetch('/api/tasks/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [...selectedIds], action, ...(value ? { value } : {}) }),
+      })
+      if (!r.ok) throw new Error(`bulk ${r.status}`)
+      const { done, skipped } = await r.json()
+      bulkMessage = `✓ ${done} task${done === 1 ? '' : 's'} updated${skipped ? ` · ${skipped} skipped` : ''}`
+      setTimeout(() => (bulkMessage = ''), 4000)
+      selectedIds.clear()
+      const r2 = await fetch(tasksUrl())
+      if (r2.ok) columns = group(await r2.json())
+    } catch {
+      online = false
+      saveToast = '⚠️ Couldn’t apply the bulk action — check your connection and try again.'
+      clearTimeout(saveToastTimer)
+      saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
+    } finally {
+      bulkBusy = false
+    }
+  }
+
+  // ── Quick-add ─────────────────────────────────────────────────────────
+  // Inline per-column create: title only, lands at the top of that column
+  // (the server ranks new cards to the top — same as the modal).
+  async function handleQuickAdd(status: TaskStatus, title: string) {
+    const r = await fetch('/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, status }),
+    })
+    if (!r.ok) {
+      online = false
+      saveToast = '⚠️ Couldn’t add that task — check your connection and try again.'
+      clearTimeout(saveToastTimer)
+      saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
+      return
+    }
+    const created: Task = await r.json()
+    columns[created.status] = [created, ...columns[created.status]]
+  }
+
+  // ── Keyboard navigation (compact faces) ───────────────────────────────
+  // Arrows walk the VISIBLE cards: up/down within a column, left/right to the
+  // same row in the next non-empty column. The board owns this because only it
+  // knows the filtered order across columns.
+  function handleNavigate(id: string, dir: 'up' | 'down' | 'left' | 'right') {
+    const visible = (s: TaskStatus) => columns[s].filter(matchesView)
+    const colIdx = KANBAN_STATUSES.findIndex(s => visible(s).some(t => t._id === id))
+    if (colIdx === -1) return
+    const inCol = visible(KANBAN_STATUSES[colIdx])
+    const rowIdx = inCol.findIndex(t => t._id === id)
+    let target: Task | undefined
+    if (dir === 'up') target = inCol[rowIdx - 1]
+    else if (dir === 'down') target = inCol[rowIdx + 1]
+    else {
+      const step = dir === 'left' ? -1 : 1
+      for (let c = colIdx + step; c >= 0 && c < KANBAN_STATUSES.length; c += step) {
+        const cands = visible(KANBAN_STATUSES[c])
+        if (cands.length) {
+          target = cands[Math.min(rowIdx, cands.length - 1)]
+          break
+        }
+      }
+    }
+    if (target) document.getElementById('task-' + target._id)?.focus()
+  }
 
   // ── Archived view ─────────────────────────────────────────────────────
   // Swaps the board's dataset to auto-archived (stale Done/Cancelled) cards.
@@ -472,6 +556,39 @@
 {#if !online}
   <div class="offline-banner">📡 You’re offline — the board may be out of date, and changes won’t save until you reconnect.</div>
 {/if}
+{#if bulkMessage}
+  <div class="sync-toast">{bulkMessage}</div>
+{/if}
+
+{#if selectedIds.size > 0}
+  <!-- Bulk action bar — floats over the board while a selection exists. -->
+  <div class="bulk-bar" role="toolbar" aria-label="Bulk actions">
+    <span class="bb-count">{selectedIds.size} selected</span>
+    <select
+      class="bb-select"
+      aria-label="Move selected to status"
+      disabled={bulkBusy}
+      onchange={(e) => { const v = e.currentTarget.value; e.currentTarget.value = ''; if (v) runBulk('status', v) }}
+    >
+      <option value="" selected>Move to…</option>
+      {#each KANBAN_STATUSES as s}<option value={s}>{s}</option>{/each}
+    </select>
+    <select
+      class="bb-select"
+      aria-label="Assign selected to"
+      disabled={bulkBusy}
+      onchange={(e) => { const v = e.currentTarget.value; e.currentTarget.value = ''; if (v) runBulk('assign', v) }}
+    >
+      <option value="" selected>Assign to…</option>
+      {#each assignees as a}<option value={a}>{a}</option>{/each}
+    </select>
+    {#if !showArchived}
+      <button class="bb-btn" disabled={bulkBusy} onclick={() => runBulk('archive')} title="Hide these from the board (kept in the archive)">🗄 Archive</button>
+    {/if}
+    <button class="bb-btn bb-danger" disabled={bulkBusy} onclick={() => runBulk('delete')}>🗑 Delete</button>
+    <button class="bb-btn" disabled={bulkBusy} onclick={() => selectedIds.clear()}>✕ Clear</button>
+  </div>
+{/if}
 {#if saveToast}
   <div class="save-toast">{saveToast}</div>
 {/if}
@@ -614,6 +731,11 @@
         {assignees}
         {mentionCandidates}
         currentUserName={userName}
+        canQuickAdd={!showArchived}
+        {selectedIds}
+        onToggleSelect={toggleSelect}
+        onNavigate={handleNavigate}
+        onQuickAdd={handleQuickAdd}
         onMoved={handleMoved}
         onDragStateChange={(d) => (dragging = d)}
         onStoreFilter={toggleStore}
@@ -708,6 +830,53 @@
     color: var(--text-muted);
     margin-bottom: 10px;
   }
+  /* Floating bulk-action bar — bottom-center while a selection exists. */
+  .bulk-bar {
+    position: fixed;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 55;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 10px 36px rgba(15, 23, 42, 0.22);
+    padding: 10px 14px;
+    max-width: min(92vw, 640px);
+  }
+  .bb-count { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .bb-select {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text-body);
+    min-height: 0;
+    width: auto;
+  }
+  .bb-btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-soft);
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 0;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .bb-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-text); }
+  .bb-btn:disabled { opacity: 0.6; cursor: default; }
+  .bb-danger:hover:not(:disabled) { border-color: #fca5a5; color: #dc2626; }
+
   .archived-banner {
     background: var(--bg);
     border: 1px solid var(--border);

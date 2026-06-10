@@ -24,6 +24,8 @@
     onFieldUpdate,
     onDelete,
     onOpen,
+    onToggleSelect,
+    selected = false,
     onStoreFilter,
     onComment,
     onEditComment,
@@ -43,6 +45,8 @@
     onFieldUpdate: (id: string, field: string, value: unknown) => void
     onDelete: (id: string) => void
     onOpen?: (id: string) => void
+    onToggleSelect?: (id: string) => void
+    selected?: boolean
     onStoreFilter?: (n: string) => void
     onComment?: (id: string, text: string, parentId?: string) => void
     onEditComment?: (id: string, commentId: string, text: string) => void
@@ -164,7 +168,20 @@
   let showAttachChip = $derived(!!onUploadAttachment || attachments.length > 0)
 </script>
 
-<div class="card" id="task-{task._id}" class:card-hidden={hidden} style:border-top="3px solid {meta.color}">
+<div class="card" id="task-{task._id}" class:card-hidden={hidden} class:selected style:border-top="3px solid {meta.color}">
+  {#if onToggleSelect}
+    <!-- Multi-select toggle — shown on hover/focus (always when selected). -->
+    <button
+      type="button"
+      class="select-box"
+      class:on={selected}
+      role="checkbox"
+      aria-checked={selected}
+      aria-label="Select task — {task.title}"
+      title={selected ? 'Deselect' : 'Select for bulk actions'}
+      onclick={(e) => { e.stopPropagation(); onToggleSelect?.(task._id) }}
+    >{selected ? '✓' : ''}</button>
+  {/if}
   <!-- Drag handle — the ONLY element that initiates a drag, so the rest of the
        card (quote dropdown, selects, notes, links) stays tappable/scrollable. -->
   <div class="drag-hint" use:dragHandle aria-label="Drag to move this task">⠿⠿</div>
@@ -428,13 +445,46 @@
   }
   .drag-hint:active { cursor: grabbing; }
 
+  .card.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+  }
+  /* Multi-select toggle: top-right beside the drag handle, materializes on
+     hover/focus, pinned while selected. Mirrors the compact face. */
+  .select-box {
+    position: absolute;
+    top: 6px;
+    right: 34px;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    background: var(--card-bg);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    min-height: 0;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s;
+    z-index: 2;
+  }
+  .card:hover .select-box,
+  .select-box:focus-visible,
+  .select-box.on { opacity: 1; }
+  .select-box.on {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+
   .title {
     font-size: 13px;
     font-weight: 600;
     color: var(--text);
     line-height: 1.4;
     margin-bottom: 6px;
-    padding-right: 30px;
+    padding-right: 56px; /* clears the drag handle + select toggle */
   }
 
   .po-row { margin-bottom: 6px; }
@@ -715,6 +765,9 @@
     .card:hover { transform: none; box-shadow: var(--shadow); }
     /* Finger-sized hit areas for the two smallest controls on the card. */
     .drag-hint { padding: 11px 13px; font-size: 17px; }
+    /* No hover on touch: keep the select toggle visible, finger-sized, clear
+       of the enlarged drag handle. */
+    .select-box { opacity: 1; width: 24px; height: 24px; font-size: 15px; right: 48px; }
     .delete-btn {
       min-width: 40px;
       min-height: 40px;

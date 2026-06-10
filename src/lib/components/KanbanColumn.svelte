@@ -27,6 +27,11 @@
     assignees = [],
     mentionCandidates = [],
     currentUserName = '',
+    canQuickAdd = true,
+    selectedIds,
+    onToggleSelect,
+    onNavigate,
+    onQuickAdd,
     onMoved,
     onDragStateChange,
     onStoreFilter,
@@ -53,6 +58,13 @@
     assignees?: string[]
     mentionCandidates?: string[]
     currentUserName?: string
+    /** Hidden in the archived view — you can't create directly into the archive. */
+    canQuickAdd?: boolean
+    /** Multi-select state (board-owned); cards show a check overlay when in it. */
+    selectedIds?: ReadonlySet<string>
+    onToggleSelect?: (id: string) => void
+    onNavigate?: (id: string, dir: 'up' | 'down' | 'left' | 'right') => void
+    onQuickAdd?: (status: TaskStatus, title: string) => Promise<void> | void
     onMoved: (status: TaskStatus, taskId: string, rank: string) => void
     onDragStateChange: (dragging: boolean) => void
     onStoreFilter?: (n: string) => void
@@ -88,6 +100,34 @@
   const matches = (t: Task) =>
     inView(t) && taskMatchesFilters(t, filters, today)
   const visibleCount = $derived(items.filter(matches).length)
+
+  // ── Quick-add ─────────────────────────────────────────────────────────
+  // Inline "＋ Add" under the header: type a title, Enter creates the card in
+  // THIS column (top-ranked, like every new card) and keeps the input open for
+  // rapid entry; Esc or clicking away closes it.
+  let quickAdding = $state(false)
+  let quickTitle = $state('')
+  let quickBusy = $state(false)
+  async function submitQuickAdd() {
+    const t = quickTitle.trim()
+    if (!t || !onQuickAdd) return
+    quickBusy = true
+    try {
+      await onQuickAdd(status, t)
+      quickTitle = ''
+    } finally {
+      quickBusy = false
+    }
+  }
+  function quickKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      submitQuickAdd()
+    } else if (e.key === 'Escape') {
+      quickAdding = false
+      quickTitle = ''
+    }
+  }
 
   function handleConsider(e: CustomEvent) {
     onDragStateChange(true)
@@ -134,6 +174,27 @@
     </span>
   </div>
 
+  {#if canQuickAdd && onQuickAdd}
+    {#if quickAdding}
+      <div class="qa-row">
+        <!-- svelte-ignore a11y_autofocus — the input only exists because the
+             user just clicked "＋ Add"; focusing it is the entire point. -->
+        <input
+          autofocus
+          type="text"
+          maxlength="300"
+          placeholder="Task title — Enter to add"
+          bind:value={quickTitle}
+          disabled={quickBusy}
+          onkeydown={quickKeydown}
+          onblur={() => { if (!quickTitle.trim()) quickAdding = false }}
+        />
+      </div>
+    {:else}
+      <button type="button" class="qa-btn" onclick={() => (quickAdding = true)}>＋ Add</button>
+    {/if}
+  {/if}
+
   <!-- Empty hint is an overlay OUTSIDE the dndzone: svelte-dnd-action treats
        every direct child of a zone as a draggable item. -->
   <div class="dropzone-wrap">
@@ -160,6 +221,8 @@
             {currentUserName}
             {currentUserEmail}
             {isAdmin}
+            {onToggleSelect}
+            selected={selectedIds?.has(task._id) ?? false}
             {onFieldUpdate}
             {onDelete}
             {onOpen}
@@ -179,6 +242,9 @@
             {isAdmin}
             {onOpen}
             {onStoreFilter}
+            {onNavigate}
+            {onToggleSelect}
+            selected={selectedIds?.has(task._id) ?? false}
             activeStores={filters.stores}
             hidden={!matches(task)}
           />
@@ -279,8 +345,40 @@
     pointer-events: none;
   }
 
+  /* Quick-add: a quiet dashed affordance that becomes an input. */
+  .qa-btn {
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-faint);
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    min-height: 0;
+    cursor: pointer;
+    text-align: left;
+  }
+  .qa-btn:hover { border-color: var(--primary); color: var(--primary-text); }
+  .qa-row { margin-bottom: 8px; }
+  .qa-row input {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 12px;
+    padding: 6px 9px;
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text-body);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.12);
+  }
+
   @media (max-width: 768px) {
     .column { min-width: 100%; width: 100%; }
+    /* 16px stops iOS zoom; finger-sized quick-add. */
+    .qa-row input { font-size: 16px; min-height: 44px; }
+    .qa-btn { padding: 9px 12px; }
     /* The 60vh drop target exists so EMPTY desktop columns can catch a dragged
        card's centre. On phones only one column shows at a time and moves happen
        via the detail sheet's Status select, so that tall minimum just leaves a
