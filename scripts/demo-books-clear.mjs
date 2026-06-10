@@ -41,6 +41,7 @@ const APPLY = process.argv.includes('--yes')
 // Transaction collections + the meta/counter state that goes with them.
 const COLLECTIONS = [
   'journalEntries', 'invoices', 'bills', 'payments', 'billPayments',
+  'creditMemos', 'vendorCredits', 'recurringTemplates',
   'customers', 'vendors', 'reconciliations', 'counters',
 ]
 
