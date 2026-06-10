@@ -22,6 +22,38 @@
   let saving = $state(false)
   let error = $state('')
 
+  let recName = $state('')
+  let recInterval = $state(1)
+  let recUnit = $state<'week' | 'month'>('month')
+  let recStart = $state(today)
+
+  async function saveRecurring() {
+    saving = true
+    error = ''
+    try {
+      const r = await fetch('/api/accounting/recurring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'journal',
+          name: recName.trim() || (memo || 'Recurring journal entry'),
+          cadence: { unit: recUnit, interval: Number(recInterval) || 1 },
+          next_date: recStart,
+          payload: {
+            memo,
+            lines: lines.map((l) => ({ account_id: l.account_id, debit: l.debit, credit: l.credit })),
+          },
+        }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      await goto('/accounting/recurring')
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e)
+    } finally {
+      saving = false
+    }
+  }
+
   // Parse a dollar field to cents for the live balance preview; '' → 0, junk → NaN.
   // The server re-parses authoritatively on submit; this only drives the UI.
   function toCents(s: string): number {
@@ -114,6 +146,20 @@
       </span>
     </div>
 
+    <details class="recurring-box">
+      <summary>🔁 Make this recurring…</summary>
+      <div class="rec-grid">
+        <label>Template name<input type="text" bind:value={recName} placeholder="e.g. Monthly depreciation" /></label>
+        <label>Every<input type="number" min="1" bind:value={recInterval} /></label>
+        <label>Unit
+          <select bind:value={recUnit}><option value="month">month(s)</option><option value="week">week(s)</option></select>
+        </label>
+        <label>First run<input type="date" bind:value={recStart} /></label>
+        <button class="btn-secondary" type="button" onclick={saveRecurring} disabled={!canSubmit}>Save schedule</button>
+      </div>
+      <p class="rec-hint">Saves the schedule only — nothing posts until the first run date. Manage it under Recurring.</p>
+    </details>
+
     {#if error}<p class="error">{error}</p>{/if}
 
     <div class="actions">
@@ -155,6 +201,12 @@
   .totals.balanced .diff { color: #047857; }
 
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+  .recurring-box { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 10px; }
+  .recurring-box summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .rec-grid { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
+  .rec-grid label:first-child { flex: 1; min-width: 220px; }
+  .rec-grid input[type='number'] { width: 70px; }
+  .rec-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0 0; }
 
   @media (max-width: 640px) {
     .lines-head { display: none; }

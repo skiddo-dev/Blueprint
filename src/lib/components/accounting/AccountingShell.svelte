@@ -54,6 +54,7 @@
     ] },
     { label: 'Banking', items: [
       { href: '/accounting/reconcile', ico: '✅', label: 'Reconcile' },
+      { href: '/accounting/recurring', ico: '🔁', label: 'Recurring' },
     ] },
   ]
 </script>

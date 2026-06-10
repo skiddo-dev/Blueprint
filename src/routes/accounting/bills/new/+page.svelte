@@ -30,6 +30,43 @@
   let saving = $state(false)
   let error = $state('')
 
+  let recName = $state('')
+  let recInterval = $state(1)
+  let recUnit = $state<'week' | 'month'>('month')
+  let recStart = $state(today)
+
+  async function saveRecurring() {
+    saving = true
+    error = ''
+    try {
+      const r = await fetch('/api/accounting/recurring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'bill',
+          name: recName.trim() || `${vendorName} — recurring bill`,
+          cadence: { unit: recUnit, interval: Number(recInterval) || 1 },
+          next_date: recStart,
+          payload: {
+            vendor_name: vendorName,
+            vendor_email: vendorEmail,
+            net_days: Number(netDays) || 30,
+            po,
+            job: job.trim() || undefined,
+            memo,
+            lines: lines.map((l) => ({ account_id: l.account_id, description: l.description, amount: l.amount })),
+          },
+        }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      await goto('/accounting/recurring')
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e)
+    } finally {
+      saving = false
+    }
+  }
+
   function amtCents(s: string): number {
     const t = s.trim()
     if (!t) return NaN
@@ -122,6 +159,20 @@
 
     <label class="memo">Memo (optional)<input type="text" bind:value={memo} placeholder="Notes for this bill" /></label>
 
+    <details class="recurring-box">
+      <summary>🔁 Make this recurring…</summary>
+      <div class="rec-grid">
+        <label>Template name<input type="text" bind:value={recName} placeholder="e.g. Office rent — monthly" /></label>
+        <label>Every<input type="number" min="1" bind:value={recInterval} /></label>
+        <label>Unit
+          <select bind:value={recUnit}><option value="month">month(s)</option><option value="week">week(s)</option></select>
+        </label>
+        <label>First run<input type="date" bind:value={recStart} /></label>
+        <button class="btn-secondary" type="button" onclick={saveRecurring} disabled={!canSubmit}>Save schedule</button>
+      </div>
+      <p class="rec-hint">Saves the schedule only — nothing posts until the first run date. Manage it under Recurring.</p>
+    </details>
+
     {#if error}<p class="error">{error}</p>{/if}
 
     <div class="actions">
@@ -157,6 +208,12 @@
   .totals .num { min-width: 120px; }
 
   .memo { margin-top: 14px; }
+  .recurring-box { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 10px; }
+  .recurring-box summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .rec-grid { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 10px; }
+  .rec-grid label:first-child { flex: 1; min-width: 220px; }
+  .rec-grid input[type='number'] { width: 70px; }
+  .rec-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0 0; }
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 
   @media (max-width: 640px) {
