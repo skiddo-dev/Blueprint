@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/private'
 import { getTasks, getUsers, insertTask, saveAttachment, patchTask, tryAcquireLease, releaseLease, normName } from './db'
 import { fetchRecentEmails, getGraphToken, GraphAuthError } from './email'
 import { parseEmailWithLLM } from './llm'
-import { extractText, parseAttachmentWithLLM } from './attachmentParse'
+import { analyzeAttachment } from './attachmentParse'
 import { classifyEmail, buildNewTask, buildThreadPatch, buildAttachmentPatch, resolveMailboxes, flaggedOnOrAfterCutoff, EMAIL_SYNC_CUTOFF_DEFAULT } from './syncLogic'
 import type { SyncEmail, SyncMailbox } from './syncLogic'
 import type { Task, User } from '$lib/types'
@@ -37,11 +37,13 @@ export interface SyncResult {
   authError?: boolean    // Microsoft sign-in failed (expired secret / revoked consent)
 }
 
-// Download, store, and READ each attachment, merging any PO/amount/store numbers
-// it yields into the task (only where the task is still empty) and logging a
-// timeline entry. `acc` carries the task's running field state so several
-// attachments on one email stack correctly. saveAttachment already $pushes the
-// attachment id, so there's no separate id bookkeeping here.
+// Download, store, and READ each attachment (text docs locally, image scans via
+// vision), merging any PO/amount/store numbers it yields into the task (only
+// where the task is still empty) and appending a pertinent document's one-line
+// summary to the card description, with a timeline entry either way. `acc`
+// carries the task's running field state so several attachments on one email
+// stack correctly. saveAttachment already $pushes the attachment id, so there's
+// no separate id bookkeeping here.
 async function processAttachments(
   taskId: string,
   email: { attachments?: unknown[] },
@@ -64,9 +66,8 @@ async function processAttachments(
         'email', // email-sourced → subject to the 30-day retention purge
       )
 
-      const text = await extractText(att.filename, att.content_type, content)
-      if (!text) continue
-      const doc = await parseAttachmentWithLLM(text, att.filename)
+      const doc = await analyzeAttachment(att.filename, att.content_type, content)
+      if (!doc) continue
       const patch = buildAttachmentPatch(acc, doc, att.filename)
       if (!patch) continue
       await patchTask(taskId, patch.set, patch.timelineEntry)

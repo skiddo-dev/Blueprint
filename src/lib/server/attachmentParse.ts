@@ -1,12 +1,14 @@
 import { PDFParse } from 'pdf-parse'
+import type OpenAI from 'openai'
 import { getClient, MODEL } from './openai'
 import { normalizeStoreNumbers } from '$lib/storeNumbers'
 
 // Reads the documents PMs retype by hand today — POs, scopes, and bids that
 // arrive as email attachments (downloaded + stored, but never opened until now).
-// Text is extracted locally (pdf-parse for PDFs, raw decode for txt/csv) and the
-// structured fields are pulled by the same gpt-4o-mini Structured-Outputs call
-// the email parser uses. Anything else (images, Office docs, archives) is skipped.
+// Text is extracted locally (pdf-parse for PDFs, raw decode for txt/csv); image
+// attachments (scanned POs arrive as PNG/JPEG) go to the same model as vision
+// input. Both paths share one gpt-4o-mini Structured-Outputs call. Anything else
+// (Office docs, archives, image-only PDFs) is skipped.
 
 const TEXT_CAP = 8000
 
@@ -16,6 +18,7 @@ export interface ParsedDoc {
   amount: string | null            // "$12,300" exactly as written
   store_numbers: string[]
   summary: string                  // ≤160 chars
+  pertinent: boolean               // worth surfacing on the card summary
   confidence: number               // 0–1
 }
 
@@ -61,7 +64,7 @@ function buildSchema() {
   return {
     type: 'object',
     additionalProperties: false,
-    required: ['doc_type', 'po', 'amount', 'store_numbers', 'summary', 'confidence'],
+    required: ['doc_type', 'po', 'amount', 'store_numbers', 'summary', 'pertinent', 'confidence'],
     properties: {
       doc_type: {
         type: ['string', 'null'],
@@ -83,7 +86,16 @@ function buildSchema() {
       },
       summary: {
         type: 'string',
-        description: 'One sentence (≤160 chars) describing the document.',
+        description:
+          'One sentence (≤160 chars) of the concrete facts a project manager needs: what work, ' +
+          'which store(s), key amounts or dates. Not a description of the file itself.',
+      },
+      pertinent: {
+        type: 'boolean',
+        description:
+          'True when the document adds real project information worth showing on the task card ' +
+          '(scope, pricing, PO, schedule, requirements). False for signatures, logos, marketing, ' +
+          'boilerplate, or near-empty documents.',
       },
       confidence: {
         type: 'number',
@@ -93,25 +105,27 @@ function buildSchema() {
   }
 }
 
-const SYSTEM_PROMPT = `You extract structured data from documents attached to RAVES grocery-construction emails — typically purchase orders, quotes/bids, scopes of work, and invoices.
-Pull the purchase-order number, the headline dollar amount, and any store/site numbers. Prefer null over guessing. Reflect uncertainty in "confidence".`
+const SYSTEM_PROMPT = `You extract structured data from documents (or photos/scans of documents) attached to RAVES grocery-construction emails — typically purchase orders, quotes/bids, scopes of work, and invoices.
+Pull the purchase-order number, the headline dollar amount, and any store/site numbers. Prefer null over guessing. Reflect uncertainty in "confidence".
+Write "summary" as the concrete facts a project manager needs (what work, which store, key amounts/dates), not a description of the file.
+Set "pertinent" true only when the document adds real project information worth surfacing on the task card.`
 
-/** Extract PO #, amount, store numbers, and a one-line summary from a document's
- *  text. Graceful: any failure returns an empty ParsedDoc so a sync never blocks. */
-export async function parseAttachmentWithLLM(text: string, filename: string): Promise<ParsedDoc> {
-  const empty: ParsedDoc = {
-    doc_type: null, po: null, amount: null, store_numbers: [], summary: '', confidence: 0,
-  }
-  const trimmed = (text ?? '').trim()
-  if (!trimmed) return empty
+const EMPTY: ParsedDoc = {
+  doc_type: null, po: null, amount: null, store_numbers: [], summary: '', pertinent: false, confidence: 0,
+}
 
+type UserContent = string | OpenAI.Chat.Completions.ChatCompletionContentPart[]
+
+/** One Structured-Outputs extraction call shared by the text and vision paths.
+ *  Graceful: any failure returns the empty ParsedDoc so a sync never blocks. */
+async function extractWithLLM(userContent: UserContent): Promise<ParsedDoc> {
   try {
     const resp = await getClient().chat.completions.create({
       model: MODEL,
       temperature: 0,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Filename: ${filename}\n\n${trimmed.slice(0, TEXT_CAP)}` },
+        { role: 'user', content: userContent },
       ],
       response_format: {
         type: 'json_schema',
@@ -129,9 +143,67 @@ export async function parseAttachmentWithLLM(text: string, filename: string): Pr
       amount: data.amount ?? null,
       store_numbers: normalizeStoreNumbers(Array.isArray(data.store_numbers) ? data.store_numbers : []),
       summary: String(data.summary ?? '').slice(0, 160),
+      pertinent: data.pertinent === true,
       confidence: typeof data.confidence === 'number' ? data.confidence : 0,
     }
   } catch {
-    return empty
+    return EMPTY
   }
+}
+
+/** Extract PO #, amount, store numbers, and a one-line summary from a document's
+ *  text. Graceful: any failure returns an empty ParsedDoc so a sync never blocks. */
+export async function parseAttachmentWithLLM(text: string, filename: string): Promise<ParsedDoc> {
+  const trimmed = (text ?? '').trim()
+  if (!trimmed) return { ...EMPTY }
+  return extractWithLLM(`Filename: ${filename}\n\n${trimmed.slice(0, TEXT_CAP)}`)
+}
+
+// Image formats the vision API accepts. Scans of POs/invoices arrive as camera
+// photos or scanner output — png/jpeg in practice; webp/gif are also supported.
+const IMAGE_MIMES: Record<string, string> = {
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp', '.gif': 'image/gif',
+}
+
+/** The canonical image MIME for a vision-readable attachment, or null when the
+ *  file isn't an image the API accepts. Same ext-or-content-type gate extractText
+ *  uses for its formats. */
+export function imageMime(filename: string, contentType: string | undefined): string | null {
+  const lower = filename.toLowerCase()
+  for (const [ext, mime] of Object.entries(IMAGE_MIMES)) {
+    if (lower.endsWith(ext)) return mime
+  }
+  const ct = (contentType ?? '').toLowerCase().split(';')[0].trim()
+  return Object.values(IMAGE_MIMES).includes(ct) ? ct : null
+}
+
+/** Extract the same ParsedDoc from an image attachment (a scanned/photographed
+ *  document) by sending it to the model as vision input. */
+export async function parseImageAttachmentWithLLM(
+  buf: Buffer,
+  mime: string,
+  filename: string,
+): Promise<ParsedDoc> {
+  if (!buf.length) return { ...EMPTY }
+  return extractWithLLM([
+    { type: 'text', text: `Filename: ${filename}\nThe attached image is a scanned or photographed document.` },
+    { type: 'image_url', image_url: { url: `data:${mime};base64,${buf.toString('base64')}` } },
+  ])
+}
+
+/** Unified entry for "read this attachment": local text extraction when the
+ *  format allows it, vision for images, null for everything else (Office docs,
+ *  archives, image-only PDFs). Null means "unreadable", distinct from a readable
+ *  doc that yielded nothing. */
+export async function analyzeAttachment(
+  filename: string,
+  contentType: string | undefined,
+  buf: Buffer,
+): Promise<ParsedDoc | null> {
+  const text = await extractText(filename, contentType, buf)
+  if (text) return parseAttachmentWithLLM(text, filename)
+  const mime = imageMime(filename, contentType)
+  if (mime) return parseImageAttachmentWithLLM(buf, mime, filename)
+  return null
 }

@@ -143,9 +143,12 @@ describe('buildThreadPatch', () => {
 })
 
 describe('buildAttachmentPatch', () => {
+  const doc = (p: Partial<ParsedDoc> = {}): ParsedDoc => ({
+    doc_type: null, po: null, amount: null, store_numbers: [], summary: '', pertinent: false, confidence: 0, ...p,
+  })
+
   it('fills empty po/quote and logs the find', () => {
-    const doc: ParsedDoc = { doc_type: 'Purchase Order', po: '4471', amount: '$12,300', store_numbers: [], summary: '', confidence: 0.9 }
-    const patch = buildAttachmentPatch({}, doc, 'PO_4471.pdf')
+    const patch = buildAttachmentPatch({}, doc({ doc_type: 'Purchase Order', po: '4471', amount: '$12,300', confidence: 0.9 }), 'PO_4471.pdf')
     expect(patch).not.toBeNull()
     expect(patch!.set.po).toBe('4471')
     expect(patch!.set.quote).toBe('$12,300')
@@ -154,14 +157,41 @@ describe('buildAttachmentPatch', () => {
   })
 
   it('does not overwrite a quote the task already has', () => {
-    const doc: ParsedDoc = { doc_type: 'Invoice', po: null, amount: '$1', store_numbers: [], summary: '', confidence: 0.9 }
-    const patch = buildAttachmentPatch({ quote: '$50,000' }, doc, 'inv.pdf')
+    const patch = buildAttachmentPatch({ quote: '$50,000' }, doc({ doc_type: 'Invoice', amount: '$1', confidence: 0.9 }), 'inv.pdf')
     expect(patch!.set.quote).toBeUndefined()
   })
 
   it('returns null when the document yields nothing useful', () => {
-    const doc: ParsedDoc = { doc_type: 'Other', po: null, amount: null, store_numbers: [], summary: 'misc', confidence: 0.2 }
-    expect(buildAttachmentPatch({}, doc, 'misc.pdf')).toBeNull()
+    expect(buildAttachmentPatch({}, doc({ doc_type: 'Other', summary: 'misc', confidence: 0.2 }), 'misc.pdf')).toBeNull()
+  })
+
+  it('a non-pertinent summary alone is still nothing useful', () => {
+    expect(buildAttachmentPatch({}, doc({ summary: 'A signature graphic.', pertinent: false }), 'sig.png')).toBeNull()
+  })
+
+  it('appends a pertinent summary to an empty description (and surfaces it on the timeline)', () => {
+    const d = doc({ doc_type: 'Scope of Work', summary: 'Millwork install at store 412, week of 6/15.', pertinent: true, confidence: 0.9 })
+    const patch = buildAttachmentPatch({}, d, 'scope.pdf')
+    expect(patch!.set.description).toBe('📎 scope.pdf (Scope of Work): Millwork install at store 412, week of 6/15.')
+    expect(patch!.timelineEntry.text).toContain('Millwork install at store 412')
+  })
+
+  it('appends below an existing description without touching it', () => {
+    const d = doc({ summary: 'PO for cooler repair.', pertinent: true })
+    const patch = buildAttachmentPatch({ description: 'Cooler down at D-412.' }, d, 'scan.png')
+    expect(patch!.set.description).toBe('Cooler down at D-412.\n\n📎 scan.png: PO for cooler repair.')
+  })
+
+  it('does not stack a duplicate when the description already mentions the file', () => {
+    const d = doc({ summary: 'PO for cooler repair.', pertinent: true })
+    expect(buildAttachmentPatch({ description: 'Body.\n\n📎 scan.png: PO for cooler repair.' }, d, 'scan.png')).toBeNull()
+  })
+
+  it('structured finds win the timeline line over the summary', () => {
+    const d = doc({ po: '9001', summary: 'PO 9001 for shelving.', pertinent: true })
+    const patch = buildAttachmentPatch({}, d, 'po.pdf')
+    expect(patch!.timelineEntry.text).toBe('📎 po.pdf: PO 9001')
+    expect(patch!.set.description).toContain('PO 9001 for shelving.')
   })
 })
 
