@@ -119,6 +119,27 @@ await post('/api/accounting/expenses', {
 })
 console.log('quick expense posted')
 
+// ── V4 showcase: a vendor credit + recurring templates ────────────────────────
+// Small vendor credit on the open Sound Productions bill (2,750 → 2,600).
+const bills = await api('GET', '/api/accounting/bills')
+const soundOpen = bills.find((b) => b.vendor_name === 'Sound Productions' && b.status === 'open')
+if (soundOpen) {
+  await post(`/api/accounting/bills/${soundOpen._id}/credits`, { amount: '150', date: '2026-06-09', memo: `${TAG} Returned damaged mount` })
+  console.log('vendor credit applied to Sound Productions bill')
+}
+
+// Recurring templates with FUTURE first runs: they show on the Recurring page
+// (and will post themselves when due) without disturbing today's figures.
+await post('/api/accounting/recurring', {
+  type: 'bill', name: 'Office rent — monthly', cadence: { unit: 'month', interval: 1 }, next_date: '2026-07-01',
+  payload: { vendor_name: 'Crestwood Properties', net_days: 0, memo: `${TAG} Monthly office rent`, lines: [{ account_id: '6100', description: 'Office rent', amount: '2900' }] },
+})
+await post('/api/accounting/recurring', {
+  type: 'journal', name: 'Monthly depreciation', cadence: { unit: 'month', interval: 1 }, next_date: '2026-06-30',
+  payload: { memo: `${TAG} Depreciation — vehicles & equipment`, lines: [{ account_id: '6160', debit: '450', credit: '' }, { account_id: '1510', debit: '', credit: '450' }] },
+})
+console.log('recurring templates created (first runs 2026-06-30 / 2026-07-01)')
+
 // ── Period close: lock through Q1 so the close feature shows ─────────────────
 await post('/api/accounting/close', { through: '2026-03-31' })
 console.log('period locked through 2026-03-31')

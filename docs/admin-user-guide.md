@@ -277,7 +277,9 @@ doing?"* at a glance:
 - **A/R & A/P aging** — how old your open invoices and bills are, color-graded
   from current (green) to 90+ days (red).
 - **Recent journal entries**, a collapsible **Trial Balance** (with an
-  in-balance check), and the **Period close** card (below).
+  in-balance check — each account links into its **register**), and the
+  **Period close** card (below). Quick actions include **💸 Record expense**
+  for money spent without a bill (fuel, supplies, a permit paid on the spot).
 
 ### Invoices & getting paid (Receivables)
 
@@ -291,10 +293,16 @@ doing?"* at a glance:
   *Create invoice →* link) so the amounts and PO carry over.
 - **Invoice detail** — record payments (amount / date / method) as they arrive;
   status moves **open → partial → paid** automatically and every payment posts
-  its own journal entry. **⬇ PDF** downloads a client-ready invoice.
+  its own journal entry. **⬇ PDF** downloads a client-ready invoice. Made a
+  mistake? **Void** reverses an untouched invoice outright (the reversal is
+  dated today, so it works even into a locked period), and **"Issue a credit
+  memo…"** reduces what's owed on a settled-in-part invoice — credits
+  interleave with payments in one history and recompute the status.
 - **🤝 Customers** — one line per customer with invoice count, total invoiced,
   and outstanding balance; edit names/emails inline (renames propagate to their
-  invoices).
+  invoices). Any customer with a balance gets a **Statement** link — a PDF of
+  their open invoices with ages and the total due, ready to attach to a
+  collections email.
 - **📈 A/R Aging** — open invoices bucketed by days past due, chart on top,
   click any row to open the invoice.
 
@@ -302,12 +310,14 @@ doing?"* at a glance:
 
 Mirrors receivables: **🧾 Bills** (same filters, urgency dates, progress bars),
 **+ New bill** (each line books to an expense account — job materials,
-subcontractors, rent…), bill detail with payments and **⬇ PDF**, **🏗️ Vendors**
-directory, and **📉 A/P Aging**.
+subcontractors, rent…), bill detail with payments, **vendor credits**, and
+**Void** (same rules as invoices), **⬇ PDF**, **🏗️ Vendors** directory, and
+**📉 A/P Aging**.
 
 ### Reports
 
-Three financial statements, each with **one-click period buttons**
+**📊 Reports** in the section nav opens the report index. The three financial
+statements come first, each with **one-click period buttons**
 (*This month · Last month · This quarter · YTD* — the balance sheet gets
 *Today · End of last month · End of last year*), a plain-English line explaining
 what the report shows, and a **🖨 Print** button that strips the app chrome for
@@ -320,6 +330,21 @@ a clean handoff to your bank or accountant:
 - **💵 Cash Flow** — where cash actually moved: operations, equipment,
   financing.
 
+Beyond the statements, the index carries the **working reports**:
+
+- **📒 Account register** — any account's transaction history with a running
+  balance (a checkbook for every line of the chart); drill in from the trial
+  balance, the General Ledger, or the register's own account picker.
+- **📅 P&L by month** — the income statement spread one column per month
+  (3 / 6 / 12-month windows) — the fastest way to spot a margin drift.
+- **🏗️ Job profitability** — profit and margin per job. Tag invoices, bills,
+  and expenses with a **job** name as you enter them (the field suggests every
+  job already in use; invoices created from a won quote prefill it) and the
+  per-job P&L builds itself.
+- **📚 General Ledger** and **🧾 Journal** — every posting grouped by account
+  with totals, and every entry in date order with full debit/credit detail.
+  The pair your accountant reconciles against at tax time.
+
 ### ✅ Bank reconciliation
 
 Match the books to a bank statement: pick the bank account, enter the
@@ -327,6 +352,23 @@ Match the books to a bank statement: pick the bank account, enter the
 **difference reads $0.00 ✓** — only then does **Finish reconciliation** enable.
 Optionally **paste your bank's CSV export** and Blueprint auto-ticks the
 matching amounts. Past reconciliations are listed per account.
+
+### 🔁 Recurring transactions
+
+Monthly rent, retainer invoices, standing vendor bills, depreciation — set them
+once and Blueprint posts them on schedule:
+
+1. Fill out a normal **invoice**, **bill**, or **journal entry** form, then use
+   **"🔁 Make this recurring…"** at the bottom: name it, pick *every N
+   weeks/months*, and a first-run date. The schedule saves **without posting
+   anything** until that date.
+2. **🔁 Recurring** (section nav) lists every template with its cadence, next
+   run, and last result; **pause / resume / delete** any time (already-posted
+   documents stay — they're real books entries). **▶ Run now** posts anything
+   currently due on demand.
+
+The engine catches up missed periods, clamps month-ends sensibly (a template
+dated the 31st posts on Feb 28), and can never double-post an occurrence.
 
 ### Period close & corrections
 
