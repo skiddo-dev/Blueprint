@@ -120,6 +120,6 @@
   .grid td, .grid th { padding: 4px 5px; }
   .grid .total { font-weight: 600; white-space: nowrap; }
   tr.inactive { opacity: 0.6; }
-  .saved { color: #047857; font-size: 13px; font-weight: 600; align-self: center; }
+  .saved { color: var(--success); font-size: 13px; font-weight: 600; align-self: center; }
   .pad { padding: 10px 16px; }
 </style>

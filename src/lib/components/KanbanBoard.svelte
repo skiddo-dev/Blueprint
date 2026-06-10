@@ -974,8 +974,8 @@
     box-shadow: var(--shadow);
   }
   .vt-overdue {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--danger-bg);
+    color: var(--danger);
     border-radius: 999px;
     padding: 1px 7px;
     font-size: 11px;
@@ -1035,7 +1035,7 @@
   }
   .bb-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary-text); }
   .bb-btn:disabled { opacity: 0.6; cursor: default; }
-  .bb-danger:hover:not(:disabled) { border-color: #fca5a5; color: #dc2626; }
+  .bb-danger:hover:not(:disabled) { border-color: var(--danger-border); color: var(--danger); }
 
   .lens-hint {
     font-size: 12px;
@@ -1081,9 +1081,9 @@
   .be-help:hover { text-decoration: underline; }
 
   .sync-toast {
-    background: #d1fae5;
-    color: #047857;
-    border: 1px solid #a7f3d0;
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid var(--success-border);
     border-radius: 8px;
     padding: 8px 14px;
     font-size: 13px;
@@ -1091,9 +1091,9 @@
   }
 
   .offline-banner {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fde68a;
+    background: var(--warning-bg);
+    color: var(--warning);
+    border: 1px solid var(--warning-border);
     border-radius: 8px;
     padding: 8px 14px;
     font-size: 13px;
@@ -1101,9 +1101,9 @@
     margin-bottom: 10px;
   }
   .save-toast {
-    background: #fee2e2;
-    color: #b91c1c;
-    border: 1px solid #fecaca;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid var(--danger-border);
     border-radius: 8px;
     padding: 8px 14px;
     font-size: 13px;
@@ -1221,7 +1221,7 @@
     }
     .col-tab.active .tab-count { background: var(--tab-color); color: #fff; }
     /* Over the soft WIP limit — same amber as the desktop header pill. */
-    .tab-count.over-wip { background: #fef3c7; color: #92400e; }
-    .col-tab.active .tab-count.over-wip { background: #fef3c7; color: #92400e; }
+    .tab-count.over-wip { background: var(--warning-bg); color: var(--warning); }
+    .col-tab.active .tab-count.over-wip { background: var(--warning-bg); color: var(--warning); }
   }
 </style>

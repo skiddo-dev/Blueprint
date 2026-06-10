@@ -200,9 +200,9 @@
   .pay-form { display: flex; gap: 10px; align-items: flex-end; margin-top: 14px; flex-wrap: wrap; }
   .pay-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-body); }
   .pay-form .grow { flex: 1; min-width: 140px; }
-  .paid-note { color: #047857; font-weight: 600; font-size: 14px; margin-top: 12px; }
-  :global(.acct .btn-secondary.danger) { color: #dc2626; border-color: #fca5a5; }
-  :global(.acct .btn-secondary.danger:hover:not(:disabled)) { background: #fef2f2; border-color: #dc2626; }
+  .paid-note { color: var(--success); font-weight: 600; font-size: 14px; margin-top: 12px; }
+  :global(.acct .btn-secondary.danger) { color: var(--danger); border-color: var(--danger-border); }
+  :global(.acct .btn-secondary.danger:hover:not(:disabled)) { background: var(--danger-bg-subtle); border-color: var(--danger); }
   .credit-box { margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 10px; }
   .credit-box summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); }
   .credit-hint { font-size: 12px; color: var(--text-muted); margin: 8px 0 4px; max-width: 60ch; }

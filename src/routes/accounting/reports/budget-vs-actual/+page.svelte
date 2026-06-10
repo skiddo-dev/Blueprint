@@ -95,6 +95,6 @@
 <style>
   tr.sec td { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; background: var(--bg); }
   tr.subtotal td { font-weight: 700; border-top: 1px solid var(--border); }
-  .fav { color: #047857; }
-  .unfav { color: #dc2626; }
+  .fav { color: var(--success); }
+  .unfav { color: var(--danger); }
 </style>

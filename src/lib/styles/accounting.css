@@ -87,34 +87,24 @@
 .acct tbody tr.row-link:hover td { background: var(--primary-bg); }
 .acct .num { text-align: right; font-variant-numeric: tabular-nums; }
 .acct .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-body); }
-.acct .neg { color: #b45309; }
-.acct .owed { font-weight: 600; color: #b45309; }
+.acct .neg { color: var(--warning); }
+.acct .owed { font-weight: 600; color: var(--warning); }
 .acct .table-wrap { overflow-x: auto; }
 
 /* ── Inline status/info bits ── */
 .acct .badge { font-size: 12px; font-weight: 600; border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
-.acct .badge.ok { background: #d1fae5; color: #047857; }
-.acct .badge.bad { background: #fee2e2; color: #dc2626; }
+.acct .badge.ok { background: var(--success-bg); color: var(--success); }
+.acct .badge.bad { background: var(--danger-bg); color: var(--danger); }
 .acct .chip { background: var(--chip-bg); color: var(--primary-text); border-radius: 8px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
-.acct .tag { margin-left: 8px; background: #fef3c7; color: #b45309; border-radius: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
+.acct .tag { margin-left: 8px; background: var(--warning-bg); color: var(--warning); border-radius: 8px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
 .acct .muted { color: var(--text-muted); }
 .acct .empty { color: var(--text-muted); font-size: 14px; padding: 10px 2px; }
 
-/* ── Buttons ── */
-.acct .btn-primary {
-  background: var(--primary); color: #fff; border: 1px solid var(--primary);
-  border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600;
-  text-decoration: none; white-space: nowrap; flex-shrink: 0; cursor: pointer;
-}
-.acct .btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
-.acct .btn-secondary {
-  background: var(--card-bg); color: var(--text-body); border: 1px solid var(--border);
-  border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600;
-  text-decoration: none; white-space: nowrap; cursor: pointer;
-}
-.acct .btn-secondary:hover:not(:disabled) { border-color: var(--primary); }
+/* ── Buttons ──
+   .btn-primary / .btn-secondary are styled globally (app.css) — one treatment
+   app-wide. Only acct-specific tweaks live here. */
+.acct .btn-primary, .acct .btn-secondary { flex-shrink: 0; }
 .acct .btn-ghost { background: none; border: none; color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; }
-.acct .btn-primary:disabled, .acct .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 .acct .link { background: none; border: none; color: var(--primary-text); font-size: 13px; font-weight: 600; cursor: pointer; padding: 2px 6px; text-decoration: none; }
 .acct .link.muted { color: var(--text-muted); }
 .acct .link:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -142,13 +132,11 @@
 
 /* ── Urgency + payment progress in tables ── */
 .acct .due-chip { font-size: 12px; white-space: nowrap; color: var(--text-muted); }
-.acct .due-chip.overdue { color: #dc2626; font-weight: 600; }
-.acct tbody tr.row-overdue td { background: #fef2f2; }
-.acct tbody tr.row-overdue.row-link:hover td { background: #fee2e2; }
-:root[data-theme="dark"] .acct tbody tr.row-overdue td { background: #2d1818; }
-:root[data-theme="dark"] .acct tbody tr.row-overdue.row-link:hover td { background: #3f1d1d; }
+.acct .due-chip.overdue { color: var(--danger); font-weight: 600; }
+.acct tbody tr.row-overdue td { background: var(--danger-bg-subtle); }
+.acct tbody tr.row-overdue.row-link:hover td { background: var(--danger-bg); }
 .acct .pay-progress { display: inline-block; vertical-align: middle; width: 72px; height: 5px; border-radius: 3px; background: var(--border-soft); overflow: hidden; }
-.acct .pay-progress > span { display: block; height: 100%; background: #10b981; border-radius: 3px; }
+.acct .pay-progress > span { display: block; height: 100%; background: var(--success-vivid); border-radius: 3px; }
 
 /* ── Layout grids ── */
 .acct .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; }
@@ -188,8 +176,4 @@
 }
 
 /* ── Errors ── */
-.acct .error { color: #dc2626; font-size: 13px; background: #fee2e2; border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
-:root[data-theme="dark"] .acct .error { background: #3f1d1d; color: #fca5a5; }
-:root[data-theme="dark"] .acct .badge.ok { background: #064e3b; color: #6ee7b7; }
-:root[data-theme="dark"] .acct .badge.bad { background: #3f1d1d; color: #fca5a5; }
-:root[data-theme="dark"] .acct .tag { background: #422006; color: #fcd34d; }
+.acct .error { color: var(--danger); font-size: 13px; background: var(--danger-bg); border-radius: 8px; padding: 8px 12px; margin-top: 10px; }

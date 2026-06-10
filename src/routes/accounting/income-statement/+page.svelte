@@ -62,6 +62,6 @@
   .num { font-variant-numeric: tabular-nums; }
   .subtotal { font-weight: 600; color: var(--text); border-top: 1px solid var(--border-soft); margin-top: 2px; }
   .gross { font-weight: 700; color: var(--text); border-top: 2px solid var(--border); border-bottom: 1px solid var(--border-soft); margin: 8px 0; padding: 8px 0; }
-  .net { font-weight: 800; font-size: 16px; color: #047857; border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; }
-  .net.loss { color: #dc2626; }
+  .net { font-weight: 800; font-size: 16px; color: var(--success); border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; }
+  .net.loss { color: var(--danger); }
 </style>

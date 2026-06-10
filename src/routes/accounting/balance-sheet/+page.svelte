@@ -92,5 +92,5 @@
   .subtotal { font-weight: 700; color: var(--text); border-top: 1px solid var(--border-soft); margin-top: 2px; }
   .spacer { height: 14px; }
   .grand { font-weight: 800; font-size: 16px; color: var(--text); border-top: 2px solid var(--border); margin-top: 10px; padding-top: 10px; }
-  .grand.bad { color: #dc2626; }
+  .grand.bad { color: var(--danger); }
 </style>

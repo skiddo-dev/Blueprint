@@ -250,7 +250,7 @@
     opacity: 0.6;
     min-height: 0;
   }
-  .co-remove:hover { opacity: 1; color: #ef4444; }
+  .co-remove:hover { opacity: 1; color: var(--danger); }
   .co-add {
     width: auto;
     min-height: 0;
@@ -273,7 +273,7 @@
     padding: 12px 20px 16px;
     border-top: 1px solid var(--border);
   }
-  .error { font-size: 12px; color: #dc2626; }
+  .error { font-size: 12px; color: var(--danger); }
 
   /* Mobile: dock the dialog to the bottom as a thumb-reachable sheet, clear of
      the home indicator, with bigger tap targets. */

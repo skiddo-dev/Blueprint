@@ -317,7 +317,7 @@
     min-height: 0;
     cursor: pointer;
   }
-  .ft-clear:hover { border-color: #fca5a5; color: #dc2626; }
+  .ft-clear:hover { border-color: var(--danger-border); color: var(--danger); }
 
   @media (max-width: 768px) {
     /* Finger-sized controls; 16px input so iOS doesn't zoom on focus. */

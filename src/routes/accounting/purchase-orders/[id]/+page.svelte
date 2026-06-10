@@ -191,5 +191,5 @@
   .draft-line { display: grid; grid-template-columns: 60px 1fr 130px; gap: 10px; align-items: center; padding: 4px 0; font-size: 13px; }
   .draft-line .num { text-align: right; }
   .convert-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
-  :global(.acct .btn-secondary.danger) { color: #dc2626; border-color: #fca5a5; }
+  :global(.acct .btn-secondary.danger) { color: var(--danger); border-color: var(--danger-border); }
 </style>

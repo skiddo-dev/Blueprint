@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import type { PageData } from './$types'
   let { data }: { data: PageData } = $props()
 </script>
@@ -7,14 +8,14 @@
 
 <div class="page">
   <div class="card">
-    <div class="logo">🏗️</div>
+    <div class="logo"><Icon name="logo" size={32} /></div>
     <h1>Blueprint</h1>
     <p class="sub">Grocery Construction Task Management</p>
 
     <ul class="value-bullets">
-      <li>📥 Flagged vendor emails become Kanban tasks automatically</li>
-      <li>🗂️ Track every project, quote, and prospect in one board</li>
-      <li>🔍 Find any task, quote, or prospect instantly with ⌘K search</li>
+      <li><span class="li-ico"><Icon name="mail" size={15} /></span>Flagged vendor emails become Kanban tasks automatically</li>
+      <li><span class="li-ico"><Icon name="board" size={15} /></span>Track every project, quote, and prospect in one board</li>
+      <li><span class="li-ico"><Icon name="search" size={15} /></span>Find any task, quote, or prospect instantly with ⌘K search</li>
     </ul>
 
     {#if data.error}
@@ -23,7 +24,7 @@
 
     <form class="signin-form" action="/auth/signin/microsoft-entra-id" method="POST">
       <button class="primary full-w" type="submit">
-        🔐 Sign in with Microsoft
+        <Icon name="lock" size={15} /> Sign in with Microsoft
       </button>
     </form>
 
@@ -50,8 +51,19 @@
     width: 100%;
     box-shadow: var(--shadow-hover);
   }
-  .logo { font-size: 48px; margin-bottom: 8px; }
-  h1 { font-size: 24px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+  /* The brand mark, scaled up from NavDrawer's .brand-mark. */
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+    color: #fff;
+    margin-bottom: 12px;
+  }
+  h1 { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
   .sub { font-size: 13px; color: var(--text-faint); margin-bottom: 20px; }
   .value-bullets {
     list-style: none;
@@ -63,14 +75,17 @@
     gap: 8px;
   }
   .value-bullets li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
     font-size: 13px;
     color: var(--text-muted);
     line-height: 1.4;
   }
+  .li-ico { display: inline-flex; flex-shrink: 0; margin-top: 1px; color: var(--primary); }
   .error {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #b91c1c;
+    background: var(--danger-bg);
+    color: var(--danger);
     font-size: 13px;
     line-height: 1.4;
     text-align: left;

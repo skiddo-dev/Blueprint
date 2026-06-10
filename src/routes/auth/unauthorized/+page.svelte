@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms'
+  import Icon from '$lib/components/Icon.svelte'
   import type { PageData, ActionData } from './$types'
 
   let { data, form }: { data: PageData; form: ActionData } = $props()
@@ -11,7 +12,7 @@
 <div class="page">
   <div class="card">
     {#if form?.success}
-      <div class="icon">✅</div>
+      <div class="icon ok"><Icon name="check" size={24} /></div>
       <h1>Request sent</h1>
       <p>
         We've let the admins know you'd like access. You'll be able to sign in
@@ -21,7 +22,7 @@
         <button class="secondary full-w" type="submit">Sign out</button>
       </form>
     {:else}
-      <div class="icon">🔒</div>
+      <div class="icon"><Icon name="lock" size={24} /></div>
       <h1>Access Pending</h1>
       <p>
         You're signed in as <strong>{data.email || 'your account'}</strong>, but it
@@ -44,7 +45,7 @@
         ></textarea>
         {#if form?.error}<p class="error" role="alert">{form.error}</p>{/if}
         <button class="primary full-w" type="submit" disabled={submitting}>
-          {submitting ? 'Sending…' : '🙋 Request access'}
+          {#if !submitting}<Icon name="unlock" size={15} />{/if} {submitting ? 'Sending…' : 'Request access'}
         </button>
       </form>
 
@@ -74,7 +75,19 @@
     width: 100%;
     box-shadow: var(--shadow-hover);
   }
-  .icon { font-size: 40px; margin-bottom: 12px; }
+  /* Tinted circle around the state glyph (lock = pending, check = sent). */
+  .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--primary-bg);
+    color: var(--primary);
+    margin-bottom: 12px;
+  }
+  .icon.ok { background: var(--success-bg); color: var(--success); }
   h1 { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
   p { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; }
   textarea {
@@ -92,7 +105,7 @@
   }
   .full-w { width: 100%; justify-content: center; padding: 12px; font-size: 14px; }
   .error {
-    color: #b91c1c;
+    color: var(--danger);
     font-size: 13px;
     text-align: left;
     margin-bottom: 12px;

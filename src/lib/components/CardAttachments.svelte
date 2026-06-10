@@ -107,7 +107,7 @@
     font-size: 11px; line-height: 1; padding: 2px 4px; border-radius: 4px;
     color: var(--text-faint); min-height: 0; flex-shrink: 0;
   }
-  .att-del:hover { color: #ef4444; background: #fee2e2; }
+  .att-del:hover { color: var(--danger); background: var(--danger-bg); }
   .att-add {
     display: inline-block;
     margin-top: 6px;

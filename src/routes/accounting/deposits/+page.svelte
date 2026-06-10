@@ -146,5 +146,5 @@
   .deposit-bar .grow { flex: 1; min-width: 140px; }
   .pad-x { padding: 0 16px 12px; }
   tr.voided { opacity: 0.55; }
-  :global(.acct .btn-secondary.danger) { color: #dc2626; border-color: #fca5a5; }
+  :global(.acct .btn-secondary.danger) { color: var(--danger); border-color: var(--danger-border); }
 </style>

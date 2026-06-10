@@ -11,15 +11,12 @@
   .status-badge {
     font-size: 11px; font-weight: 600; border-radius: 8px; padding: 2px 8px; text-transform: capitalize; white-space: nowrap;
   }
+  .status-badge.partial { background: var(--warning-bg); color: var(--warning); }
+  .status-badge.paid { background: var(--success-bg); color: var(--success); }
+  .status-badge.overdue { background: var(--danger-bg); color: var(--danger); }
+  /* Open (info blue) and void (slate) have no semantic token; themed locally. */
   .status-badge.open { background: #dbeafe; color: #1d4ed8; }
-  .status-badge.partial { background: #fef3c7; color: #b45309; }
-  .status-badge.paid { background: #d1fae5; color: #047857; }
   .status-badge.void { background: #f1f5f9; color: #475569; }
-  .status-badge.overdue { background: #fee2e2; color: #dc2626; }
-
   :global(:root[data-theme='dark']) .status-badge.open { background: #1e3a5f; color: #93c5fd; }
-  :global(:root[data-theme='dark']) .status-badge.partial { background: #422006; color: #fcd34d; }
-  :global(:root[data-theme='dark']) .status-badge.paid { background: #064e3b; color: #6ee7b7; }
   :global(:root[data-theme='dark']) .status-badge.void { background: #334155; color: #cbd5e1; }
-  :global(:root[data-theme='dark']) .status-badge.overdue { background: #3f1d1d; color: #fca5a5; }
 </style>

@@ -299,9 +299,9 @@
   .header-right { display: inline-flex; align-items: center; gap: 6px; }
   /* Soft WIP limit exceeded — amber, advisory, never blocks a drop. */
   .wip-pill {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fde68a;
+    background: var(--warning-bg);
+    color: var(--warning);
+    border: 1px solid var(--warning-border);
     border-radius: 20px;
     padding: 1px 8px;
     font-size: 10px;

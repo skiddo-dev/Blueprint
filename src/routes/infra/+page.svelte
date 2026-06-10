@@ -1,7 +1,11 @@
 <script lang="ts">
   import PageShell from '$lib/components/PageShell.svelte'
+  import Icon from '$lib/components/Icon.svelte'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
+  // Shared `.acct`-scoped primitives (cards, tables, badges, errors) — the same
+  // layer the accounting module uses, so this page carries no private copies.
+  import '$lib/styles/accounting.css'
 
   let { data }: { data: PageData } = $props()
   // Session comes from the root layout load; this route is admin-only.
@@ -59,16 +63,17 @@
   {#snippet head()}
     <div class="head-row">
       <div>
-        <h1>Infra Spend</h1>
-        <p class="sub">Live billing from MongoDB Atlas, Azure, OpenAI &amp; GitHub</p>
+        <h1 class="page-title">Infra Spend</h1>
+        <p class="page-sub">Live billing from MongoDB Atlas, Azure, OpenAI &amp; GitHub</p>
       </div>
       <button class="btn-secondary" type="button" onclick={refresh} disabled={refreshing}>
-        {refreshing ? 'Refreshing…' : '↻ Refresh'}
+        <Icon name="refresh" size={14} /> {refreshing ? 'Refreshing…' : 'Refresh'}
       </button>
     </div>
     <hr style="margin: 14px 0 20px" />
   {/snippet}
 
+  <div class="acct">
   <section class="card total-card">
     <div>
       <div class="mtd-label">Total month-to-date</div>
@@ -133,27 +138,19 @@
       {/if}
     </section>
   {/each}
+  </div>
 </PageShell>
 
 <style>
   .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  h1 { margin: 0; }
-  .sub { color: var(--text-muted); margin: 4px 0 0; font-size: 14px; }
+  .page-title { font-size: 22px; font-weight: 800; color: var(--text); margin: 0; }
+  .page-sub { color: var(--text-muted); margin: 4px 0 0; font-size: 12px; }
 
-  .card {
-    background: var(--card-bg); border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px 18px; margin-bottom: 18px;
-  }
+  /* Page-specific layout on top of the shared .acct primitives. */
   .total-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .total-num { font-size: 30px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
   .refreshed { font-size: 12px; color: var(--text-faint); white-space: nowrap; }
 
-  .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .card-head h2 { font-size: 15px; margin: 0; color: var(--text); }
-
-  .badge { font-size: 12px; font-weight: 600; border-radius: 10px; padding: 2px 9px; }
-  .badge.ok { background: #d1fae5; color: #047857; }
-  .badge.bad { background: #fee2e2; color: #dc2626; }
   .badge.muted { background: var(--chip-bg); color: var(--text-muted); }
 
   .mtd { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -166,19 +163,4 @@
   .bar-track { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 5px; height: 14px; overflow: hidden; }
   .bar { display: block; height: 100%; background: var(--primary); border-radius: 5px; min-width: 2px; }
   .trend-amt { font-size: 12px; text-align: right; color: var(--text-body); font-variant-numeric: tabular-nums; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border-soft); }
-  th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-
-  .btn-secondary {
-    background: var(--bg); color: var(--text-body); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
-  }
-  .btn-secondary:hover:not(:disabled) { border-color: var(--primary); }
-  .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .empty { color: var(--text-muted); font-size: 14px; padding: 4px 2px; margin: 0; }
-  .error { color: #dc2626; font-size: 13px; background: #fee2e2; border-radius: 8px; padding: 8px 12px; margin: 0 0 14px; }
 </style>
