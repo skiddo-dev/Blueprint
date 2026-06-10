@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { usd } from '$lib/accounting/format'
   import { goto } from '$app/navigation'
@@ -18,7 +19,7 @@
 <AccountingShell {user} title="P&L by month" maxWidth="1100px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: 'P&L by month' }]}>
   {#snippet actions()}
-    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
   {/snippet}
 
   <p class="report-hint">The income statement spread one column per month — how an accountant reads a year, and the fastest way to spot a drift in margin.</p>

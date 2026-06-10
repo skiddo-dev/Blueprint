@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import DateRange from '$lib/components/accounting/DateRange.svelte'
   import { usd } from '$lib/accounting/format'
@@ -16,7 +17,7 @@
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: 'General ledger' }]}>
   {#snippet actions()}
     <a class="btn-secondary" href={`/api/accounting/export/general-ledger?from=${data.from}&to=${data.to}`}>⬇ CSV</a>
-    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
   {/snippet}
 
   <p class="report-hint">Every posting in the period, grouped by account with totals — the report your accountant reconciles against. {data.from} to {data.to}.</p>

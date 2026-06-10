@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from './Icon.svelte'
   import { goto } from '$app/navigation'
   import { searchUI } from '$lib/search.svelte'
   import type { SearchResults, SearchHit } from '$lib/search'
@@ -104,15 +105,15 @@
         <div class="search-hint">No matches for “{q.trim()}”.</div>
       {:else}
         {#if results.tasks.length}
-          <div class="search-group">📋 Tasks</div>
+          <div class="search-group"><Icon name="list" size={12} /> Tasks</div>
           {#each results.tasks as hit}{@render row(hit)}{/each}
         {/if}
         {#if results.quotes.length}
-          <div class="search-group">💰 Quotes</div>
+          <div class="search-group"><Icon name="quote" size={12} /> Quotes</div>
           {#each results.quotes as hit}{@render row(hit)}{/each}
         {/if}
         {#if results.prospects.length}
-          <div class="search-group">🏭 Prospects</div>
+          <div class="search-group"><Icon name="prospects" size={12} /> Prospects</div>
           {#each results.prospects as hit}{@render row(hit)}{/each}
         {/if}
       {/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { usd } from '$lib/accounting/format'
   import { goto } from '$app/navigation'
@@ -20,7 +21,7 @@
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: '1099' }]}>
   {#snippet actions()}
     <a class="btn-secondary" href={`/api/accounting/export/1099?year=${data.year}`}>⬇ CSV</a>
-    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
   {/snippet}
 
   <p class="report-hint">Cash paid per 1099-flagged vendor in {data.year}; $600+ means a 1099-NEC is due in January. Counts bill payments only — pay 1099 vendors through bills, not quick expenses. Flag vendors on the <a href="/accounting/vendors">Vendors</a> page. The CSV export carries full tax IDs for filing; this page masks them.</p>
@@ -51,7 +52,7 @@
                 <td class="mono">{r.tax_id ?? '— missing —'}</td>
                 <td class="num">{r.paymentCount}</td>
                 <td class="num">{usd(r.total)}</td>
-                <td>{r.overThreshold ? '⚠️ YES' : 'no'}</td>
+                <td>{#if r.overThreshold}<Icon name="warning" size={11} /> YES{:else}no{/if}</td>
               </tr>
             {/each}
           </tbody>

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
+  import type { IconName } from '$lib/icons'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { describeCadence } from '$lib/accounting/recurring'
   import { invalidateAll } from '$app/navigation'
@@ -43,7 +45,7 @@
     await invalidateAll()
   }
 
-  const TYPE_ICON: Record<string, string> = { invoice: '📄', bill: '🧾', journal: '📒' }
+  const TYPE_ICON: Record<string, IconName> = { invoice: 'invoice', bill: 'bill', journal: 'ledger' }
 </script>
 
 <svelte:head><title>Recurring · Blueprint</title></svelte:head>
@@ -71,7 +73,7 @@
           <tbody>
             {#each data.templates as t (t._id)}
               <tr class:paused={!t.active}>
-                <td>{TYPE_ICON[t.type]} {t.name}</td>
+                <td><Icon name={TYPE_ICON[t.type] ?? 'ledger'} size={12} /> {t.name}</td>
                 <td>{describeCadence(t.cadence)}</td>
                 <td class="mono">{t.active ? t.next_date : '—'}</td>
                 <td class="muted result" title={t.last_result}>{t.last_result ?? 'never run'}</td>

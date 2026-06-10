@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from './Icon.svelte'
   import { onMount } from 'svelte'
   import type { Task, TaskStatus } from '$lib/types'
   import { KANBAN_STATUSES } from '$lib/constants'
@@ -88,8 +89,8 @@
 
 <div class="modal" role="dialog" aria-modal="true" aria-label="Create New Task">
   <div class="modal-header">
-    <h2>✏️ Create New Task</h2>
-    <button class="ghost close-btn" onclick={onClose}>✕</button>
+    <h2><Icon name="pencil" size={15} /> Create New Task</h2>
+    <button class="ghost close-btn" onclick={onClose}><Icon name="x" size={14} /></button>
   </div>
 
   <div class="modal-body">
@@ -128,14 +129,14 @@
       <div class="co-row">
         {#each coAssignees as name (name)}
           <span class="co-chip">
-            👥 {name}
+            <Icon name="users" size={12} /> {name}
             <button
               type="button"
               class="co-remove"
               onclick={() => (coAssignees = coAssignees.filter(n => n !== name))}
               aria-label="Remove {name}"
               title="Remove {name}"
-            >✕</button>
+            ><Icon name="x" size={11} /></button>
           </span>
         {/each}
         {#if coCandidates.length}

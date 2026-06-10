@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import DateRange from '$lib/components/accounting/DateRange.svelte'
   import { usd } from '$lib/accounting/format'
@@ -16,7 +17,7 @@
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports', href: '/accounting/reports' }, { label: 'Journal' }]}>
   {#snippet actions()}
     <a class="btn-secondary" href={`/api/accounting/export/journal?from=${data.from}&to=${data.to}`}>⬇ CSV</a>
-    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
   {/snippet}
 
   <p class="report-hint">Every entry in date order with its full debit/credit detail — the audit trail itself. Reversals reference the entry they correct; nothing is ever edited in place. {data.from} to {data.to}.</p>

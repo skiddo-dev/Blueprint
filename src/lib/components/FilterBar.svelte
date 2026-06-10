@@ -2,6 +2,7 @@
   // The board's filter bar: free text + assignee/store (multi) + due/quote/
   // source (single) dropdowns, with one Clear-all. Pure UI — the matching rules
   // live in $lib/boardFilters and the parent owns the state.
+  import Icon from './Icon.svelte'
   import type { BoardFilters } from '$lib/boardFilters'
   import { activeFilterCount, anyFilterActive, defaultFilters } from '$lib/boardFilters'
 
@@ -49,8 +50,8 @@
   ] as const
   const SOURCE_OPTIONS = [
     { value: 'any', label: 'Any source' },
-    { value: 'email', label: '📩 From email' },
-    { value: 'manual', label: '✏️ Manual' },
+    { value: 'email', label: 'From email' },
+    { value: 'manual', label: 'Manual' },
   ] as const
 
   let active = $derived(anyFilterActive(filters))
@@ -67,7 +68,7 @@
   <input
     class="ft-text"
     type="search"
-    placeholder="🔎 Filter tasks…"
+    placeholder="Filter tasks…"
     aria-label="Filter tasks by text"
     bind:value={filters.text}
   />
@@ -80,7 +81,7 @@
       class:on={filters.assignees.length > 0}
       aria-expanded={openMenu === 'assignee'}
       onclick={() => toggleMenu('assignee')}
-    >👤 Assignee{#if filters.assignees.length}&nbsp;· {filters.assignees.length}{/if} ▾</button>
+    ><Icon name="person" size={12} /> Assignee{#if filters.assignees.length}&nbsp;· {filters.assignees.length}{/if} ▾</button>
     {#if openMenu === 'assignee'}
       <div class="ft-menu" role="listbox" aria-label="Filter by assignee">
         {#each assigneeOptions as a}
@@ -106,7 +107,7 @@
         class:on={filters.stores.length > 0}
         aria-expanded={openMenu === 'store'}
         onclick={() => toggleMenu('store')}
-      >📍 Store{#if filters.stores.length}&nbsp;· {filters.stores.length}{/if} ▾</button>
+      ><Icon name="pin" size={12} /> Store{#if filters.stores.length}&nbsp;· {filters.stores.length}{/if} ▾</button>
       {#if openMenu === 'store'}
         <div class="ft-menu" role="listbox" aria-label="Filter by store">
           {#each storeOptions as s}
@@ -132,7 +133,7 @@
       class:on={filters.due !== 'any'}
       aria-expanded={openMenu === 'due'}
       onclick={() => toggleMenu('due')}
-    >📅 {filters.due === 'any' ? 'Due' : dueLabel} ▾</button>
+    ><Icon name="calendar" size={12} /> {filters.due === 'any' ? 'Due' : dueLabel} ▾</button>
     {#if openMenu === 'due'}
       <div class="ft-menu" role="listbox" aria-label="Filter by due date">
         {#each DUE_OPTIONS as o}
@@ -158,7 +159,7 @@
       class:on={filters.quote !== 'any'}
       aria-expanded={openMenu === 'quote'}
       onclick={() => toggleMenu('quote')}
-    >💰 {filters.quote === 'any' ? 'Quote' : quoteLabel} ▾</button>
+    ><Icon name="quote" size={12} /> {filters.quote === 'any' ? 'Quote' : quoteLabel} ▾</button>
     {#if openMenu === 'quote'}
       <div class="ft-menu" role="listbox" aria-label="Filter by quote stage">
         {#each QUOTE_OPTIONS as o}
@@ -184,7 +185,7 @@
       class:on={filters.source !== 'any'}
       aria-expanded={openMenu === 'source'}
       onclick={() => toggleMenu('source')}
-    >{filters.source === 'any' ? '📨 Source' : sourceLabel} ▾</button>
+    ><Icon name="mail" size={12} /> {filters.source === 'any' ? 'Source' : sourceLabel} ▾</button>
     {#if openMenu === 'source'}
       <div class="ft-menu" role="listbox" aria-label="Filter by source">
         {#each SOURCE_OPTIONS as o}
@@ -210,12 +211,12 @@
     aria-pressed={showArchived}
     title="Finished cards auto-archive after 30 days — view and restore them here"
     onclick={() => (showArchived = !showArchived)}
-  >🗄 Archived</button>
+  ><Icon name="archive" size={12} /> Archived</button>
 
   {#if active}
     <span class="ft-result">{matchCount} match{matchCount === 1 ? '' : 'es'}</span>
     <button type="button" class="ft-clear" onclick={() => (filters = defaultFilters())}>
-      ✕ Clear ({count})
+      <Icon name="x" size={11} /> Clear ({count})
     </button>
   {/if}
 </div>

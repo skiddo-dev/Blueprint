@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto, invalidateAll } from '$app/navigation'
   import { parseMoney } from '$lib/money'
@@ -109,7 +110,7 @@
 
     {#if data.uncleared.length}
       <details class="import-card">
-        <summary>📥 Import a bank statement (CSV) to auto-tick matches</summary>
+        <summary><Icon name="import" size={13} /> Import a bank statement (CSV) to auto-tick matches</summary>
         <p class="import-hint">Paste your bank export — columns <code>Date</code>, <code>Description</code>, <code>Amount</code> (or Debit/Credit). Lines are matched to uncleared transactions by amount.</p>
         <textarea bind:value={csvText} rows="5" placeholder="Date,Description,Amount&#10;2026-06-09,Customer deposit,2000.00&#10;2026-06-10,Check 1099,-500.00"></textarea>
         <div class="import-actions">

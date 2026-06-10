@@ -5,6 +5,7 @@
   // Attachments / Comments accordion, so daily edits never leave the column.
   // The compact face (TaskCard) is the default; both open the same
   // CardDetailSheet — here via the ⤢ chip in the tool row.
+  import Icon from './Icon.svelte'
   import { onMount } from 'svelte'
   import { dragHandle } from 'svelte-dnd-action'
   import DOMPurify from 'dompurify'
@@ -106,10 +107,11 @@
   // Aging: how long the card has sat in this column (active columns only).
   let aging = $derived(agingLevel(task, new Date()))
   let agedDays = $derived(daysInColumn(task, new Date()))
+  let sourceIcon = $derived(task.exchange_id ? ('mail' as const) : ('pencil' as const))
   let source = $derived(
     task.exchange_id
-      ? `📩 ${task.sender_name || task.sender_email || 'Email'}`
-      : `✏️ ${task.created_by || 'Manual'}`
+      ? task.sender_name || task.sender_email || 'Email'
+      : task.created_by || 'Manual'
   )
 
   // ── Created date (when this to-do was opened) ───────────────────────────────
@@ -184,7 +186,7 @@
       aria-label="Select task — {task.title}"
       title={selected ? 'Deselect' : 'Select for bulk actions'}
       onclick={(e) => { e.stopPropagation(); onToggleSelect?.(task._id) }}
-    >{selected ? '✓' : ''}</button>
+    >{#if selected}<Icon name="check" size={11} />{/if}</button>
   {/if}
   <!-- Drag handle — the ONLY element that initiates a drag, so the rest of the
        card (quote dropdown, selects, notes, links) stays tappable/scrollable. -->
@@ -210,33 +212,33 @@
 
   <!-- PO (from a reply or a parsed attachment) -->
   {#if task.po}
-    <div class="po-row"><span class="po-chip">🧾 PO {task.po}</span></div>
+    <div class="po-row"><span class="po-chip"><Icon name="bill" size={11} /> PO {task.po}</span></div>
   {/if}
 
   <!-- Source + created date + assignees -->
   <div class="meta-row">
-    <span class="source">{source}</span>
+    <span class="source"><Icon name={sourceIcon} size={11} /> {source}</span>
     {#if createdShort}
-      <span class="created-chip" title="Created {createdFull}">🗓 {createdShort}</span>
+      <span class="created-chip" title="Created {createdFull}"><Icon name="calendar" size={11} /> {createdShort}</span>
     {/if}
     {#if aging !== 'none'}
-      <span class="aging-chip" class:alert={aging === 'alert'} title="In {task.status} for {agedDays} days">⏳ {agedDays}d</span>
+      <span class="aging-chip" class:alert={aging === 'alert'} title="In {task.status} for {agedDays} days"><Icon name="hourglass" size={11} /> {agedDays}d</span>
     {/if}
     {#if task.assigned_to && task.assigned_to !== 'Unassigned'}
-      <span class="chip">👤 {task.assigned_to}</span>
+      <span class="chip"><Icon name="person" size={11} /> {task.assigned_to}</span>
     {:else}
       <span class="unassigned">Unassigned</span>
     {/if}
     {#each coAssignees as name (name)}
       <span class="chip co-chip" title="Also assigned to {name}">
-        👥 {name}
+        <Icon name="users" size={11} /> {name}
         <button
           type="button"
           class="co-remove"
           onclick={() => removeCoAssignee(name)}
           aria-label="Remove {name} from this task"
           title="Remove {name}"
-        >✕</button>
+        ><Icon name="x" size={11} /></button>
       </span>
     {/each}
     {#if coCandidates.length}
@@ -248,12 +250,12 @@
       </select>
     {/if}
     {#if isAdmin && task.source_mailbox}
-      <span class="inbox-chip" title="Flagged in {task.source_mailbox}">📥 {inbox}</span>
+      <span class="inbox-chip" title="Flagged in {task.source_mailbox}"><Icon name="import" size={11} /> {inbox}</span>
     {/if}
   </div>
 
   <!-- LLM summary shown by default (at-a-glance context); the full email is one
-       tap away behind the 📄 Email chip in the footer tool bar below. -->
+       tap away behind the Email chip in the footer tool bar below. -->
   {#if task.description}
     <p class="desc">
       {task.description.slice(0, 200)}{task.description.length > 200 ? '…' : ''}
@@ -294,7 +296,7 @@
     {#if task.quote}
       <details class="quote-pop">
         <summary>
-          💰 {task.quote}
+          <Icon name="quote" size={11} /> {task.quote}
           <span class="qs-badge" style:background={qMeta.bg} style:color={qMeta.text}>{qStatus}</span>
         </summary>
         <div class="pop-body">
@@ -337,23 +339,23 @@
   <!-- Footer tool bar — Email / Note / Attachments / Comments collapse into one
        chip row; the active chip's panel expands below (accordion, one at a time)
        so a collapsed card stays short. -->
-  <!-- Icon-only chips (tooltips name each) so all four — incl. 📄 Email and the
+  <!-- Icon-only chips (tooltips name each) so all four — incl. Email and the
        count chips — always sit on one row in a ~240px column. -->
   <div class="card-tools">
     {#if task.full_body}
-      <button type="button" class="tool-chip" class:active={openPanel === 'email'} aria-expanded={openPanel === 'email'} aria-label="Full email" title="Full email" onclick={() => togglePanel('email')}>📄</button>
+      <button type="button" class="tool-chip" class:active={openPanel === 'email'} aria-expanded={openPanel === 'email'} aria-label="Full email" title="Full email" onclick={() => togglePanel('email')}><Icon name="mail" size={13} /></button>
     {/if}
     <button type="button" class="tool-chip" class:active={openPanel === 'notes'} aria-expanded={openPanel === 'notes'} aria-label={hasNote ? 'Note (has content)' : 'Note'} title={hasNote ? 'Note (has content)' : 'Add a note'} onclick={() => togglePanel('notes')}>
-      📝{#if hasNote}<span class="tool-dot"></span>{/if}
+      <Icon name="note" size={13} />{#if hasNote}<span class="tool-dot"></span>{/if}
     </button>
     {#if showAttachChip}
-      <button type="button" class="tool-chip" class:active={openPanel === 'attachments'} aria-expanded={openPanel === 'attachments'} aria-label="Attachments" title="Attachments" onclick={() => togglePanel('attachments')}>📎{#if attachments.length}&nbsp;{attachments.length}{/if}</button>
+      <button type="button" class="tool-chip" class:active={openPanel === 'attachments'} aria-expanded={openPanel === 'attachments'} aria-label="Attachments" title="Attachments" onclick={() => togglePanel('attachments')}><Icon name="attachment" size={13} />{#if attachments.length}&nbsp;{attachments.length}{/if}</button>
     {/if}
     {#if onComment}
-      <button type="button" class="tool-chip" class:active={openPanel === 'comments'} aria-expanded={openPanel === 'comments'} aria-label="Comments" title="Comments" onclick={() => togglePanel('comments')}>💬{#if commentCount}&nbsp;{commentCount}{/if}</button>
+      <button type="button" class="tool-chip" class:active={openPanel === 'comments'} aria-expanded={openPanel === 'comments'} aria-label="Comments" title="Comments" onclick={() => togglePanel('comments')}><Icon name="comment" size={13} />{#if commentCount}&nbsp;{commentCount}{/if}</button>
     {/if}
     {#if clTotal}
-      <button type="button" class="tool-chip" aria-label="Checklist — {clDone} of {clTotal} done (open details)" title="Checklist — {clDone}/{clTotal} (manage in details)" onclick={() => onOpen?.(task._id)}>☑&nbsp;{clDone}/{clTotal}</button>
+      <button type="button" class="tool-chip" aria-label="Checklist — {clDone} of {clTotal} done (open details)" title="Checklist — {clDone}/{clTotal} (manage in details)" onclick={() => onOpen?.(task._id)}><Icon name="checklist" size={13} />&nbsp;{clDone}/{clTotal}</button>
     {/if}
     {#if onOpen}
       <button type="button" class="tool-chip" aria-label="Open full details" title="Open full details" onclick={() => onOpen?.(task._id)}>⤢</button>
@@ -377,7 +379,7 @@
     </div>
   {/if}
 
-  <!-- Attachments panel (opened from the 📎 chip). The chip only shows when there
+  <!-- Attachments panel (opened from the attachment chip). The chip only shows when there
        are files or an uploader; the panel additionally guards on the open chip so
        just the active section renders. -->
   {#if openPanel === 'attachments' && (onUploadAttachment || attachments.length)}
@@ -629,7 +631,7 @@
     margin-bottom: 6px;
   }
   /* Snug padding/gaps so all four chips (incl. 📄 Email) fit one row in a ~240px
-     column instead of wrapping 💬 to a second line. nowrap keeps a chip intact. */
+     column instead of wrapping the comment chip to a second line. nowrap keeps a chip intact. */
   .tool-chip {
     display: inline-flex;
     align-items: center;

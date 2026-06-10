@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import StatTile from '$lib/components/accounting/StatTile.svelte'
   import AgingBars from '$lib/components/accounting/AgingBars.svelte'
@@ -110,10 +111,10 @@
 
   <!-- Quick actions for the common create flows. -->
   <div class="quick-actions">
-    <a class="btn-secondary" href="/accounting/invoices/new">📄 New invoice</a>
-    <a class="btn-secondary" href="/accounting/bills/new">🧾 New bill</a>
-    <a class="btn-secondary" href="/accounting/expenses/new">💸 Record expense</a>
-    <a class="btn-secondary" href="/accounting/reconcile">✅ Reconcile</a>
+    <a class="btn-secondary" href="/accounting/invoices/new"><Icon name="invoice" size={13} /> New invoice</a>
+    <a class="btn-secondary" href="/accounting/bills/new"><Icon name="bill" size={13} /> New bill</a>
+    <a class="btn-secondary" href="/accounting/expenses/new"><Icon name="spend" size={13} /> Record expense</a>
+    <a class="btn-secondary" href="/accounting/reconcile"><Icon name="reconcile" size={13} /> Reconcile</a>
   </div>
 
   <!-- The "how's the business doing" trend — monthly revenue vs expenses. -->
@@ -190,9 +191,9 @@
     <div class="card-head"><h2>Period close</h2></div>
     <p class="lock-status">
       {#if data.closeThrough}
-        🔒 Books locked through <strong>{data.closeThrough}</strong> — no entry can post on or before this date.
+        <Icon name="lock" size={13} /> Books locked through <strong>{data.closeThrough}</strong> — no entry can post on or before this date.
       {:else}
-        🔓 Open — entries can post on any date.
+        <Icon name="unlock" size={13} /> Open — entries can post on any date.
       {/if}
     </p>
     <div class="lock-form">

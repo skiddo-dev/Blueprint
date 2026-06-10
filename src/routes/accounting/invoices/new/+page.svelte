@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
@@ -209,7 +210,7 @@
     <label class="memo">Memo (optional)<input type="text" bind:value={memo} placeholder="Notes for this invoice" /></label>
 
     <details class="recurring-box">
-      <summary>🔁 Make this recurring…</summary>
+      <summary><Icon name="recurring" size={12} /> Make this recurring…</summary>
       <div class="rec-grid">
         <label>Template name<input type="text" bind:value={recName} placeholder="e.g. Monthly retainer — {customerName || 'customer'}" /></label>
         <label>Every<input type="number" min="1" bind:value={recInterval} /></label>

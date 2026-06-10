@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { usd } from '$lib/accounting/format'
   import { invalidateAll } from '$app/navigation'
@@ -65,7 +66,7 @@
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Sales tax' }]}>
   {#snippet actions()}
     <a class="btn-secondary" href="/api/accounting/export/sales-tax">⬇ CSV</a>
-    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
   {/snippet}
 
   <p class="report-hint">Tax collected on invoices sits in Sales Tax Payable until it's remitted to the state. Collected follows the invoice date; voided invoices net out in the month of the void.</p>

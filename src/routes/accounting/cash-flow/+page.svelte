@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import DateRange from '$lib/components/accounting/DateRange.svelte'
   import { usd } from '$lib/accounting/format'
@@ -18,7 +19,7 @@
 <AccountingShell {user} title="Cash Flow" maxWidth="760px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Statement of Cash Flows' }]}>
   {#snippet actions()}
-    <button class="btn-secondary" type="button" onclick={() => window.print()}>🖨 Print</button>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
   {/snippet}
 
   <p class="report-hint">Where the cash actually moved over the period — money in and out of the bank, grouped by day-to-day operations, equipment, and financing.</p>

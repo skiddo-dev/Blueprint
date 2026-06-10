@@ -6,6 +6,7 @@
   // fast); cards still open the detail sheet, and multi-select still works.
   // A card tagged with two stores appears in both lanes — it IS both stores'
   // work. Cards with no store gather in a trailing "No store" lane.
+  import Icon from './Icon.svelte'
   import { SvelteSet } from 'svelte/reactivity'
   import TaskCard from './TaskCard.svelte'
   import type { Task } from '$lib/types'
@@ -66,7 +67,7 @@
       >
         <span class="lane-caret">{collapsed.has(store) ? '▸' : '▾'}</span>
         <span class="lane-title">
-          {#if store === NO_STORE}🏷 No store{:else}📍 Store #{store}{/if}
+          {#if store === NO_STORE}<Icon name="tag" size={11} /> No store{:else}<Icon name="pin" size={11} /> Store #{store}{/if}
         </span>
         <span class="lane-count">{laneTasks.length} task{laneTasks.length === 1 ? '' : 's'}</span>
       </button>
