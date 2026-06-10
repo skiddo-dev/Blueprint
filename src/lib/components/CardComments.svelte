@@ -3,6 +3,7 @@
   // with @mention autocomplete, edit/delete, emoji reactions. Extracted from
   // TaskCard so the card face stays manageable; behavior and styles are
   // unchanged. The parent owns persistence — every callback gets the task id.
+  import Icon from './Icon.svelte'
   import type { TimelineEntry } from '$lib/types'
   import { REACTION_EMOJIS } from '$lib/reactions'
 
@@ -177,8 +178,8 @@
       <span class="comment-time">{ago(c.at)}{c.edited_at ? ' · edited' : ''}</span>
       {#if c.id && canModify(c)}
         <span class="cmt-actions">
-          <button class="cmt-act" onclick={() => startEdit(c)} aria-label="Edit comment" title="Edit">✏️</button>
-          <button class="cmt-act" onclick={() => onDeleteComment?.(taskId, c.id!)} aria-label="Delete comment" title="Delete">✕</button>
+          <button class="cmt-act" onclick={() => startEdit(c)} aria-label="Edit comment" title="Edit"><Icon name="pencil" size={12} /></button>
+          <button class="cmt-act" onclick={() => onDeleteComment?.(taskId, c.id!)} aria-label="Delete comment" title="Delete"><Icon name="x" size={12} /></button>
         </span>
       {/if}
     </div>

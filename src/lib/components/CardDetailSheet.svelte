@@ -4,6 +4,8 @@
   // attachments, comments, and the activity log. Renders as a right-hand panel
   // on desktop and a full-screen sheet on phones. Client-only by construction:
   // it mounts when a card is opened, never during SSR.
+  import Icon from './Icon.svelte'
+  import type { IconName } from '$lib/icons'
   import { onMount } from 'svelte'
   import DOMPurify from 'dompurify'
   import type { Task, TimelineEntry } from '$lib/types'
@@ -63,10 +65,11 @@
     task.status !== 'Done' &&
     task.status !== 'Cancelled',
   )
+  let sourceIcon = $derived(task.exchange_id ? ('mail' as const) : ('pencil' as const))
   let source = $derived(
     task.exchange_id
-      ? `📩 ${task.sender_name || task.sender_email || 'Email'}`
-      : `✏️ ${task.created_by || 'Manual'}`
+      ? task.sender_name || task.sender_email || 'Email'
+      : task.created_by || 'Manual'
   )
   let createdFull = $derived.by(() => {
     const d = new Date(task.created_at)
@@ -135,7 +138,7 @@
 
   // ── Activity log (system timeline: created / replies / parsed files) ───────
   let activity = $derived((task.timeline ?? []).filter(e => e.kind !== 'comment'))
-  const KIND_ICON: Record<string, string> = { created: '✨', email: '📩', attachment: '📎', system: '🛠️' }
+  const KIND_ICON: Record<string, IconName> = { created: 'spark', email: 'mail', attachment: 'attachment', system: 'wrench' }
   function entryDate(e: TimelineEntry): string {
     const d = new Date(e.at)
     if (Number.isNaN(d.getTime())) return ''
@@ -172,18 +175,18 @@
 >
   <header class="sheet-head">
     <span class="status-pill" style:background={meta.bg} style:color={meta.text}>{meta.icon} {task.status}</span>
-    <button class="sheet-close" onclick={close} aria-label="Close task details">✕</button>
+    <button class="sheet-close" onclick={close} aria-label="Close task details"><Icon name="x" size={15} /></button>
   </header>
 
   <h2 class="sheet-title">{task.title}</h2>
 
   <div class="sheet-meta">
-    <span class="src">{source}</span>
-    {#if createdFull}<span class="src" title="Created {createdFull}">🗓 {createdFull}</span>{/if}
+    <span class="src"><Icon name={sourceIcon} size={12} /> {source}</span>
+    {#if createdFull}<span class="src" title="Created {createdFull}"><Icon name="calendar" size={12} /> {createdFull}</span>{/if}
     {#if isAdmin && task.source_mailbox}
-      <span class="src" title="Flagged in {task.source_mailbox}">📥 {inbox}</span>
+      <span class="src" title="Flagged in {task.source_mailbox}"><Icon name="import" size={12} /> {inbox}</span>
     {/if}
-    {#if task.po}<span class="po-chip">🧾 PO {task.po}</span>{/if}
+    {#if task.po}<span class="po-chip"><Icon name="bill" size={12} /> PO {task.po}</span>{/if}
   </div>
 
   {#if storeNums.length}
@@ -235,14 +238,14 @@
       <div class="co-row">
         {#each coAssignees as name (name)}
           <span class="chip co-chip" title="Also assigned to {name}">
-            👥 {name}
+            <Icon name="users" size={12} /> {name}
             <button
               type="button"
               class="co-remove"
               onclick={() => removeCoAssignee(name)}
               aria-label="Remove {name} from this task"
               title="Remove {name}"
-            >✕</button>
+            ><Icon name="x" size={12} /></button>
           </span>
         {/each}
         {#if coCandidates.length}
@@ -259,7 +262,7 @@
 
   {#if task.quote}
     <section class="sect">
-      <h3 class="sect-title">💰 Quote</h3>
+      <h3 class="sect-title"><Icon name="quote" size={13} /> Quote</h3>
       <div class="quote-grid">
         <label class="field">
           <span class="field-label">Stage</span>
@@ -310,7 +313,7 @@
   {/if}
 
   <section class="sect">
-    <h3 class="sect-title">📝 Note</h3>
+    <h3 class="sect-title"><Icon name="note" size={13} /> Note</h3>
     <textarea
       bind:value={notesValue}
       rows="3"
@@ -322,7 +325,7 @@
 
   {#if onAddChecklist}
     <section class="sect">
-      <h3 class="sect-title">☑ Checklist{#if clItems.length}&nbsp;({clDone}/{clItems.length}){/if}</h3>
+      <h3 class="sect-title"><Icon name="checklist" size={13} /> Checklist{#if clItems.length}&nbsp;({clDone}/{clItems.length}){/if}</h3>
       <div class="cl-list">
         {#each clItems as item (item.id)}
           <div class="cl-row" class:done={item.done}>
@@ -340,7 +343,7 @@
                 onclick={() => onDeleteChecklist?.(task._id, item.id)}
                 aria-label="Remove checklist item"
                 title="Remove"
-              >✕</button>
+              ><Icon name="x" size={12} /></button>
             {/if}
           </div>
         {/each}
@@ -360,7 +363,7 @@
   {#if task.full_body}
     <section class="sect">
       <details>
-        <summary class="sect-title email-summary">📄 Full email</summary>
+        <summary class="sect-title email-summary"><Icon name="mail" size={13} /> Full email</summary>
         {#if mounted}<div class="email-body">{@html safeBody}</div>{/if}
       </details>
     </section>
@@ -368,7 +371,7 @@
 
   {#if onUploadAttachment || task.attachments?.length || task.attachment_ids?.length}
     <section class="sect">
-      <h3 class="sect-title">📎 Attachments</h3>
+      <h3 class="sect-title"><Icon name="attachment" size={13} /> Attachments</h3>
       <CardAttachments
         taskId={task._id}
         attachments={task.attachments?.length
@@ -382,7 +385,7 @@
 
   {#if onComment}
     <section class="sect">
-      <h3 class="sect-title">💬 Comments</h3>
+      <h3 class="sect-title"><Icon name="comment" size={13} /> Comments</h3>
       <CardComments
         taskId={task._id}
         timeline={task.timeline}
@@ -404,7 +407,7 @@
       <ul class="activity">
         {#each activity as e}
           <li class="act-row">
-            <span class="act-icon">{KIND_ICON[e.kind] ?? '•'}</span>
+            <span class="act-icon">{#if KIND_ICON[e.kind]}<Icon name={KIND_ICON[e.kind]} size={12} />{:else}•{/if}</span>
             <span class="act-text">{e.text}{#if e.from}<span class="act-from"> — {e.from}</span>{/if}</span>
             <span class="act-date">{entryDate(e)}</span>
           </li>
@@ -414,7 +417,7 @@
   {/if}
 
   <footer class="sheet-foot">
-    <button class="danger" onclick={() => { onDelete(task._id); onClose() }}>🗑 Delete task</button>
+    <button class="danger" onclick={() => { onDelete(task._id); onClose() }}><Icon name="trash" size={12} /> Delete task</button>
   </footer>
 </div>
 

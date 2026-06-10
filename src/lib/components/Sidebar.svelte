@@ -235,7 +235,7 @@
           {#if importing}Importing…{:else}<Icon name="import" size={13} /> Import{/if}
         </button>
         {#if importResult}<p class="hint">{importResult}</p>{/if}
-        <a class="hint dl-link" href="/api/tasks/export" download>⬇ Download current tasks (use as a template)</a>
+        <a class="hint dl-link" href="/api/tasks/export" download><Icon name="download" size={11} /> Download current tasks (use as a template)</a>
       </div>
     </details>
 

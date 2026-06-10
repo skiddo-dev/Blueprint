@@ -127,7 +127,7 @@
       if (r2.ok) columns = group(await r2.json())
     } catch {
       online = false
-      saveToast = '⚠️ Couldn’t apply the bulk action — check your connection and try again.'
+      saveToast = 'Couldn’t apply the bulk action — check your connection and try again.'
       clearTimeout(saveToastTimer)
       saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
     } finally {
@@ -146,7 +146,7 @@
     })
     if (!r.ok) {
       online = false
-      saveToast = '⚠️ Couldn’t add that task — check your connection and try again.'
+      saveToast = 'Couldn’t add that task — check your connection and try again.'
       clearTimeout(saveToastTimer)
       saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
       return
@@ -346,7 +346,7 @@
       online = true
     } catch {
       online = false
-      saveToast = '⚠️ Couldn’t save — you appear to be offline. The board re-syncs when you reconnect.'
+      saveToast = 'Couldn’t save — you appear to be offline. The board re-syncs when you reconnect.'
       clearTimeout(saveToastTimer)
       saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
     }
@@ -524,7 +524,7 @@
       online = true
     } catch {
       online = false
-      saveToast = '⚠️ Couldn’t add that checklist item — check your connection and try again.'
+      saveToast = 'Couldn’t add that checklist item — check your connection and try again.'
       clearTimeout(saveToastTimer)
       saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
     }
@@ -566,7 +566,7 @@
       online = true
     } catch {
       online = false
-      saveToast = '⚠️ Couldn’t upload that file — check your connection and try again.'
+      saveToast = 'Couldn’t upload that file — check your connection and try again.'
       clearTimeout(saveToastTimer)
       saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
     }
@@ -654,7 +654,7 @@
 {/if}
 
 {#if !online}
-  <div class="offline-banner">📡 You’re offline — the board may be out of date, and changes won’t save until you reconnect.</div>
+  <div class="offline-banner"><Icon name="signal" size={14} /> You’re offline — the board may be out of date, and changes won’t save until you reconnect.</div>
 {/if}
 {#if bulkMessage}
   <div class="sync-toast">{bulkMessage}</div>
@@ -683,14 +683,14 @@
       {#each assignees as a}<option value={a}>{a}</option>{/each}
     </select>
     {#if !showArchived}
-      <button class="bb-btn" disabled={bulkBusy} onclick={() => runBulk('archive')} title="Hide these from the board (kept in the archive)">🗄 Archive</button>
+      <button class="bb-btn" disabled={bulkBusy} onclick={() => runBulk('archive')} title="Hide these from the board (kept in the archive)"><Icon name="archive" size={12} /> Archive</button>
     {/if}
-    <button class="bb-btn bb-danger" disabled={bulkBusy} onclick={() => runBulk('delete')}>🗑 Delete</button>
-    <button class="bb-btn" disabled={bulkBusy} onclick={() => selectedIds.clear()}>✕ Clear</button>
+    <button class="bb-btn bb-danger" disabled={bulkBusy} onclick={() => runBulk('delete')}><Icon name="trash" size={12} /> Delete</button>
+    <button class="bb-btn" disabled={bulkBusy} onclick={() => selectedIds.clear()}><Icon name="x" size={11} /> Clear</button>
   </div>
 {/if}
 {#if saveToast}
-  <div class="save-toast">{saveToast}</div>
+  <div class="save-toast"><Icon name="warning" size={13} /> {saveToast}</div>
 {/if}
 
 <div class="board-toolbar">
@@ -776,10 +776,10 @@
     </div>
     <div class="view-toggle" role="group" aria-label="Board lens">
       <button class="vt-btn" class:active={lens === 'none'} aria-pressed={lens === 'none'} title="Classic status board" onclick={() => setLens('none')}>
-        📊 Board
+        <Icon name="board" size={12} /> Board
       </button>
       <button class="vt-btn" class:active={lens === 'store'} aria-pressed={lens === 'store'} title="One lane per store — everything happening at each site" onclick={() => setLens('store')}>
-        📍 By store
+        <Icon name="pin" size={12} /> By store
       </button>
     </div>
   </div>
@@ -797,7 +797,7 @@
 
 {#if showArchived}
   <div class="archived-banner">
-    🗄 Viewing archived tasks — finished cards are auto-archived after 30 days.
+    <Icon name="archive" size={13} /> Viewing archived tasks — finished cards are auto-archived after 30 days.
     Change a card's status (or drag it to a column) to restore it.
     <button class="link-btn" onclick={() => setShowArchived(false)}>← Back to the board</button>
   </div>
@@ -943,7 +943,7 @@
 
   /* Advanced controls (density + lens + filter bar): always visible on
      desktop — the wrappers vanish via display:contents and the toggle button
-     doesn't exist. Phones fold them behind the ⚙️ View button (see the
+     doesn't exist. Phones fold them behind the View button (see the
      mobile block below). */
   .controls-btn { display: none; }
   .adv-controls { display: contents; }
@@ -1141,7 +1141,7 @@
     /* The page identity is obvious on a phone — drop the tagline row. */
     .board-sub { display: none; }
 
-    /* Fold the advanced controls behind the ⚙️ View button so the first card
+    /* Fold the advanced controls behind the View button so the first card
        is reachable without scrolling past rows of chrome. The badge counts
        non-default settings, so an active-but-hidden filter stays visible. */
     .controls-btn {

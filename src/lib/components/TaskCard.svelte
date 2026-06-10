@@ -3,6 +3,7 @@
   // a clamped description, and chips for assignees / due date / quote / counts.
   // All editing moved to CardDetailSheet (opened by clicking the card); the only
   // interactive bits left on the face are the drag handle and the store tags.
+  import Icon from './Icon.svelte'
   import { dragHandle } from 'svelte-dnd-action'
   import type { Task } from '$lib/types'
   import { QUOTE_STATUS_META, STATUS_META } from '$lib/constants'
@@ -42,10 +43,11 @@
     task.status !== 'Done' &&
     task.status !== 'Cancelled',
   )
+  let sourceIcon = $derived(task.exchange_id ? ('mail' as const) : ('pencil' as const))
   let source = $derived(
     task.exchange_id
-      ? `📩 ${task.sender_name || task.sender_email || 'Email'}`
-      : `✏️ ${task.created_by || 'Manual'}`
+      ? task.sender_name || task.sender_email || 'Email'
+      : task.created_by || 'Manual'
   )
 
   const shortDate = (iso: string | undefined | null): string => {
@@ -118,7 +120,7 @@
       aria-label="Select task — {task.title}"
       title={selected ? 'Deselect' : 'Select for bulk actions'}
       onclick={(e) => { e.stopPropagation(); onToggleSelect?.(task._id) }}
-    >{selected ? '✓' : ''}</button>
+    >{#if selected}<Icon name="check" size={11} />{/if}</button>
   {/if}
   <!-- Drag handle — the ONLY element that initiates a drag, so clicking the
        rest of the card opens the sheet and the board stays scrollable on touch. -->
@@ -150,37 +152,37 @@
 
   <div class="chip-row">
     {#if task.assigned_to && task.assigned_to !== 'Unassigned'}
-      <span class="chip">👤 {task.assigned_to}{#if coCount} <span class="co-count" title={(task.co_assignees ?? []).join(', ')}>+{coCount}</span>{/if}</span>
+      <span class="chip"><Icon name="person" size={11} /> {task.assigned_to}{#if coCount} <span class="co-count" title={(task.co_assignees ?? []).join(', ')}>+{coCount}</span>{/if}</span>
     {:else}
       <span class="unassigned">Unassigned{#if coCount} <span class="co-count">+{coCount}</span>{/if}</span>
     {/if}
     {#if dueShort}
-      <span class="due-chip" class:overdue title={overdue ? 'Overdue' : 'Due date'}>📅 {dueShort}</span>
+      <span class="due-chip" class:overdue title={overdue ? 'Overdue' : 'Due date'}><Icon name="calendar" size={11} /> {dueShort}</span>
     {/if}
     {#if aging !== 'none'}
-      <span class="aging-chip" class:alert={aging === 'alert'} title="In {task.status} for {agedDays} days">⏳ {agedDays}d</span>
+      <span class="aging-chip" class:alert={aging === 'alert'} title="In {task.status} for {agedDays} days"><Icon name="hourglass" size={11} /> {agedDays}d</span>
     {/if}
     {#if task.quote}
       <span class="quote-chip" title="Quote · {qStatus}">
-        💰 {task.quote}
+        <Icon name="quote" size={11} /> {task.quote}
         <span class="qs-badge" style:background={qMeta.bg} style:color={qMeta.text}>{qStatus}</span>
       </span>
     {/if}
     {#if task.po}
-      <span class="po-chip">🧾 {task.po}</span>
+      <span class="po-chip"><Icon name="bill" size={11} /> {task.po}</span>
     {/if}
   </div>
 
   <div class="foot-row">
     <span class="source" title={isAdmin && task.source_mailbox ? `Flagged in ${task.source_mailbox}` : undefined}>
-      {source}{#if isAdmin && inbox}&nbsp;· 📥 {inbox}{/if}
+      <Icon name={sourceIcon} size={11} /> {source}{#if isAdmin && inbox}&nbsp;· <Icon name="import" size={11} /> {inbox}{/if}
     </span>
-    <span class="created" title="Created {createdFull}">🗓 {createdShort}</span>
+    <span class="created" title="Created {createdFull}"><Icon name="calendar" size={11} /> {createdShort}</span>
     <span class="counts">
-      {#if clTotal}<span class="count" class:cl-complete={clDone === clTotal} title="Checklist — {clDone} of {clTotal} done">☑{clDone}/{clTotal}</span>{/if}
-      {#if hasNote}<span class="count" title="Has a note">📝</span>{/if}
-      {#if attCount}<span class="count" title="{attCount} attachment{attCount === 1 ? '' : 's'}">📎{attCount}</span>{/if}
-      {#if commentCount}<span class="count" title="{commentCount} comment{commentCount === 1 ? '' : 's'}">💬{commentCount}</span>{/if}
+      {#if clTotal}<span class="count" class:cl-complete={clDone === clTotal} title="Checklist — {clDone} of {clTotal} done"><Icon name="checklist" size={11} />{clDone}/{clTotal}</span>{/if}
+      {#if hasNote}<span class="count" title="Has a note"><Icon name="note" size={11} /></span>{/if}
+      {#if attCount}<span class="count" title="{attCount} attachment{attCount === 1 ? '' : 's'}"><Icon name="attachment" size={11} />{attCount}</span>{/if}
+      {#if commentCount}<span class="count" title="{commentCount} comment{commentCount === 1 ? '' : 's'}"><Icon name="comment" size={11} />{commentCount}</span>{/if}
     </span>
   </div>
 </div>

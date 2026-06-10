@@ -3,6 +3,7 @@
   // states), per-file delete, and the multi-file uploader. Extracted from
   // TaskCard; behavior and styles are unchanged. The parent computes the
   // display list (including the legacy id-only fallback) and owns persistence.
+  import Icon from './Icon.svelte'
   import type { Attachment } from '$lib/types'
 
   let {
@@ -45,12 +46,12 @@
       {#if att.purged}
         <!-- Bytes tossed after the 30-day retention window; the record stays. -->
         <span class="att-link att-expired" title="{att.filename} — file removed after 30 days; details kept on the card">
-          📎 {att.filename}
+          <Icon name="attachment" size={12} /> {att.filename}
         </span>
         <span class="att-tag">expired</span>
       {:else}
         <a href="/api/attachments/{att.id}" class="att-link" download title={att.filename}>
-          ⬇️ {att.filename}
+          <Icon name="download" size={12} /> {att.filename}
         </a>
         {#if att.size}<span class="att-size">{fmtSize(att.size)}</span>{/if}
       {/if}
@@ -61,7 +62,7 @@
           onclick={() => onDeleteAttachment?.(taskId, att.id)}
           aria-label="Remove attachment"
           title="Remove"
-        >✕</button>
+        ><Icon name="x" size={12} /></button>
       {/if}
     </div>
   {/each}
@@ -72,7 +73,7 @@
 {#if onUploadAttachment}
   <label class="att-add" class:busy={uploading}>
     <input type="file" multiple onchange={onFilePicked} disabled={uploading} hidden />
-    {uploading ? '⏳ Uploading…' : '➕ Add file'}
+    {#if uploading}Uploading…{:else}<Icon name="plus" size={12} /> Add file{/if}
   </label>
 {/if}
 
