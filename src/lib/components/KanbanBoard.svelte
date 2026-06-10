@@ -206,14 +206,15 @@
   })
 
   // ── Drag-and-drop handlers ───────────────────────────────────────────
-  // Persist a card's new column after a drag drop. The board's `columns` state
-  // is updated directly by the column via `bind:items`, so we only handle the
-  // server write here.
-  async function handleMoved(status: TaskStatus, taskId: string) {
-    await persist(fetch(`/api/tasks/${taskId}`, {
-      method: 'PATCH',
+  // Persist a drag drop — target column + the card's fractional rank between
+  // its new neighbours (computed by KanbanColumn) — in one write. The board's
+  // `columns` state is updated directly by the column via `bind:items`, so we
+  // only handle the server write here.
+  async function handleMoved(status: TaskStatus, taskId: string, rank: string) {
+    await persist(fetch(`/api/tasks/${taskId}/move`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ field: 'status', value: status }),
+      body: JSON.stringify({ status, rank }),
     }))
   }
 

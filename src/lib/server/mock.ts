@@ -3,6 +3,7 @@
 import type { Task, TaskStatus, Prospect, Quote, TimelineEntry, ProspectStatus } from '$lib/types'
 import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, QUOTE_WORK_TYPES, PROSPECT_CENTER } from '$lib/constants'
 import { milesBetween, destinationPoint } from '$lib/geo'
+import { spreadRanks } from '$lib/rank'
 
 const ASSIGNEES = [
   'Unassigned', 'Andrew', 'Mike', 'Riley', 'Kris', 'Bogdan', 'Ady',
@@ -100,9 +101,22 @@ export function generateMockTasks(count = 35): Task[] {
       attachment_ids: [],
       timeline,
       created_at: createdAt,
+      // Aging clock: entered its column sometime in the last 3 weeks, so the
+      // flow signals have a realistic spread to render in mock mode.
+      status_changed_at: new Date(Date.now() - randInt(21) * DAY_MS).toISOString(),
     })
   }
-  return tasks
+  // Ranks mirror prod: per status column, evenly spaced in created_at-desc
+  // order (what migration 0005 seeds), so drag-reorder works in mock mode.
+  for (const status of KANBAN_STATUSES) {
+    const inCol = tasks
+      .filter(t => t.status === status)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    const ranks = spreadRanks(inCol.length)
+    inCol.forEach((t, i) => { t.rank = ranks[i] })
+  }
+  // Same order the DB layer serves (rank asc) so the board renders identically.
+  return tasks.sort((a, b) => (a.rank! < b.rank! ? -1 : a.rank! > b.rank! ? 1 : 0))
 }
 
 // ── Mock tracked quotes ──────────────────────────────────────────────────────

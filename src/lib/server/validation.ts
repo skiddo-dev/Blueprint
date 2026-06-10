@@ -25,6 +25,17 @@ export const newTaskSchema = z.object({
   store_numbers: z.array(z.string().max(20)).max(50).optional(),
 })
 
+// Drag-drop move: target column + the card's new fractional rank within it.
+// The charset/no-trailing-'0' rules mirror $lib/rank's invariants — a crafted
+// rank can't corrupt a column beyond misplacing this one card, but there's no
+// reason to store junk the generator could never emit.
+export const moveTaskSchema = z.object({
+  status: oneOf(KANBAN_STATUSES, 'status'),
+  rank: z.string().min(1).max(100)
+    .regex(/^[0-9a-z]+$/, 'invalid rank')
+    .refine(v => !v.endsWith('0'), { message: 'invalid rank' }),
+})
+
 export const userUpsertSchema = z.object({
   email: z.string().trim().email().max(200),
   role: z.enum(['admin', 'pm', 'viewer']).optional(),

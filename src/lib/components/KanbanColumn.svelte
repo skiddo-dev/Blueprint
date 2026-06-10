@@ -5,6 +5,7 @@
   import { STATUS_META } from '$lib/constants'
   import { extractStoreNumbers } from '$lib/storeNumbers'
   import { isOwnedBy } from '$lib/ownership'
+  import { rankBetween } from '$lib/rank'
 
   // `items` is $bindable — bound to the parent's `columns[status]`. The zone
   // OWNS and updates it synchronously in consider/finalize (svelte-dnd-action's
@@ -45,7 +46,7 @@
     view?: 'mine' | 'all'
     myName?: string
     isAdmin?: boolean
-    onMoved: (status: TaskStatus, taskId: string) => void
+    onMoved: (status: TaskStatus, taskId: string, rank: string) => void
     onDragStateChange: (dragging: boolean) => void
     onFieldUpdate: (id: string, field: string, value: unknown) => void
     onDelete: (id: string) => void
@@ -83,7 +84,23 @@
     items = e.detail.items as Task[]
     onDragStateChange(false)
     if (e.detail.info.trigger === TRIGGERS.DROPPED_INTO_ZONE) {
-      onMoved(status, e.detail.info.id as string)
+      const id = e.detail.info.id as string
+      const idx = items.findIndex(t => t.id === id)
+      if (idx === -1) return
+      // The card's new fractional rank sits between its drop neighbours. If
+      // their ranks are inconsistent (stale/unranked docs), fall back to
+      // "right after the card above" — always valid, and the next poll
+      // reconciles against the server's order anyway.
+      let rank: string
+      try {
+        rank = rankBetween(items[idx - 1]?.rank ?? null, items[idx + 1]?.rank ?? null)
+      } catch {
+        rank = rankBetween(items[idx - 1]?.rank ?? null, null)
+      }
+      // Optimistic: stamp the new rank + column on the moved card so its status
+      // select flips immediately and a follow-up drag computes from fresh ranks.
+      items[idx] = { ...items[idx], rank, status }
+      onMoved(status, id, rank)
     }
   }
 </script>

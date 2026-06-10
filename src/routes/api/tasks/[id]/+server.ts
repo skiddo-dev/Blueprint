@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
-import { updateTaskField, patchTask, deleteTask, getUserEmailByName, getTask, resolveCoAssignees } from '$lib/server/db'
+import { updateTaskField, patchTask, deleteTask, getUserEmailByName, getTask, resolveCoAssignees, topRankForStatus } from '$lib/server/db'
 import { assertCanAccessTask } from '$lib/server/authz'
 import { validateTaskFieldValue } from '$lib/server/validation'
 import { statusOnAssign } from '$lib/taskRules'
@@ -34,6 +34,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     if (nextStatus) {
       set.status = nextStatus
       set.status_changed_at = new Date().toISOString() // column change → restart the aging clock
+      set.rank = await topRankForStatus(nextStatus)    // auto-started work surfaces at the top of its new column
     }
     // Promoting a co-assignee to primary removes them from the co-list (one
     // person shouldn't hold both slots).
@@ -51,13 +52,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
     const ok = await patchTask(params.id, { ...resolved })
     return json({ ok })
   }
-  // A status edit is a column move — stamp status_changed_at (the aging clock)
-  // only when the column actually changes, so re-selecting the same status
-  // doesn't make a stale card look fresh.
+  // A status edit (the card's dropdown — the drag path is POST [id]/move) is a
+  // column move: land the card at the top of its new column, and stamp
+  // status_changed_at (the aging clock) only when the column actually changes,
+  // so re-selecting the same status doesn't make a stale card look fresh.
   if (field === 'status') {
     const current = await getTask(params.id)
     const set: Record<string, unknown> = { status: checked }
-    if (current && current.status !== checked) set.status_changed_at = new Date().toISOString()
+    if (current && current.status !== checked) {
+      set.status_changed_at = new Date().toISOString()
+      set.rank = await topRankForStatus(checked as string)
+    }
     const ok = await patchTask(params.id, set)
     return json({ ok })
   }
