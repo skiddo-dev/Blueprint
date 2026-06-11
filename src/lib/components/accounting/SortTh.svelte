@@ -19,7 +19,7 @@
   } = $props()
 </script>
 
-<th class="sortable" class:num aria-sort={sort.ariaSort(key)}>
+<th class="sortable" class:num scope="col" aria-sort={sort.ariaSort(key)}>
   <button type="button" onclick={() => sort.toggle(key)}>
     {label}
     <span class="dir" aria-hidden="true">{sort.key === key ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</span>

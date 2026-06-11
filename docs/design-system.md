@@ -52,6 +52,7 @@ chip fill, `-border` = chip outline, `-subtle` = faint row tint,
 | Error / overdue / destructive | `--danger`, `--danger-bg`, `--danger-bg-subtle`, `--danger-border` |
 | Informational / open / in-flight | `--info`, `--info-bg` |
 | Neutral / void / inactive | `--border-soft` fill + `--text-soft` ink |
+| Calm aging / overdue chip ink (theme-invariant) | `--aging-amber`, `--aging-rose` |
 
 Rule of thumb: a status chip is `color: var(--success); background:
 var(--success-bg);` — never a hand-mixed hex pair.
@@ -299,6 +300,7 @@ grep -rn 'gap: [0-9]*[13579]px' src --include='*.svelte' --include='*.css' | gre
 # color fills/borders: no raw hex chrome in components. Allowed leftovers:
 #   chart/data-viz literals (Principle #4), the quotes paper-white PDF preview,
 #   the competitive-landscape blueprint field. `color: #fff` on solid indigo/
-#   navy fills and the aging chips' calm inks are sanctioned theme-invariants.
+#   navy fills is a sanctioned theme-invariant; the aging chips' calm inks
+#   are tokens now (--aging-amber / --aging-rose).
 grep -rn 'background: #\|background-color: #\|solid #' src --include='*.svelte' | grep -vi chart
 ```

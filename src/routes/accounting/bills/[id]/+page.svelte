@@ -5,6 +5,7 @@
   import ActivityFeed from '$lib/components/accounting/ActivityFeed.svelte'
   import AttachmentsPanel from '$lib/components/accounting/AttachmentsPanel.svelte'
   import { usd } from '$lib/accounting/format'
+  import { parseMoney } from '$lib/money'
   import { confirmDialog } from '$lib/confirm.svelte'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
@@ -37,6 +38,11 @@
   let creditAmount = $state('')
   let creditDate = $state(today)
   let creditMemo = $state('')
+
+  // Affordance only — the endpoints re-validate and stay the source of truth.
+  function isPositiveAmount(s: string): boolean {
+    try { return parseMoney(s) > 0 } catch { return false }
+  }
 
   async function applyVendorCredit() {
     saving = true
@@ -114,7 +120,7 @@
 
   <section class="card">
     <div class="facts">
-      <div><span class="k">Vendor</span><span>{bill.vendor_name}</span></div>
+      <div><span class="k">Vendor</span><a class="party-link" href="/accounting/bills?vendor={bill.vendor_id}" title="All bills for this vendor">{bill.vendor_name}</a></div>
       <div><span class="k">Billed</span><span class="mono">{bill.bill_date}</span></div>
       <div><span class="k">Due</span><span class="mono">{bill.due_date}</span></div>
       {#if bill.vendor_invoice_no}<div><span class="k">Vendor inv #</span><span>{bill.vendor_invoice_no}</span></div>{/if}
@@ -161,7 +167,7 @@
         <label>Amount<input type="text" inputmode="decimal" bind:value={payAmount} placeholder="0.00" /></label>
         <label>Date<input type="date" bind:value={payDate} /></label>
         <label class="grow">Method<input type="text" bind:value={payMethod} placeholder="check / ACH" /></label>
-        <button class="btn-primary" type="button" onclick={recordPayment} disabled={saving || !payAmount.trim()}>
+        <button class="btn-primary" type="button" onclick={recordPayment} disabled={saving || !isPositiveAmount(payAmount)}>
           {saving ? 'Recording…' : 'Record payment'}
         </button>
       </div>
@@ -172,7 +178,7 @@
           <label>Amount<input type="text" inputmode="decimal" bind:value={creditAmount} placeholder="0.00" /></label>
           <label>Date<input type="date" bind:value={creditDate} /></label>
           <label class="grow">Reason<input type="text" bind:value={creditMemo} placeholder="why the credit?" /></label>
-          <button class="btn-secondary" type="button" onclick={applyVendorCredit} disabled={saving || !creditAmount.trim()}>
+          <button class="btn-secondary" type="button" onclick={applyVendorCredit} disabled={saving || !isPositiveAmount(creditAmount)}>
             {saving ? 'Working…' : 'Apply credit'}
           </button>
         </div>
@@ -199,6 +205,8 @@
   .facts { display: flex; flex-wrap: wrap; gap: 18px 28px; margin-bottom: 16px; }
   .facts > div { display: flex; flex-direction: column; gap: 2px; }
   .facts .k { font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
+  .party-link { color: var(--primary-text); font-weight: 600; text-decoration: none; }
+  .party-link:hover, .party-link:focus-visible { text-decoration: underline; }
 
   .totals { margin-top: 14px; margin-left: auto; max-width: 320px; }
   .totals > div { display: flex; justify-content: space-between; gap: 24px; padding: 4px 0; font-size: var(--font-base); color: var(--text-body); }

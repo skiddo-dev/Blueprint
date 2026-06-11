@@ -72,7 +72,7 @@
   {/snippet}
 
   <section class="card flush">
-    {#if bills.length === 0}
+    {#if bills.length === 0 && !data.vendorFilter}
       <EmptyState icon="bill" title="No bills yet" framed={false}>
         Record what you owe vendors and subcontractors.
         {#snippet actions()}
@@ -81,6 +81,11 @@
       </EmptyState>
     {:else}
       <div class="list-toolbar">
+        {#if data.vendorFilter}
+          <a class="party-filter" href="/accounting/bills" title="Show all bills">
+            Vendor: <strong>{data.vendorFilter.name}</strong><span class="x" aria-hidden="true">✕</span>
+          </a>
+        {/if}
         <div class="filter-pills" role="group" aria-label="Filter bills by status">
           {#each FILTERS as f (f.key)}
             <button type="button" class:active={filter === f.key} onclick={() => (filter = f.key)}>
@@ -137,3 +142,15 @@
     {/if}
   </section>
 </AccountingShell>
+
+<style>
+  /* Active server-side filter (?vendor=) — the chip itself is the link that clears it. */
+  .party-filter {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--chip-bg); color: var(--primary-text);
+    border-radius: var(--radius-pill); padding: 4px 12px;
+    font-size: var(--font-sm); font-weight: 600; text-decoration: none; white-space: nowrap;
+  }
+  .party-filter:hover { box-shadow: var(--focus-halo); }
+  .party-filter .x { font-weight: 700; }
+</style>

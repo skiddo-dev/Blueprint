@@ -27,6 +27,7 @@
     <a class="pill" class:active={data.basis === 'cash'} href={`/accounting/income-statement?from=${data.from}&to=${data.to}&basis=cash`}
        title="Revenue when payments arrive, expenses when bills are paid">Cash</a>
   </div>
+  <p class="print-basis">{data.basis === 'cash' ? 'Cash basis' : 'Accrual basis'}</p>
   <DateRange from={data.from} to={data.to} base="/accounting/income-statement" extraParams={data.basis === 'cash' ? { basis: 'cash' } : {}} />
 
   <section class="card">
@@ -36,7 +37,7 @@
         <div class="row muted"><span>—</span><span class="num">{usd(0)}</span></div>
       {:else}
         {#each lines as l (l.account_id)}
-          <div class="row"><span>{l.name}</span><span class="num">{usd(l.amount)}</span></div>
+          <div class="row"><a class="acct-cell" href="/accounting/register/{l.account_id}">{l.name}</a><span class="num">{usd(l.amount)}</span></div>
         {/each}
       {/if}
       <div class="row subtotal"><span>Total {title}</span><span class="num">{usd(total)}</span></div>
@@ -59,6 +60,8 @@
   .sec-title:first-child { margin-top: 0; }
   .row { display: flex; justify-content: space-between; gap: 24px; padding: 5px 0; color: var(--text-body); }
   .row.muted { color: var(--text-faint); }
+  .acct-cell { color: var(--text-body); text-decoration: none; }
+  .acct-cell:hover { color: var(--primary-text); text-decoration: underline; }
   .num { font-variant-numeric: tabular-nums; }
   .subtotal { font-weight: 600; color: var(--text); border-top: 1px solid var(--border-soft); margin-top: 2px; }
   .gross { font-weight: 700; color: var(--text); border-top: 2px solid var(--border); border-bottom: 1px solid var(--border-soft); margin: 8px 0; padding: 8px 0; }

@@ -29,7 +29,18 @@
   let t = $state(to)
   $effect(() => { f = from; t = to })
 
-  function apply() { goto(withExtras(`${base}?from=${f}&to=${t}`)) }
+  let rangeError = $state('')
+
+  function apply() {
+    // ISO dates compare lexicographically; refuse an inverted range instead of
+    // silently loading an empty report.
+    if (f && t && f > t) {
+      rangeError = 'The From date is after the To date — swap them and apply again.'
+      return
+    }
+    rangeError = ''
+    goto(withExtras(`${base}?from=${f}&to=${t}`))
+  }
 
   const iso = (d: Date) => d.toISOString().slice(0, 10)
   function pick(range: 'month' | 'last-month' | 'quarter' | 'ytd') {
@@ -60,6 +71,9 @@
   <label class="field">To<input type="date" bind:value={t} /></label>
   <button class="btn-secondary" type="button" onclick={apply}>{applyLabel}</button>
 </div>
+{#if rangeError}
+  <p class="error" role="alert">{rangeError}</p>
+{/if}
 
 <style>
   .quick-picks { display: flex; gap: 6px; flex-wrap: wrap; }

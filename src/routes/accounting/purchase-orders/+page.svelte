@@ -1,6 +1,7 @@
 <script lang="ts">
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
+  import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
   import SortTh from '$lib/components/accounting/SortTh.svelte'
   import { createSort } from '$lib/accounting/tableSort.svelte'
   import { usd } from '$lib/accounting/format'
@@ -89,7 +90,7 @@
                 <td class="num">{usd(p.total)}</td>
                 <td class="num">{p.billed ? usd(p.billed) : ''}</td>
                 <td class="num">{p.status === 'cancelled' ? '' : usd(Math.max(0, p.total - p.billed))}</td>
-                <td><span class="chip">{p.status.replace('-', ' ')}</span></td>
+                <td><StatusBadge status={p.status} /></td>
               </tr>
             {/each}
           </tbody>

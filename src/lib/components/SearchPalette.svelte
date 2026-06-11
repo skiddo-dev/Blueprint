@@ -159,7 +159,8 @@
       oninput={onInput}
       aria-label="Search query"
     />
-    <div class="search-results">
+    <!-- Polite live region so screen readers hear results arrive as you type. -->
+    <div class="search-results" aria-live="polite" aria-label="Search results">
       {#if loading && empty && cmdMatches.length === 0}
         <!-- Result-row-shaped placeholders, so the list doesn't jump on arrival. -->
         {#each { length: 3 } as _, i (i)}

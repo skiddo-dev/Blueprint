@@ -6,6 +6,8 @@ import { csvCell } from '$lib/sanitize'
 import type { Account, JournalEntry, TrialBalanceRow } from './types'
 import type { GeneralLedgerGroup, RegisterRow } from './ledger'
 import type { incomeStatement, balanceSheet, StatementSection } from './statements'
+import type { CashFlowCategory, CashFlowSection } from './cashflow'
+import { AGING_BUCKETS, type AgingBucket, type AgingRow } from './invoicing'
 
 /** Cents → "1234.56" / "-1234.56". Numbers stay unquoted so spreadsheets sum them. */
 export function moneyCell(c: number): string {
@@ -62,6 +64,48 @@ export function balanceSheetCsv(bs: ReturnType<typeof balanceSheet>, asOf: strin
   statementSection(out, bs.liabilities)
   statementSection(out, bs.equity) // equity lines include the "Net income (current period)" row
   out.push(row(['Total Liabilities & Equity', '', '', moneyCell(bs.totalLiabilitiesAndEquity)]))
+  return out.join('\n')
+}
+
+export function cashFlowCsv(
+  cf: { sections: Record<CashFlowCategory, CashFlowSection>; netChange: number; beginningCash: number; endingCash: number },
+  from: string,
+  to: string,
+): string {
+  const out = [
+    row(['Statement of Cash Flows', csvCell(from), csvCell(to), '']),
+    row(['Section', 'Account', 'Name', 'Amount']),
+    row(['Cash at start of period', '', '', moneyCell(cf.beginningCash)]),
+  ]
+  for (const cat of ['operating', 'investing', 'financing'] as CashFlowCategory[]) {
+    const s = cf.sections[cat]
+    for (const l of s.lines) {
+      out.push(row([csvCell(s.title), csvCell(l.account_id), csvCell(l.name), moneyCell(l.amount)]))
+    }
+    out.push(row([csvCell(`Net cash from ${s.title.toLowerCase()}`), '', '', moneyCell(s.total)]))
+  }
+  out.push(row(['Net change in cash', '', '', moneyCell(cf.netChange)]))
+  out.push(row(['Cash at end of period', '', '', moneyCell(cf.endingCash)]))
+  return out.join('\n')
+}
+
+/** A/R or A/P aging: the open-document rows, then the bucket totals. */
+export function agingCsv(
+  aging: { buckets: Record<AgingBucket, number>; total: number; rows: AgingRow[] },
+  kind: 'ar' | 'ap',
+  asOf: string,
+): string {
+  const out = [
+    row([csvCell(`${kind === 'ar' ? 'A/R' : 'A/P'} Aging`), csvCell(asOf), '', '', '']),
+    row(['Number', kind === 'ar' ? 'Customer' : 'Vendor', 'Due', 'Bucket', 'Balance']),
+  ]
+  for (const r of aging.rows) {
+    out.push(row([String(r.number), csvCell(r.name), csvCell(r.due_date), csvCell(r.bucket), moneyCell(r.balance)]))
+  }
+  for (const b of AGING_BUCKETS) {
+    out.push(row([csvCell(`Total ${b}`), '', '', '', moneyCell(aging.buckets[b])]))
+  }
+  out.push(row(['Total outstanding', '', '', '', moneyCell(aging.total)]))
   return out.join('\n')
 }
 

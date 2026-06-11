@@ -234,11 +234,11 @@
     background: var(--bg);
     transition: background var(--speed), border-color var(--speed);
   }
-  .nav-link:hover { background: var(--primary-bg); border-color: #c7d2fe; color: var(--primary-text); }
+  .nav-link:hover { background: var(--primary-bg); border-color: var(--primary-border); color: var(--primary-text); }
   /* Highlight the page you're on. */
   .nav-link.active {
     background: var(--primary-bg);
-    border-color: #c7d2fe;
+    border-color: var(--primary-border);
     color: var(--link);
     font-weight: 600;
   }

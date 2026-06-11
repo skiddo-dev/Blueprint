@@ -79,7 +79,7 @@ export function searchQuotes(quotes: Quote[], q: string): SearchHit[] {
         Number.isFinite(qt.amount) ? `$${Number(qt.amount).toLocaleString('en-US')}` : null,
         qt.status,
       ].filter(Boolean).join(' · ') || undefined,
-      href: '/dashboard',
+      href: `/dashboard?quote=${encodeURIComponent(qt._id)}`,
     }))
 }
 
@@ -98,6 +98,6 @@ export function searchProspects(prospects: Prospect[], q: string): SearchHit[] {
         p.owner,
         p.building_sqft ? `${Math.round(p.building_sqft).toLocaleString('en-US')} sf` : null,
       ].filter(Boolean).join(' · ') || undefined,
-      href: '/prospects',
+      href: `/prospects?prospect=${encodeURIComponent(p._id)}`,
     }))
 }

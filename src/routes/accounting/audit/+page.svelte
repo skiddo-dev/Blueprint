@@ -30,6 +30,17 @@
   }
   function clearFilters() { type = ''; actor = ''; from = ''; to = ''; apply() }
 
+  /** Same filters, bigger limit: 200 → 500, then doubling. */
+  function showMoreHref(): string {
+    const q = new URLSearchParams()
+    if (data.filters.type) q.set('type', data.filters.type)
+    if (data.filters.actor) q.set('actor', data.filters.actor)
+    if (data.filters.from) q.set('from', data.filters.from)
+    if (data.filters.to) q.set('to', data.filters.to)
+    q.set('limit', String(data.limit < 500 ? 500 : data.limit * 2))
+    return `/accounting/audit?${q}`
+  }
+
   /** Detail link for entity types that have a page. */
   function hrefFor(e: { entity_type: string; entity_id: string }): string | null {
     if (e.entity_type === 'invoice') return `/accounting/invoices/${e.entity_id}`
@@ -94,8 +105,11 @@
           </tbody>
         </table>
       </div>
-      {#if data.events.length >= 200}
-        <p class="cap-note">Showing the most recent 200 events — narrow the filters to see older ones.</p>
+      {#if data.events.length >= data.limit}
+        <p class="cap-note">
+          Showing the most recent {data.limit} events.
+          <a class="more-link" href={showMoreHref()}>Show more</a> — or narrow the filters.
+        </p>
       {/if}
     {/if}
   </section>
@@ -106,4 +120,6 @@
   .ev-link { color: inherit; text-decoration: none; }
   .ev-link:hover { text-decoration: underline; }
   .cap-note { font-size: var(--font-sm); color: var(--text-muted); padding: 10px 16px; margin: 0; }
+  .more-link { color: var(--primary-text); font-weight: 600; text-decoration: none; }
+  .more-link:hover { text-decoration: underline; }
 </style>

@@ -15,6 +15,8 @@
   import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
   import { page } from '$app/state'
   import { replaceState } from '$app/navigation'
+  import { tick } from 'svelte'
+  import { toast } from '$lib/toast.svelte'
 
   let { data }: { data: PageData } = $props()
   // svelte-ignore state_referenced_locally
@@ -172,6 +174,34 @@
     monthFrom = 1; monthTo = 12; minSample = 5
     estimatorFilter = 'All'; workTypeFilter = 'All'
   }
+
+  // Deep link from global search: /dashboard?quote=<id> scrolls the quote
+  // tracker to that row and flashes it (same recipe as the board's /?task=
+  // links). The status chip widens to All if the row would be filtered out.
+  // Declared BEFORE the URL-persist effect below, which strips the param —
+  // effects run in creation order, so the id is captured first.
+  let flashedQuoteId: string | null = null
+  $effect(() => {
+    const qid = page.url.searchParams.get('quote')
+    if (!qid || qid === flashedQuoteId) return
+    flashedQuoteId = qid
+    const q = genQuotes.find(x => x._id === qid)
+    if (!q) {
+      toast.error('That quote couldn’t be found — it may have been removed.')
+      return
+    }
+    if (quoteFilter !== 'all' && (q.status ?? 'open') !== quoteFilter) quoteFilter = 'all'
+    tick().then(() => {
+      const el = document.getElementById('quote-' + qid)
+      if (!el) {
+        toast.error('That quote couldn’t be found — it may have been removed.')
+        return
+      }
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      el.classList.add('search-flash')
+      setTimeout(() => el.classList.remove('search-flash'), 2500)
+    })
+  })
 
   // Persist active (non-default) filters to the URL — shallow replaceState, so
   // no load re-run or scroll jump. Makes the current view shareable.
@@ -845,7 +875,7 @@
           </thead>
           <tbody>
             {#each shownQuotes as q (q._id)}
-              <tr>
+              <tr id="quote-{q._id}">
                 <td>{q.date_sent ?? '—'}</td>
                 <td>{q.store_number || '—'}</td>
                 <td>{q.point_of_contact || '—'}</td>

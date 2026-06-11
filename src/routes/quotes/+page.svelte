@@ -1,6 +1,7 @@
 <script lang="ts">
   import { QUOTE_CONTACTS, QUOTE_WORK_TYPES } from '$lib/constants'
   import { quoteCostRows } from '$lib/quoteCost'
+  import { guardUnsaved } from '$lib/unsavedGuard'
   import PageShell from '$lib/components/PageShell.svelte'
   import Icon from '$lib/components/Icon.svelte'
   import type { PageData } from './$types'
@@ -53,6 +54,19 @@
   const materials = $derived(parseUsd(materialsStr))
   const total = $derived(parseUsd(totalStr))
   const pricingInvalid = $derived([labor, materials, total].some(Number.isNaN))
+
+  // Generating the proposal is this form's "save" (the quote is logged
+  // server-side), so a successful generate releases the guard — don't nag
+  // once the user has their PDF.
+  const dirty = $derived(
+    !downloadUrl && (
+      customer.trim() !== '' || storeNumber.trim() !== '' || pointOfContact.trim() !== '' ||
+      workType.trim() !== '' || dateSent !== today || bidDue !== '' || po.trim() !== '' ||
+      sitefolio || description.trim() !== '' || notes.trim() !== '' ||
+      laborStr.trim() !== '' || materialsStr.trim() !== '' || totalStr.trim() !== ''
+    ),
+  )
+  guardUnsaved(() => dirty)
 
   // Exactly the rows generateQuotePdf will print — same helper, so the
   // on-screen preview can't drift from the PDF.
@@ -383,7 +397,7 @@
   .how-it-works ul { font-size: var(--font-base); color: var(--text-muted); margin-top: 8px; padding-left: 18px; }
   .how-it-works li { margin-bottom: 4px; }
 
-  @media (max-width: 700px) {
+  @media (max-width: 768px) {
     .grid { grid-template-columns: 1fr; }
     .span-2 { grid-column: span 1; }
     .pricing { grid-template-columns: 1fr; }

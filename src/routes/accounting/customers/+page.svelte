@@ -105,7 +105,7 @@
                 </tr>
               {:else}
                 <tr>
-                  <td><span class="party"><span class="avatar">{c.name.trim().slice(0, 1).toUpperCase()}</span>{c.name}</span></td>
+                  <td><span class="party"><span class="avatar">{c.name.trim().slice(0, 1).toUpperCase()}</span><a href="/accounting/invoices?customer={c._id}" title="View this customer's invoices">{c.name}</a></span></td>
                   <td class="muted">{c.email ?? '—'}</td>
                   <td class="num">{c.invoiceCount}</td>
                   <td class="num">{usd(c.totalInvoiced)}</td>
@@ -128,6 +128,9 @@
 </AccountingShell>
 
 <style>
+  /* Name links to the customer's invoices (/accounting/invoices?customer=). */
+  .party a { color: var(--primary-text); font-weight: 600; text-decoration: none; }
+  .party a:hover, .party a:focus-visible { text-decoration: underline; }
   /* Inline-edit specifics not covered by the shared sheet. */
   tr.editing td { background: var(--primary-bg); }
   td input { padding: 5px 7px; border-radius: var(--radius-md); width: 100%; }
