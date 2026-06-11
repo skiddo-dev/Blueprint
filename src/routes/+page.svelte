@@ -105,7 +105,7 @@
     onImported={loadTasks}
     onClearAll={handleClearAll}
   />
-  <main class="main-content">
+  <main id="main" class="main-content">
     <KanbanBoard
       initialTasks={boardTasks}
       {session}

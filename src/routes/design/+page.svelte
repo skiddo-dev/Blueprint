@@ -5,6 +5,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte'
   import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
   import { toast } from '$lib/toast.svelte'
+  import { confirmDialog } from '$lib/confirm.svelte'
   import { openShortcuts } from '$lib/shortcuts.svelte'
   import { ICONS, type IconName } from '$lib/icons'
   import type { PageData } from './$types'
@@ -91,6 +92,8 @@
   ]
   const iconNames = Object.keys(ICONS) as IconName[]
 </script>
+
+<svelte:head><title>Design System · Blueprint</title></svelte:head>
 
 <PageShell {user} title="Design System" maxWidth="1080px">
   {#snippet head()}
@@ -294,6 +297,32 @@
         <code>role="alert"</code> text next to the field stays the pattern for form validation; persistent
         conditions (offline) stay banners, not toasts.
       </p>
+      <p class="section-title">Confirm dialog — when there is no undo (live)</p>
+      <div class="btn-row">
+        <button class="secondary" type="button" onclick={async () => {
+          const ok = await confirmDialog({
+            title: 'Void invoice 2026-0042?',
+            body: 'This reverses its journal entry (dated today) and cannot be undone.',
+            confirmLabel: 'Void invoice',
+            danger: true,
+          })
+          toast.info(ok ? 'Confirmed — the write would run now.' : 'Cancelled — nothing happened.')
+        }}>Danger confirm</button>
+        <button class="secondary" type="button" onclick={async () => {
+          const ok = await confirmDialog({
+            title: 'Close the books through 2026-05-31?',
+            body: 'This posts a closing entry and locks the period.',
+            confirmLabel: 'Close the books',
+          })
+          toast.info(ok ? 'Confirmed.' : 'Cancelled.')
+        }}>Plain confirm</button>
+      </div>
+      <p class="foot">
+        <code>await confirmDialog(&#123;…&#125;)</code> replaces <code>window.confirm()</code> everywhere
+        (focus-trapped, Esc/backdrop cancel). Staged-undo stays preferred — reach for a confirm only when
+        the action truly can't be undone (void, dispose, close the books). Danger asks focus Cancel first,
+        so Enter never destroys.
+      </p>
       <p class="section-title">Skeletons — client-side fetches only</p>
       <div class="skel-demo">
         <Skeleton lines={3} />
@@ -333,9 +362,10 @@
         {/snippet}
       </EmptyState>
       <p class="foot">
-        Page-level voids get the full treatment (board, dashboard, prospects); in-card table placeholders
-        in accounting stay compact one-liners by design. <code>size="sm"</code> inside palettes and cards,
-        <code>framed={'{false}'}</code> when the host already draws the card.
+        Page-level voids get the full treatment — board, dashboard, prospects, and each accounting module
+        list's first run. Filtered-to-nothing results, sub-sections, and printable reports keep compact
+        one-line <code>.empty</code> placeholders by design. <code>size="sm"</code> inside palettes and
+        cards, <code>framed={'{false}'}</code> when the host already draws the card.
       </p>
     </section>
 

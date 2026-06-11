@@ -56,6 +56,8 @@ const ICONS = {
 
   /* ── Board toolbar ──────────────────────────────────────────────── */
   person: '<circle cx="12" cy="8" r="3.6"/><path d="M5.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/>',
+  // Person with a “+”: the add-co-assignee picker.
+  'person-add': '<circle cx="10" cy="8" r="3.4"/><path d="M3.75 20c0-3.45 2.8-6.25 6.25-6.25s6.25 2.8 6.25 6.25"/><path d="M18.4 6.4v5"/><path d="M15.9 8.9h5"/>',
   list: '<path d="M4.4 6.75h.01"/><path d="M8.75 6.75H20"/><path d="M4.4 12h.01"/><path d="M8.75 12H20"/><path d="M4.4 17.25h.01"/><path d="M8.75 17.25H20"/>',
   sliders: '<path d="M4 7.25h9.5"/><circle cx="15.4" cy="7.25" r="1.85"/><path d="M17.3 7.25H20"/><path d="M4 12h2.85"/><circle cx="8.65" cy="12" r="1.85"/><path d="M10.55 12H20"/><path d="M4 16.75h7.6"/><circle cx="13.5" cy="16.75" r="1.85"/><path d="M15.4 16.75H20"/>',
   refresh: '<path d="M4.5 12a7.5 7.5 0 0 1 7.5-7.5 8.1 8.1 0 0 1 5.6 2.3l2.65 2.45"/><path d="M20.25 4.5v4.75H15.5"/><path d="M19.5 12a7.5 7.5 0 0 1-7.5 7.5 8.1 8.1 0 0 1-5.6-2.3l-2.65-2.45"/><path d="M3.75 19.5v-4.75H8.5"/>',

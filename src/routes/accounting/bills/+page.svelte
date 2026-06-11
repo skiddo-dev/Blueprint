@@ -1,6 +1,9 @@
 <script lang="ts">
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
   import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
+  import SortTh from '$lib/components/accounting/SortTh.svelte'
+  import { createSort } from '$lib/accounting/tableSort.svelte'
   import { usd, relativeDue } from '$lib/accounting/format'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -46,6 +49,17 @@
   })
   const paidPct = (b: { total: number; balance: number }) =>
     b.total > 0 ? Math.round(((b.total - b.balance) / b.total) * 100) : 0
+
+  const sort = createSort<(typeof bills)[number]>({
+    num: (b) => b.year * 10000 + b.number,
+    vendor: (b) => b.vendor_name,
+    due: (b) => b.due_date,
+    total: (b) => b.total,
+    paid: (b) => (b.total > 0 ? (b.total - b.balance) / b.total : 0),
+    balance: (b) => b.balance,
+    status: (b) => b.status,
+  })
+  const sorted = $derived(sort.apply(visible))
 </script>
 
 <svelte:head><title>Bills · Blueprint</title></svelte:head>
@@ -58,8 +72,12 @@
 
   <section class="card flush">
     {#if bills.length === 0}
-      <p class="empty">No bills yet. Record what you owe vendors and subcontractors.</p>
-      <p><a class="btn-primary" href="/accounting/bills/new">+ Enter your first bill</a></p>
+      <EmptyState icon="bill" title="No bills yet" framed={false}>
+        Record what you owe vendors and subcontractors.
+        {#snippet actions()}
+          <a class="btn-primary" href="/accounting/bills/new">+ Enter your first bill</a>
+        {/snippet}
+      </EmptyState>
     {:else}
       <div class="list-toolbar">
         <div class="filter-pills" role="group" aria-label="Filter bills by status">
@@ -79,12 +97,17 @@
           <table>
             <thead>
               <tr>
-                <th>#</th><th>Vendor</th><th>Due</th>
-                <th class="num">Total</th><th>Paid</th><th class="num">Balance</th><th>Status</th>
+                <SortTh {sort} key="num" label="#" />
+                <SortTh {sort} key="vendor" label="Vendor" />
+                <SortTh {sort} key="due" label="Due" />
+                <SortTh {sort} key="total" label="Total" num />
+                <SortTh {sort} key="paid" label="Paid" />
+                <SortTh {sort} key="balance" label="Balance" num />
+                <SortTh {sort} key="status" label="Status" />
               </tr>
             </thead>
             <tbody>
-              {#each visible as b (b._id)}
+              {#each sorted as b (b._id)}
                 {@const due = relativeDue(b.due_date, today)}
                 <tr class="row-link" class:row-overdue={isOverdue(b)}
                   onclick={() => (window.location.href = `/accounting/bills/${b._id}`)}>

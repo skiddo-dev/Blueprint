@@ -28,11 +28,13 @@
 @media (max-width: 768px) { .acct-head { display: none; } }
 
 /* ── Persistent section nav (Receivables · Payables · Reports · Banking) ── */
-/* Wraps a whole group at a time (each section stays intact on one line), so the
-   nav never clips and never drops a lone orphan pill: one row when it fits, clean
-   grouped rows when the page is narrower. Consistent on every accounting page. */
-.acct-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 18px; }
-@media (max-width: 768px) { .acct-nav { margin-top: 12px; } }
+/* Each group is a labeled cluster (micro-label over its pills) and wraps as a
+   unit, so sections stay intact and the labels carry the structure that the old
+   hairline dividers only hinted at. On phones the whole nav collapses to ONE
+   horizontally-scrollable row (labels hidden, edge-faded) — wrapping 16 pills
+   stacked 4-5 rows of chrome, and a too-wide group used to clip past the
+   viewport entirely. */
+.acct-nav { position: relative; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; margin: 0 0 18px; }
 
 /* Accrual | Cash basis toggle on the statements. */
 .acct .basis-toggle { display: inline-flex; gap: 6px; margin-bottom: 10px; }
@@ -41,9 +43,26 @@
   font-size: var(--font-base); font-weight: 600; color: var(--text-muted); text-decoration: none;
 }
 .acct .basis-toggle .pill.active { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
-.acct-nav .group { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; flex-shrink: 0; }
-.acct-nav .group:not(:first-child)::before {
-  content: ''; align-self: center; width: 1px; height: 20px; background: var(--border); margin: 0 1px;
+.acct-nav .group { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+.acct-nav .group-label {
+  font-size: var(--font-2xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-faint); padding-left: 2px;
+}
+.acct-nav .group-pills { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
+@media (max-width: 768px) {
+  .acct-nav {
+    flex-wrap: nowrap; align-items: center; overflow-x: auto; margin-top: 12px;
+    padding-bottom: 2px; scrollbar-width: none;
+    /* Soft edge fade as the scroll affordance (trims only a few px of pill). */
+    mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 16px), transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 16px), transparent 100%);
+  }
+  .acct-nav::-webkit-scrollbar { display: none; }
+  .acct-nav .group { flex-direction: row; align-items: center; gap: 6px; }
+  .acct-nav .group-label { display: none; }
+  .acct-nav .group:not(:first-child)::before {
+    content: ''; align-self: center; flex-shrink: 0; width: 1px; height: 20px; background: var(--border); margin: 0 1px;
+  }
 }
 .acct-nav a {
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; line-height: 1.1;
@@ -90,6 +109,29 @@
 .acct .neg { color: var(--warning); }
 .acct .owed { font-weight: 600; color: var(--warning); }
 .acct .table-wrap { overflow-x: auto; }
+
+/* Sortable column headers (SortTh.svelte) — the whole header cell is a button
+   dressed as a plain th; the active column shows its direction and aria-sort. */
+.acct th.sortable { padding: 0; }
+.acct th.sortable > button {
+  display: flex; align-items: center; gap: 4px; width: 100%; min-height: 0;
+  background: none; border: 0; border-radius: 0; cursor: pointer;
+  padding: 8px; margin: 0; text-align: left; font-family: inherit;
+  color: var(--text-muted); font-weight: 600; font-size: var(--font-sm);
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.acct th.sortable.num > button { justify-content: flex-end; text-align: right; }
+.acct th.sortable > button:hover { color: var(--text); }
+.acct th.sortable[aria-sort] > button { color: var(--primary-text); }
+.acct th.sortable .dir { font-size: var(--font-2xs); line-height: 1; }
+
+/* Long registers: pin the header row while the rows scroll under it. The
+   bottom rule rides along as a shadow — collapsed borders don't stick. */
+.acct .table-wrap.tall { max-height: 65vh; overflow-y: auto; }
+.acct .table-wrap.tall thead th {
+  position: sticky; top: 0; z-index: 2; /* local stacking, above row content */
+  background: var(--card-bg); box-shadow: 0 1px 0 var(--border-soft);
+}
 
 /* ── Inline status/info bits ── */
 .acct .badge { font-size: var(--font-sm); font-weight: 600; border-radius: var(--radius-lg); padding: 2px 9px; white-space: nowrap; }

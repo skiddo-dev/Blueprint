@@ -6,6 +6,7 @@
   import SearchPalette from '$lib/components/SearchPalette.svelte'
   import ShortcutsHelp from '$lib/components/ShortcutsHelp.svelte'
   import Toasts from '$lib/components/Toasts.svelte'
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte'
   import type { LayoutData } from './$types'
 
   let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props()
@@ -42,6 +43,10 @@
   })
 </script>
 
+<!-- First Tab stop on every page; both shells mark their <main id="main">.
+     Visually hidden until focused (style in app.css). -->
+<a class="skip-link" href="#main">Skip to main content</a>
+
 {#if navSlow}
   <div class="nav-progress" role="progressbar" aria-label="Loading page"></div>
 {/if}
@@ -55,6 +60,7 @@
 {/if}
 
 <Toasts />
+<ConfirmDialog />
 
 <style>
   .nav-progress {

@@ -2,6 +2,7 @@
   // Upload/list/delete files on an accounting document. Downloads go through
   // the shared /api/attachments/[id] endpoint (admin-gated for these owners).
   import { invalidateAll } from '$app/navigation'
+  import { confirmDialog } from '$lib/confirm.svelte'
 
   interface Meta { id: string; filename: string; size: number; content_type: string; purged?: boolean }
   let { ownerType, ownerId, attachments }: {
@@ -38,7 +39,7 @@
   }
 
   async function remove(id: string, name: string) {
-    if (!confirm(`Remove ${name}?`)) return
+    if (!(await confirmDialog({ title: `Remove ${name}?`, confirmLabel: 'Remove file', danger: true }))) return
     errorMsg = ''
     try {
       const r = await fetch(`/api/accounting/attachments/${id}`, { method: 'DELETE' })

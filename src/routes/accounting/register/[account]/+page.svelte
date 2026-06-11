@@ -49,7 +49,9 @@
     {#if reg.rows.length === 0}
       <p class="empty">No activity on this account{data.from ? ' in this window' : ''} yet.</p>
     {:else}
-      <div class="table-wrap">
+      <!-- `tall` pins the header while a long register scrolls. No column sort
+           here on purpose: the running balance only means anything in date order. -->
+      <div class="table-wrap tall">
         <table>
           <thead>
             <tr><th>Date</th><th>Memo</th><th>Source</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr>

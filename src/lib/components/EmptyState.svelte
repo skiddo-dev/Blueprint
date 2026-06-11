@@ -1,8 +1,9 @@
 <script lang="ts">
   // The designed empty state — a hand-drawn icon, a headline, a line of help,
   // and the first action. For page-level "nothing here yet" moments (board,
-  // dashboard, prospects); the accounting tables keep their compact one-line
-  // `.empty` placeholders by design.
+  // dashboard, prospects, and the accounting module lists' first run); compact
+  // one-line `.empty` placeholders stay the pattern for filtered-to-nothing
+  // results, sub-sections, and printable reports by design.
   import Icon from './Icon.svelte'
   import type { IconName } from '$lib/icons'
   import type { Snippet } from 'svelte'

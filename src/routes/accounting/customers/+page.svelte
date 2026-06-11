@@ -1,5 +1,8 @@
 <script lang="ts">
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
+  import SortTh from '$lib/components/accounting/SortTh.svelte'
+  import { createSort } from '$lib/accounting/tableSort.svelte'
   import { usd } from '$lib/accounting/format'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
@@ -9,6 +12,15 @@
   const session = $derived(data.session as unknown as AppSession)
   const user = $derived({ name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' })
   const customers = $derived(data.customers)
+
+  const sort = createSort<(typeof data.customers)[number]>({
+    name: (c) => c.name,
+    email: (c) => c.email ?? '',
+    invoices: (c) => c.invoiceCount,
+    invoiced: (c) => c.totalInvoiced,
+    outstanding: (c) => c.outstanding,
+  })
+  const sorted = $derived(sort.apply(customers))
 
   const totalOutstanding = $derived(customers.reduce((a, c) => a + c.outstanding, 0))
 
@@ -57,16 +69,27 @@
       <span class="muted">{usd(totalOutstanding)} outstanding</span>
     </div>
     {#if customers.length === 0}
-      <p class="empty">No customers yet. They're created automatically when you raise an invoice.</p>
-      <p><a class="btn-primary" href="/accounting/invoices/new">+ Create your first invoice</a></p>
+      <EmptyState icon="users" title="No customers yet" framed={false}>
+        They're created automatically when you raise an invoice.
+        {#snippet actions()}
+          <a class="btn-primary" href="/accounting/invoices/new">+ Create your first invoice</a>
+        {/snippet}
+      </EmptyState>
     {:else}
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Customer</th><th>Email</th><th class="num">Invoices</th><th class="num">Total invoiced</th><th class="num">Outstanding</th><th></th></tr>
+            <tr>
+              <SortTh {sort} key="name" label="Customer" />
+              <SortTh {sort} key="email" label="Email" />
+              <SortTh {sort} key="invoices" label="Invoices" num />
+              <SortTh {sort} key="invoiced" label="Total invoiced" num />
+              <SortTh {sort} key="outstanding" label="Outstanding" num />
+              <th></th>
+            </tr>
           </thead>
           <tbody>
-            {#each customers as c (c._id)}
+            {#each sorted as c (c._id)}
               {#if editingId === c._id}
                 <tr class="editing">
                   <td><input type="text" bind:value={draftName} aria-label="Name" /></td>

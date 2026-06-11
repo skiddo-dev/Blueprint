@@ -5,6 +5,7 @@
   import AgingBars from '$lib/components/accounting/AgingBars.svelte'
   import TrendChart from '$lib/components/accounting/TrendChart.svelte'
   import { usd } from '$lib/accounting/format'
+  import { confirmDialog } from '$lib/confirm.svelte'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -53,7 +54,12 @@
   // Year-end close: post the closing entry (income/expense → Retained Earnings)
   // through the date, then lock there.
   async function closeBooks(through: string) {
-    if (!confirm(`Close the books through ${through}? This posts a closing entry rolling net income into Retained Earnings and locks the period.`)) return
+    const ok = await confirmDialog({
+      title: `Close the books through ${through}?`,
+      body: 'This posts a closing entry rolling net income into Retained Earnings and locks the period.',
+      confirmLabel: 'Close the books',
+    })
+    if (!ok) return
     savingLock = true
     lockError = ''
     try {

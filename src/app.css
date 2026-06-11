@@ -311,6 +311,30 @@ details summary::-webkit-details-marker { display: none; }
 }
 :focus:not(:focus-visible) { outline: none; }
 
+/* Skip-to-content link (root layout) — the first Tab stop on every page,
+   off-screen until keyboard focus lands on it. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: var(--z-toast);
+  transform: translateY(-200%);
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  font-size: var(--font-base);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--shadow-modal);
+}
+/* Plain :focus — the link sits off-screen, so only keyboard travel can reach
+   it (:focus-visible can miss programmatic/sequential focus in some engines). */
+.skip-link:focus {
+  transform: none;
+}
+
 /* Brief highlight ring when a global-search result deep-links to a card on the
    board. Applied/removed from KanbanBoard; global so it can target the scoped
    .card element. */

@@ -189,14 +189,26 @@ elements, 16–18px card padding and section gaps, 24px+ between page regions.
   actions use the **staged-undo** pattern: rows leave the screen at once and
   the server write runs only when the toast expires — Undo means it never
   happened (see the board's `stageRemoval`).
+- **Confirm dialog** — `await confirmDialog({ title, body?, confirmLabel?,
+  danger? })` (`$lib/confirm.svelte.ts` + `ConfirmDialog.svelte` in the root
+  layout) replaces `window.confirm()` everywhere. Staged-undo stays
+  preferred; a confirm is only for actions with **no undo** (void, dispose,
+  close the books). Danger asks style the confirm button as a destructive
+  outline and put initial focus on Cancel, so Enter never destroys. Esc and
+  the backdrop cancel; the ask is an `alertdialog` and trap-focused like
+  every other dialog.
 - **Skeletons** — `Skeleton.svelte`, for client-side fetches only; shape the
   bars to the content they replace. Server-loaded pages block navigation
   instead — the nav progress bar covers those, never a skeleton.
 - **Empty states** — `EmptyState.svelte`: hand-drawn icon + headline + one
-  line of help + the first action. Page-level voids get the full treatment;
-  accounting's in-card table placeholders stay compact `.empty` one-liners
-  by design. `size="sm"` inside palettes/cards, `framed={false}` when the
-  host already draws the card.
+  line of help + the first action. Page-level voids get the full treatment —
+  board, dashboard, prospects, and each accounting module list's first run.
+  Filtered-to-nothing results, sub-sections, and printable reports keep
+  compact `.empty` one-liners by design. `size="sm"` inside palettes/cards,
+  `framed={false}` when the host already draws the card.
+- **Error page** — root `+error.svelte`, same card language as `/login`:
+  brand mark, status, 404 vs 5xx copy, "Go to the board" (+ Reload on
+  errors). A failed load never shows the unstyled SvelteKit default.
 - **⌘K palette** — `SearchPalette.svelte` is search *and* the command bar:
   an empty query lists every command (navigation, theme, new task, guide,
   shortcuts), typing filters them alongside search hits. Commands are
@@ -209,6 +221,16 @@ elements, 16–18px card padding and section gaps, 24px+ between page regions.
   page-title convention everywhere (PageShell, `.acct-head`, login).
 - **Tables** — see `.acct table`: `--font-base` cells, `--font-sm` uppercase
   heads, `--border-soft` row hairlines, `tabular-nums` for figures (`.num`).
+  Entity lists sort client-side via `SortTh.svelte` + `createSort`
+  (`$lib/accounting/tableSort.svelte.ts`): the header cell is a real button
+  carrying `aria-sort`, first click ascends, second flips. Registers do
+  **not** sort (the running balance only means anything in date order) —
+  they pin their header instead (`.table-wrap.tall`).
+- **Accounting section nav** — `.acct-nav` groups (Receivables · Payables ·
+  Reports · Banking) carry visible micro-labels on desktop and wrap as
+  units; on phones the nav collapses to one horizontally-scrollable,
+  edge-faded row and centers the active pill on load. Never let a group clip
+  past the viewport.
 
 ## Iconography
 
@@ -229,7 +251,8 @@ legend/tick colors. Dataset colors stay literal by design (see Principles #4).
 - `prefers-reduced-motion` neutralizes all animations/transitions and hover
   lifts globally.
 - Keyboard focus: global `:focus-visible` outline in `--primary`; mouse/touch
-  focus stays clean.
+  focus stays clean. A skip-to-content link (root layout, `.skip-link`) is
+  the first Tab stop on every page; both shells mark their `<main id="main">`.
 - Mobile (≤768px): 44px tap targets, 16px input floor, `.mobile-topbar` shell
   convention, safe-area insets.
 - Tablet band (769–1100px): desktop layout, but `--sidebar-width` narrows to

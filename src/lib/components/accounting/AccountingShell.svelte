@@ -30,6 +30,16 @@
   } = $props()
 
   const path = $derived(page.url.pathname)
+
+  // When the nav is a horizontal scroller (phones), land with the active pill
+  // centered so the current section is never off-screen.
+  let navEl: HTMLElement | undefined = $state()
+  $effect(() => {
+    void path
+    if (!navEl || navEl.scrollWidth <= navEl.clientWidth) return
+    const active = navEl.querySelector<HTMLElement>('a.active')
+    if (active) navEl.scrollLeft = active.offsetLeft - (navEl.clientWidth - active.offsetWidth) / 2
+  })
   // Overview matches only the exact hub path; every other section also matches
   // its sub-routes (e.g. /accounting/invoices highlights on /…/invoices/new).
   const STATEMENT_PATHS = ['/accounting/income-statement', '/accounting/balance-sheet', '/accounting/cash-flow']
@@ -88,14 +98,17 @@
       {#if actions}<div class="acct-head-actions">{@render actions()}</div>{/if}
     </header>
 
-    <nav class="acct-nav" aria-label="Accounting sections">
+    <nav class="acct-nav" aria-label="Accounting sections" bind:this={navEl}>
       {#each NAV as group (group.label)}
         <span class="group" role="group" aria-label={group.label}>
-          {#each group.items as it (it.href)}
-            <a href={it.href} class:active={isActive(it.href)} aria-current={isActive(it.href) ? 'page' : undefined}>
-              <span class="ico"><Icon name={it.ico} size={14} /></span>{it.label}
-            </a>
-          {/each}
+          {#if group.items.length > 1}<span class="group-label" aria-hidden="true">{group.label}</span>{/if}
+          <span class="group-pills">
+            {#each group.items as it (it.href)}
+              <a href={it.href} class:active={isActive(it.href)} aria-current={isActive(it.href) ? 'page' : undefined}>
+                <span class="ico"><Icon name={it.ico} size={14} /></span>{it.label}
+              </a>
+            {/each}
+          </span>
         </span>
       {/each}
     </nav>

@@ -1,6 +1,9 @@
 <script lang="ts">
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
   import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
+  import SortTh from '$lib/components/accounting/SortTh.svelte'
+  import { createSort } from '$lib/accounting/tableSort.svelte'
   import { usd, relativeDue } from '$lib/accounting/format'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -44,6 +47,17 @@
     total: visible.reduce((s, i) => s + i.total, 0),
     balance: visible.reduce((s, i) => s + i.balance, 0),
   })
+
+  const sort = createSort<(typeof invoices)[number]>({
+    num: (i) => i.year * 10000 + i.number,
+    customer: (i) => i.customer_name,
+    due: (i) => i.due_date,
+    total: (i) => i.total,
+    paid: (i) => (i.total > 0 ? (i.total - i.balance) / i.total : 0),
+    balance: (i) => i.balance,
+    status: (i) => i.status,
+  })
+  const sorted = $derived(sort.apply(visible))
   const paidPct = (inv: { total: number; balance: number }) =>
     inv.total > 0 ? Math.round(((inv.total - inv.balance) / inv.total) * 100) : 0
 </script>
@@ -58,8 +72,12 @@
 
   <section class="card flush">
     {#if invoices.length === 0}
-      <p class="empty">No invoices yet. Create one — optionally from a won quote.</p>
-      <p><a class="btn-primary" href="/accounting/invoices/new">+ Create your first invoice</a></p>
+      <EmptyState icon="invoice" title="No invoices yet" framed={false}>
+        Create one — optionally from a won quote.
+        {#snippet actions()}
+          <a class="btn-primary" href="/accounting/invoices/new">+ Create your first invoice</a>
+        {/snippet}
+      </EmptyState>
     {:else}
       <div class="list-toolbar">
         <div class="filter-pills" role="group" aria-label="Filter invoices by status">
@@ -79,12 +97,17 @@
           <table>
             <thead>
               <tr>
-                <th>#</th><th>Customer</th><th>Due</th>
-                <th class="num">Total</th><th>Paid</th><th class="num">Balance</th><th>Status</th>
+                <SortTh {sort} key="num" label="#" />
+                <SortTh {sort} key="customer" label="Customer" />
+                <SortTh {sort} key="due" label="Due" />
+                <SortTh {sort} key="total" label="Total" num />
+                <SortTh {sort} key="paid" label="Paid" />
+                <SortTh {sort} key="balance" label="Balance" num />
+                <SortTh {sort} key="status" label="Status" />
               </tr>
             </thead>
             <tbody>
-              {#each visible as inv (inv._id)}
+              {#each sorted as inv (inv._id)}
                 {@const due = relativeDue(inv.due_date, today)}
                 <tr class="row-link" class:row-overdue={isOverdue(inv)}
                   onclick={() => (window.location.href = `/accounting/invoices/${inv._id}`)}>
