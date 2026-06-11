@@ -86,7 +86,7 @@ function buildSchema(assignees: string[]) {
         type: 'array',
         items: { type: 'string' },
         description:
-          'Store/site numbers referenced anywhere in the email, as 3-digit strings (e.g. "412"); strip any "D-" prefix. Empty array if none. Do NOT include phone numbers, zip codes, suite numbers, or dollar amounts.',
+          'Store/site numbers referenced anywhere in the email, as 3-digit strings (e.g. "412"); strip any "D-" prefix. Empty array if none. Do NOT include phone numbers, zip codes, suite numbers, dollar amounts, or project/permit/job codes (e.g. the "026" and "150" in "RMI 026-150" are NOT stores).',
       },
       summary: {
         type: 'string',
