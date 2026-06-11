@@ -2,6 +2,7 @@
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import ActivityFeed from '$lib/components/accounting/ActivityFeed.svelte'
   import { usd } from '$lib/accounting/format'
+  import { confirmDialog } from '$lib/confirm.svelte'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -18,7 +19,13 @@
   let errorMsg = $state('')
 
   async function dispose() {
-    if (!confirm(`Dispose "${a.name}"? Cost and accumulated depreciation clear; the difference posts to 4950 Gain/Loss.`)) return
+    const ok = await confirmDialog({
+      title: `Dispose “${a.name}”?`,
+      body: 'Cost and accumulated depreciation clear; the difference posts to 4950 Gain/Loss.',
+      confirmLabel: 'Dispose asset',
+      danger: true,
+    })
+    if (!ok) return
     saving = true
     errorMsg = ''
     try {
@@ -37,7 +44,12 @@
   }
 
   async function undispose() {
-    if (!confirm('Undo the disposal? Its journal entry reverses (dated today).')) return
+    const ok = await confirmDialog({
+      title: 'Undo the disposal?',
+      body: 'Its journal entry reverses (dated today).',
+      confirmLabel: 'Undo disposal',
+    })
+    if (!ok) return
     saving = true
     errorMsg = ''
     try {

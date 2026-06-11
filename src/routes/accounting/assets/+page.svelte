@@ -1,5 +1,8 @@
 <script lang="ts">
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
+  import SortTh from '$lib/components/accounting/SortTh.svelte'
+  import { createSort } from '$lib/accounting/tableSort.svelte'
   import { usd } from '$lib/accounting/format'
   import { invalidateAll, goto } from '$app/navigation'
   import type { PageData } from './$types'
@@ -8,6 +11,17 @@
   let { data }: { data: PageData } = $props()
   const session = $derived(data.session as unknown as AppSession)
   const user = $derived({ name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' })
+
+  const sort = createSort<(typeof data.assets)[number]>({
+    name: (a) => a.name,
+    inService: (a) => a.in_service,
+    cost: (a) => a.cost,
+    accumulated: (a) => a.accumulated ?? 0,
+    book: (a) => a.bookValue,
+    postedThru: (a) => a.posted_through ?? '',
+    status: (a) => a.status,
+  })
+  const sorted = $derived(sort.apply(data.assets))
 
   const thisMonth = new Date().toISOString().slice(0, 7)
   let through = $state(thisMonth)
@@ -94,15 +108,25 @@
 
   <section class="card flush">
     {#if data.assets.length === 0}
-      <p class="empty">No assets registered yet.</p>
+      <EmptyState icon="asset" title="No assets registered yet" framed={false}>
+        Register equipment and vehicles to track cost and depreciation.
+      </EmptyState>
     {:else}
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Asset</th><th>In service</th><th class="num">Cost</th><th class="num">Accumulated</th><th class="num">Book value</th><th>Posted thru</th><th>Status</th></tr>
+            <tr>
+              <SortTh {sort} key="name" label="Asset" />
+              <SortTh {sort} key="inService" label="In service" />
+              <SortTh {sort} key="cost" label="Cost" num />
+              <SortTh {sort} key="accumulated" label="Accumulated" num />
+              <SortTh {sort} key="book" label="Book value" num />
+              <SortTh {sort} key="postedThru" label="Posted thru" />
+              <SortTh {sort} key="status" label="Status" />
+            </tr>
           </thead>
           <tbody>
-            {#each data.assets as a (a._id)}
+            {#each sorted as a (a._id)}
               <tr class="row-link" onclick={() => goto(`/accounting/assets/${a._id}`)}>
                 <td>{a.name}</td>
                 <td class="mono">{a.in_service}</td>

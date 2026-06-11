@@ -1,5 +1,8 @@
 <script lang="ts">
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
+  import SortTh from '$lib/components/accounting/SortTh.svelte'
+  import { createSort } from '$lib/accounting/tableSort.svelte'
   import { usd } from '$lib/accounting/format'
   import { poNumber } from '$lib/accounting/purchaseOrders'
   import { goto } from '$app/navigation'
@@ -18,6 +21,17 @@
     return c
   })
   const FILTERS = ['all', 'open', 'partially-billed', 'closed', 'cancelled'] as const
+
+  const sort = createSort<(typeof data.pos)[number]>({
+    num: (p) => p.year * 10000 + p.number,
+    vendor: (p) => p.vendor_name,
+    date: (p) => p.date,
+    total: (p) => p.total,
+    billed: (p) => p.billed,
+    remaining: (p) => Math.max(0, p.total - p.billed),
+    status: (p) => p.status,
+  })
+  const sorted = $derived(sort.apply(visible))
 </script>
 
 <svelte:head><title>Purchase Orders · Blueprint</title></svelte:head>
@@ -42,15 +56,32 @@
 
   <section class="card flush">
     {#if visible.length === 0}
-      <p class="empty">{data.pos.length === 0 ? 'No purchase orders yet.' : 'Nothing matches this filter.'}</p>
+      {#if data.pos.length === 0}
+        <EmptyState icon="po" title="No purchase orders yet" framed={false}>
+          Raise one to track committed spend before the bill arrives.
+          {#snippet actions()}
+            <a class="btn-primary" href="/accounting/purchase-orders/new">+ Create your first PO</a>
+          {/snippet}
+        </EmptyState>
+      {:else}
+        <p class="empty">Nothing matches this filter.</p>
+      {/if}
     {:else}
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>PO</th><th>Vendor</th><th>Date</th><th class="num">Total</th><th class="num">Billed</th><th class="num">Remaining</th><th>Status</th></tr>
+            <tr>
+              <SortTh {sort} key="num" label="PO" />
+              <SortTh {sort} key="vendor" label="Vendor" />
+              <SortTh {sort} key="date" label="Date" />
+              <SortTh {sort} key="total" label="Total" num />
+              <SortTh {sort} key="billed" label="Billed" num />
+              <SortTh {sort} key="remaining" label="Remaining" num />
+              <SortTh {sort} key="status" label="Status" />
+            </tr>
           </thead>
           <tbody>
-            {#each visible as p (p._id)}
+            {#each sorted as p (p._id)}
               <tr class="row-link" onclick={() => goto(`/accounting/purchase-orders/${p._id}`)}>
                 <td class="mono">{poNumber(p)}</td>
                 <td>{p.vendor_name}</td>

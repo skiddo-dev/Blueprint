@@ -14,6 +14,10 @@
     title?: string
   } = $props()
 
+  // Empty books return a full window of zero months, not an empty array — treat
+  // both as "nothing posted" so we never draw an axis over no data.
+  const hasActivity = $derived(months.some((m) => m.revenue !== 0 || m.expenses !== 0))
+
   const MONTH = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })
   // Disambiguate years only when the window spans more than one.
   const spansYears = $derived(new Set(months.map((m) => m.month.slice(0, 4))).size > 1)
@@ -51,7 +55,7 @@
 
 <article class="trend-card">
   <div class="head"><h3>{title}</h3></div>
-  {#if months.length === 0}
+  {#if !hasActivity}
     <p class="empty">No activity posted yet — the trend fills in as invoices, bills and payments hit the books.</p>
   {:else}
     <div class="canvas"><Chart type="bar" {data} options={opts} /></div>

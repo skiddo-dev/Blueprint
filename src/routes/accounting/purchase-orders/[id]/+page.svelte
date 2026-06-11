@@ -3,6 +3,7 @@
   import ActivityFeed from '$lib/components/accounting/ActivityFeed.svelte'
   import { usd } from '$lib/accounting/format'
   import { poNumber, remainingLines } from '$lib/accounting/purchaseOrders'
+  import { confirmDialog } from '$lib/confirm.svelte'
   import { invalidateAll, goto } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -33,10 +34,12 @@
   }
 
   async function act(action: 'close' | 'cancel') {
-    const msg = action === 'close'
-      ? 'Close this PO? No further billing is expected against it.'
-      : 'Cancel this PO?'
-    if (!confirm(msg)) return
+    // "Cancel this PO?" with a button also labeled Cancel is a coin flip —
+    // name both actions explicitly.
+    const ok = action === 'close'
+      ? await confirmDialog({ title: `Close PO ${num}?`, body: 'No further billing is expected against it.', confirmLabel: 'Close PO' })
+      : await confirmDialog({ title: `Cancel PO ${num}?`, confirmLabel: 'Cancel PO', cancelLabel: 'Keep it', danger: true })
+    if (!ok) return
     saving = true
     error = ''
     try {

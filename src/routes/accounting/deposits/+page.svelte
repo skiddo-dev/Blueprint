@@ -1,6 +1,9 @@
 <script lang="ts">
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import SortTh from '$lib/components/accounting/SortTh.svelte'
+  import { createSort } from '$lib/accounting/tableSort.svelte'
   import { usd } from '$lib/accounting/format'
+  import { confirmDialog } from '$lib/confirm.svelte'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -15,6 +18,17 @@
   let memo = $state('')
   let saving = $state(false)
   let errorMsg = $state('')
+
+  // History table only — the undeposited pick list keeps its workflow order.
+  const sort = createSort<(typeof data.deposits)[number]>({
+    date: (d) => d.date,
+    into: (d) => d.account_id,
+    payments: (d) => d.payment_ids.length,
+    total: (d) => d.total,
+    memo: (d) => d.memo ?? '',
+    status: (d) => d.status,
+  })
+  const sorted = $derived(sort.apply(data.deposits))
 
   const pickedIds = $derived(Object.keys(picked).filter((id) => picked[id]))
   const pickedTotal = $derived(data.undeposited.filter((p) => picked[p._id]).reduce((t, p) => t + p.amount, 0))
@@ -39,7 +53,13 @@
   }
 
   async function voidDeposit(id: string) {
-    if (!confirm('Void this deposit? The payments return to Undeposited Funds.')) return
+    const ok = await confirmDialog({
+      title: 'Void this deposit?',
+      body: 'The payments return to Undeposited Funds.',
+      confirmLabel: 'Void deposit',
+      danger: true,
+    })
+    if (!ok) return
     saving = true
     errorMsg = ''
     try {
@@ -110,10 +130,18 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Date</th><th>Into</th><th class="num">Payments</th><th class="num">Total</th><th>Memo</th><th>Status</th><th></th></tr>
+            <tr>
+              <SortTh {sort} key="date" label="Date" />
+              <SortTh {sort} key="into" label="Into" />
+              <SortTh {sort} key="payments" label="Payments" num />
+              <SortTh {sort} key="total" label="Total" num />
+              <SortTh {sort} key="memo" label="Memo" />
+              <SortTh {sort} key="status" label="Status" />
+              <th></th>
+            </tr>
           </thead>
           <tbody>
-            {#each data.deposits as dep (dep._id)}
+            {#each sorted as dep (dep._id)}
               <tr class:voided={dep.status === 'void'}>
                 <td class="mono">{dep.date}</td>
                 <td class="mono">{dep.account_id}</td>

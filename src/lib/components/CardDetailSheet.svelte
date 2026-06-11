@@ -251,10 +251,15 @@
           </span>
         {/each}
         {#if coCandidates.length}
-          <select class="co-add" aria-label="Add another person" title="Assign another person" onchange={addCoAssignee}>
-            <option value="" selected>＋👤</option>
-            {#each coCandidates as a}<option value={a}>{a}</option>{/each}
-          </select>
+          <!-- A select dressed as a dashed chip; its own text is transparent and
+               the icon-set glyph overlays the face (an <option> can't hold SVG). -->
+          <span class="co-add-wrap">
+            <select class="co-add" aria-label="Add another person" title="Assign another person" onchange={addCoAssignee}>
+              <option value="" selected>Add person…</option>
+              {#each coCandidates as a}<option value={a}>{a}</option>{/each}
+            </select>
+            <span class="co-add-ico" aria-hidden="true"><Icon name="person-add" size={13} /></span>
+          </span>
         {:else if !coAssignees.length}
           <span class="co-none">—</span>
         {/if}
@@ -560,21 +565,35 @@
     min-height: 0;
   }
   .co-remove:hover { opacity: 1; color: var(--danger); }
+  .co-add-wrap { position: relative; display: inline-flex; }
+  .co-add-ico {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    color: var(--text-soft);
+  }
+  .co-add-wrap:hover .co-add-ico { color: var(--primary-text); }
   .co-add {
-    width: auto;
+    width: 38px;
     min-height: 0;
     padding: 2px 7px;
     border-radius: var(--radius-pill);
     font-size: var(--font-xs);
     font-weight: 600;
-    color: var(--text-soft);
+    color: transparent; /* the glyph overlay is the face */
     background: var(--bg);
     border: 1px dashed var(--border);
     cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
     -webkit-appearance: none;
     appearance: none;
   }
-  .co-add:hover { border-color: var(--primary); color: var(--primary-text); }
+  .co-add option { color: var(--text-body); }
+  .co-add:hover { border-color: var(--primary); }
 
   .sect { margin-bottom: 14px; }
   .sect-title {
@@ -728,7 +747,7 @@
     }
     input[type="date"]::-webkit-date-and-time-value { font-size: 16px; }
     textarea { min-height: 56px; }
-    .co-add { font-size: 16px; min-height: 36px; padding: 4px 10px; width: auto; }
+    .co-add { font-size: 16px; min-height: 36px; padding: 4px 10px; width: 44px; }
     .co-remove { font-size: var(--font-base); padding: 2px 5px; }
     .sheet-close { min-width: 44px; min-height: 44px; }
   }

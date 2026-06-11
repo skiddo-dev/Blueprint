@@ -2,6 +2,7 @@
   import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { usd } from '$lib/accounting/format'
+  import { confirmDialog } from '$lib/confirm.svelte'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -45,7 +46,13 @@
   }
 
   async function voidRemittance(id: string) {
-    if (!confirm('Void this remittance? Its journal entry reverses (dated today).')) return
+    const ok = await confirmDialog({
+      title: 'Void this remittance?',
+      body: 'Its journal entry reverses (dated today).',
+      confirmLabel: 'Void remittance',
+      danger: true,
+    })
+    if (!ok) return
     saving = true
     errorMsg = ''
     try {

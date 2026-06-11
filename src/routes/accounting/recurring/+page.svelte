@@ -2,7 +2,11 @@
   import Icon from '$lib/components/Icon.svelte'
   import type { IconName } from '$lib/icons'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
+  import SortTh from '$lib/components/accounting/SortTh.svelte'
+  import { createSort } from '$lib/accounting/tableSort.svelte'
   import { describeCadence } from '$lib/accounting/recurring'
+  import { confirmDialog } from '$lib/confirm.svelte'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -35,7 +39,13 @@
 
   const toggle = async (id: string, active: boolean) => { await call('PATCH', `/api/accounting/recurring/${id}`, { active }); await invalidateAll() }
   const remove = async (id: string, name: string) => {
-    if (!confirm(`Delete the recurring template “${name}”? Already-posted documents stay in the books.`)) return
+    const ok = await confirmDialog({
+      title: `Delete the recurring template “${name}”?`,
+      body: 'Already-posted documents stay in the books.',
+      confirmLabel: 'Delete template',
+      danger: true,
+    })
+    if (!ok) return
     await call('DELETE', `/api/accounting/recurring/${id}`)
     await invalidateAll()
   }
@@ -46,6 +56,15 @@
   }
 
   const TYPE_ICON: Record<string, IconName> = { invoice: 'invoice', bill: 'bill', journal: 'ledger' }
+
+  const sort = createSort<(typeof data.templates)[number]>({
+    name: (t) => t.name,
+    cadence: (t) => describeCadence(t.cadence),
+    next: (t) => (t.active ? t.next_date : ''),
+    result: (t) => t.last_result ?? '',
+    status: (t) => Number(t.active),
+  })
+  const sorted = $derived(sort.apply(data.templates))
 </script>
 
 <svelte:head><title>Recurring · Blueprint</title></svelte:head>
@@ -63,15 +82,24 @@
 
   <section class="card flush">
     {#if data.templates.length === 0}
-      <p class="empty">No recurring templates yet. Open a new invoice, bill, or journal entry and use “Make this recurring” at the bottom of the form.</p>
+      <EmptyState icon="recurring" title="No recurring templates yet" framed={false}>
+        Open a new invoice, bill, or journal entry and use “Make this recurring” at the bottom of the form.
+      </EmptyState>
     {:else}
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Template</th><th>Cadence</th><th>Next run</th><th>Last result</th><th>Status</th><th></th></tr>
+            <tr>
+              <SortTh {sort} key="name" label="Template" />
+              <SortTh {sort} key="cadence" label="Cadence" />
+              <SortTh {sort} key="next" label="Next run" />
+              <SortTh {sort} key="result" label="Last result" />
+              <SortTh {sort} key="status" label="Status" />
+              <th></th>
+            </tr>
           </thead>
           <tbody>
-            {#each data.templates as t (t._id)}
+            {#each sorted as t (t._id)}
               <tr class:paused={!t.active}>
                 <td><Icon name={TYPE_ICON[t.type] ?? 'ledger'} size={12} /> {t.name}</td>
                 <td>{describeCadence(t.cadence)}</td>

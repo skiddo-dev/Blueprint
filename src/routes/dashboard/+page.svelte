@@ -141,6 +141,20 @@
     monthFrom !== 1 || monthTo !== 12 || minSample !== 5 ||
     estimatorFilter !== 'All' || workTypeFilter !== 'All',
   )
+  // Phones fold the filter panel behind a Filters button (same pattern as the
+  // board's View fold); the badge counts non-default filters so an active-but-
+  // hidden filter is never invisible. Desktop ignores all of this via CSS.
+  let filtersOpen = $state(false)
+  const activeFilterCount = $derived(
+    [
+      yearFrom !== yearMin || yearTo !== yearMax,
+      amtLo !== 0 || amtHi !== amtCeil,
+      monthFrom !== 1 || monthTo !== 12,
+      minSample !== 5,
+      estimatorFilter !== 'All',
+      workTypeFilter !== 'All',
+    ].filter(Boolean).length,
+  )
   function resetFilters() {
     yearFrom = yearMin; yearTo = yearMax; amtLo = 0; amtHi = amtCeil
     monthFrom = 1; monthTo = 12; minSample = 5
@@ -598,46 +612,66 @@
     {:else}
       <!-- Interactive filters (sliders) — every chart/metric below reacts live -->
       <div class="filter-bar">
-        <div class="filter-group">
-          <span class="filter-label">Years <strong>{Math.min(yearFrom, yearTo)}–{Math.max(yearFrom, yearTo)}</strong></span>
-          <input type="range" min={yearMin} max={yearMax} step="1" bind:value={yearFrom} aria-label="Year from" />
-          <input type="range" min={yearMin} max={yearMax} step="1" bind:value={yearTo} aria-label="Year to" />
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">
-            Deal size <strong>{money(Math.min(amtLo, amtHi))} – {Math.max(amtLo, amtHi) >= amtCeil ? money(amtCeil) + '+' : money(Math.max(amtLo, amtHi))}</strong>
-          </span>
-          <input type="range" min="0" max={amtCeil} step="5000" bind:value={amtLo} aria-label="Minimum deal size" />
-          <input type="range" min="0" max={amtCeil} step="5000" bind:value={amtHi} aria-label="Maximum deal size" />
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Months <strong>{MONTHS[Math.min(monthFrom, monthTo) - 1]}–{MONTHS[Math.max(monthFrom, monthTo) - 1]}</strong></span>
-          <input type="range" min="1" max="12" step="1" bind:value={monthFrom} aria-label="Month from" />
-          <input type="range" min="1" max="12" step="1" bind:value={monthTo} aria-label="Month to" />
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Min decided <span class="muted">(win-rate charts)</span> <strong>≥{minSample}</strong></span>
-          <input type="range" min="1" max="15" step="1" bind:value={minSample} aria-label="Minimum decided sample" />
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Estimator</span>
-          <select bind:value={estimatorFilter} aria-label="Filter by estimator">
-            <option value="All">All estimators</option>
-            {#each estimatorOptions as e}<option value={e}>{e}</option>{/each}
-          </select>
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Work type</span>
-          <select bind:value={workTypeFilter} aria-label="Filter by work type">
-            <option value="All">All work types</option>
-            {#each workTypeOptions as w}<option value={w}>{w}</option>{/each}
-          </select>
-        </div>
-        <div class="filter-meta">
-          <span>{fq.length} of {totalQuotes} quotes</span>
-          {#if filtersActive}<button class="chip" onclick={resetFilters}>Reset</button>{/if}
-          <button class="chip" onclick={copyShareLink}><Icon name={copied ? 'check' : 'link'} size={12} /> {copied ? 'Copied' : 'Copy link'}</button>
-          <button class="chip" onclick={exportCsv}><Icon name="download" size={12} /> Export CSV</button>
+        <button
+          type="button"
+          class="df-toggle"
+          aria-expanded={filtersOpen}
+          onclick={() => (filtersOpen = !filtersOpen)}
+        >
+          <Icon name="sliders" size={13} /> Filters{#if activeFilterCount}<span class="df-badge">{activeFilterCount}</span>{/if}
+          {filtersOpen ? '▴' : '▾'}
+        </button>
+        <span class="df-summary">{fq.length} of {totalQuotes} quotes</span>
+        <div class="df-controls" class:open={filtersOpen}>
+          <div class="filter-group">
+            <span class="filter-label">Years <strong>{Math.min(yearFrom, yearTo)}–{Math.max(yearFrom, yearTo)}</strong></span>
+            <div class="range-pair">
+              <input type="range" min={yearMin} max={yearMax} step="1" bind:value={yearFrom} aria-label="Year from" />
+              <input type="range" min={yearMin} max={yearMax} step="1" bind:value={yearTo} aria-label="Year to" />
+            </div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">
+              Deal size <strong>{money(Math.min(amtLo, amtHi))} – {Math.max(amtLo, amtHi) >= amtCeil ? money(amtCeil) + '+' : money(Math.max(amtLo, amtHi))}</strong>
+            </span>
+            <div class="range-pair">
+              <input type="range" min="0" max={amtCeil} step="5000" bind:value={amtLo} aria-label="Minimum deal size" />
+              <input type="range" min="0" max={amtCeil} step="5000" bind:value={amtHi} aria-label="Maximum deal size" />
+            </div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Months <strong>{MONTHS[Math.min(monthFrom, monthTo) - 1]}–{MONTHS[Math.max(monthFrom, monthTo) - 1]}</strong></span>
+            <div class="range-pair">
+              <input type="range" min="1" max="12" step="1" bind:value={monthFrom} aria-label="Month from" />
+              <input type="range" min="1" max="12" step="1" bind:value={monthTo} aria-label="Month to" />
+            </div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Min decided <span class="muted">(win-rate charts)</span> <strong>≥{minSample}</strong></span>
+            <div class="range-pair solo">
+              <input type="range" min="1" max="15" step="1" bind:value={minSample} aria-label="Minimum decided sample" />
+            </div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Estimator</span>
+            <select bind:value={estimatorFilter} aria-label="Filter by estimator">
+              <option value="All">All estimators</option>
+              {#each estimatorOptions as e}<option value={e}>{e}</option>{/each}
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Work type</span>
+            <select bind:value={workTypeFilter} aria-label="Filter by work type">
+              <option value="All">All work types</option>
+              {#each workTypeOptions as w}<option value={w}>{w}</option>{/each}
+            </select>
+          </div>
+          <div class="filter-meta">
+            <span>{fq.length} of {totalQuotes} quotes</span>
+            {#if filtersActive}<button class="chip" onclick={resetFilters}>Reset</button>{/if}
+            <button class="chip" onclick={copyShareLink}><Icon name={copied ? 'check' : 'link'} size={12} /> {copied ? 'Copied' : 'Copy link'}</button>
+            <button class="chip" onclick={exportCsv}><Icon name="download" size={12} /> Export CSV</button>
+          </div>
         </div>
       </div>
 
@@ -885,8 +919,98 @@
   .filter-group { display: flex; flex-direction: column; gap: 4px; min-width: 220px; flex: 1; }
   .filter-label { font-size: var(--font-sm); color: var(--text-muted); }
   .filter-label strong { color: var(--text); font-weight: 700; }
-  .filter-group input[type="range"] { width: 100%; accent-color: var(--primary-dark); margin: 0; height: 18px; }
   .filter-group select { width: 100%; font-size: var(--font-sm); padding: 5px 7px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card-bg); color: var(--text); }
+
+  /* Min/max range pairs share ONE track — the two thumbs ride it together
+     (stacked twin tracks read as two separate sliders). Inputs overlay the
+     wrapper; only the thumbs take pointer events, so either is grabbable. */
+  .range-pair { position: relative; height: 22px; }
+  .range-pair::before {
+    content: '';
+    position: absolute;
+    left: 1px; right: 1px; top: 50%;
+    height: 4px;
+    transform: translateY(-50%);
+    background: var(--border);
+    border-radius: var(--radius-pill);
+  }
+  .range-pair input[type="range"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 22px;
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    pointer-events: none;
+  }
+  .range-pair.solo input[type="range"] { pointer-events: auto; }
+  .range-pair input[type="range"]::-webkit-slider-runnable-track { height: 22px; background: transparent; }
+  .range-pair input[type="range"]::-moz-range-track { background: transparent; }
+  .range-pair input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    pointer-events: auto;
+    width: 14px; height: 14px;
+    margin-top: 4px; /* (22 - 14) / 2 — centers the thumb on the track */
+    border-radius: 50%;
+    background: var(--primary-dark);
+    border: 2px solid var(--card-bg);
+    box-shadow: 0 0 0 1px var(--border);
+    cursor: pointer;
+  }
+  .range-pair input[type="range"]::-moz-range-thumb {
+    pointer-events: auto;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--primary-dark);
+    border: 2px solid var(--card-bg);
+    box-shadow: 0 0 0 1px var(--border);
+    cursor: pointer;
+  }
+  .range-pair input[type="range"]:focus-visible { outline: none; }
+  .range-pair input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: var(--focus-ring); }
+  .range-pair input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: var(--focus-ring); }
+
+  /* Phones: the panel folds behind the Filters button (desktop never sees
+     these — the toggle is hidden and .df-controls flattens away). */
+  .df-toggle, .df-summary { display: none; }
+  .df-controls { display: contents; }
+  .df-badge {
+    background: var(--primary);
+    color: #fff;
+    border-radius: var(--radius-pill);
+    padding: 0 7px;
+    font-size: var(--font-xs);
+    font-weight: 700;
+    margin-left: 2px;
+  }
+  @media (max-width: 768px) {
+    .df-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-soft);
+      border-radius: var(--radius-md);
+      padding: 6px 12px;
+      font-size: var(--font-base);
+      font-weight: 600;
+      min-height: 0;
+      cursor: pointer;
+    }
+    .df-summary { display: inline; font-size: var(--font-sm); color: var(--text-faint); }
+    .df-controls { display: none; }
+    .df-controls.open {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex-basis: 100%;
+    }
+    .df-controls.open .filter-group { min-width: 0; }
+  }
   .filter-meta { display: flex; align-items: center; gap: 8px; font-size: var(--font-sm); color: var(--text-faint); flex-wrap: wrap; }
   .risk-badge { color: var(--danger); font-weight: 700; }
   .risk-badge :global(svg), .risk-text :global(svg) { vertical-align: -1.5px; }

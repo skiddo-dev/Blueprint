@@ -782,12 +782,13 @@
   <div class="toolbar-right">
     {#if role === 'admin'}
       <button
-        class="secondary"
+        class="secondary refresh-btn"
         onclick={syncEmails}
         disabled={syncing}
+        aria-label="Refresh now"
         title="Flagged email syncs automatically — tap to pull it in right now"
       >
-        {#if syncing}Refreshing…{:else}<Icon name="refresh" size={13} /> Refresh now{/if}
+        <Icon name="refresh" size={13} /><span class="refresh-label">{syncing ? 'Refreshing…' : 'Refresh now'}</span>
       </button>
     {/if}
     <button class="primary" onclick={() => { showNewTask = true }}><Icon name="pencil" size={13} /> New Task</button>
@@ -1190,9 +1191,17 @@
        sticky bar below can pin flush to the top (notch-safe). */
     .board-toolbar {
       padding-top: max(0.5rem, env(safe-area-inset-top));
+      /* One row: identity left, compact actions right. Stacked full-width
+         buttons used to push the first card past 60% of the screen. */
+      flex-wrap: nowrap;
+      align-items: center;
+      margin-bottom: 8px;
     }
+    .board-title { font-size: var(--font-xl); }
     /* The page identity is obvious on a phone — drop the tagline row. */
     .board-sub { display: none; }
+    .toolbar-right :global(button) { padding: 7px 11px; font-size: var(--font-sm); min-height: 0; }
+    .refresh-btn .refresh-label { display: none; }
 
     /* Fold the advanced controls behind the View button so the first card
        is reachable without scrolling past rows of chrome. The badge counts

@@ -29,7 +29,7 @@
 <div class="app-layout">
   <NavDrawer bind:open {user} />
 
-  <main class="main-content" style:max-width={maxWidth ?? null}>
+  <main id="main" class="main-content" style:max-width={maxWidth ?? null}>
     <!-- Mobile-only: ☰ opens the drawer; the title stands in for the desktop heading. -->
     <div class="mobile-topbar">
       <button class="menu-btn" onclick={() => (open = true)} aria-label="Open menu"><Icon name="menu" size={18} /></button>

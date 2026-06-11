@@ -242,12 +242,17 @@
       </span>
     {/each}
     {#if coCandidates.length}
-      <select class="co-add" aria-label="Add another person" title="Assign another person" onchange={addCoAssignee}>
-        <option value="" selected>＋👤</option>
-        {#each coCandidates as a}
-          <option value={a}>{a}</option>
-        {/each}
-      </select>
+      <!-- A select dressed as a dashed chip; its own text is transparent and
+           the icon-set glyph overlays the face (an <option> can't hold SVG). -->
+      <span class="co-add-wrap">
+        <select class="co-add" aria-label="Add another person" title="Assign another person" onchange={addCoAssignee}>
+          <option value="" selected>Add person…</option>
+          {#each coCandidates as a}
+            <option value={a}>{a}</option>
+          {/each}
+        </select>
+        <span class="co-add-ico" aria-hidden="true"><Icon name="person-add" size={13} /></span>
+      </span>
     {/if}
     {#if isAdmin && task.source_mailbox}
       <span class="inbox-chip" title="Flagged in {task.source_mailbox}"><Icon name="import" size={11} /> {inbox}</span>
@@ -585,24 +590,36 @@
     min-height: 0;
   }
   .co-remove:hover { opacity: 1; color: var(--danger); }
-  /* "＋👤" add-person picker — a select dressed as a dashed chip; the native
-     dropdown does the rest (works the same on touch). Overrides the generic
-     full-width select rule below. */
+  /* Add-person picker — a select dressed as a dashed chip with the icon-set
+     glyph overlaid as its face; the native dropdown does the rest (works the
+     same on touch). Overrides the generic full-width select rule below. */
+  .co-add-wrap { position: relative; display: inline-flex; }
+  .co-add-ico {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    color: var(--text-soft);
+  }
+  .co-add-wrap:hover .co-add-ico { color: var(--primary-text); }
   .co-add {
-    width: auto;
+    width: 38px;
     min-height: 0;
     padding: 2px 7px;
     border-radius: var(--radius-pill);
     font-size: var(--font-xs);
     font-weight: 600;
-    color: var(--text-soft);
+    color: transparent; /* the glyph overlay is the face */
     background: var(--bg);
     border: 1px dashed var(--border);
     cursor: pointer;
     -webkit-appearance: none;
     appearance: none;
   }
-  .co-add:hover { border-color: var(--primary); color: var(--primary-text); }
+  .co-add option { color: var(--text-body); }
+  .co-add:hover { border-color: var(--primary); }
   /* Admin-only: which PM inbox this email was flagged in. */
   .inbox-chip {
     background: var(--border-soft);
@@ -801,7 +818,7 @@
     .tool-chip { padding: 7px 12px; font-size: var(--font-sm); }
     /* The add-person picker keeps its chip shape but gets a finger-sized target;
        16px stops iOS Safari from zooming the page when the picker opens. */
-    .co-add { font-size: 16px; min-height: 36px; padding: 4px 10px; width: auto; }
+    .co-add { font-size: 16px; min-height: 36px; padding: 4px 10px; width: 44px; }
     .co-remove { font-size: var(--font-base); padding: 2px 5px; }
     .quote-pop summary {
       padding-top: 8px;

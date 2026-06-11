@@ -4,6 +4,7 @@
   import ActivityFeed from '$lib/components/accounting/ActivityFeed.svelte'
   import AttachmentsPanel from '$lib/components/accounting/AttachmentsPanel.svelte'
   import { usd } from '$lib/accounting/format'
+  import { confirmDialog } from '$lib/confirm.svelte'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -57,7 +58,13 @@
   }
 
   async function voidBill() {
-    if (!confirm(`Void bill ${num}? This reverses its journal entry (dated today) and cannot be undone.`)) return
+    const ok = await confirmDialog({
+      title: `Void bill ${num}?`,
+      body: 'This reverses its journal entry (dated today) and cannot be undone.',
+      confirmLabel: 'Void bill',
+      danger: true,
+    })
+    if (!ok) return
     saving = true
     error = ''
     try {
