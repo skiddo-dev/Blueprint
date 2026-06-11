@@ -8,6 +8,7 @@
   import FilterBar from './FilterBar.svelte'
   import StoreLanes from './StoreLanes.svelte'
   import Icon from './Icon.svelte'
+  import EmptyState from './EmptyState.svelte'
   import type { Task, TaskStatus, AppSession } from '$lib/types'
   import { KANBAN_STATUSES, STATUS_META, SUPERVISORS, WIP_LIMITS } from '$lib/constants'
   import { defaultFilters, taskMatchesFilters, taskStores, anyFilterActive, activeFilterCount } from '$lib/boardFilters'
@@ -16,6 +17,7 @@
   import { toggleReactor } from '$lib/reactions'
   import { isOwnedBy } from '$lib/ownership'
   import { statusOnAssign } from '$lib/taskRules'
+  import { toast } from '$lib/toast.svelte'
 
   let {
     initialTasks,
@@ -55,9 +57,63 @@
   let columns = $state(group(initialTasks as Task[]))
   let showNewTask = $state(false)
   let syncing = $state(false)
-  let syncMessage = $state('')
   let currentSig = $state('')
   let dragging = $state(false)
+
+  // ── Staged destructive actions (undo window) ─────────────────────────
+  // Archive and delete don't hit the server right away: the cards leave the
+  // board at once, a toast offers Undo, and the write only runs when the toast
+  // expires (timeout, dismiss, or the unmount/pagehide flush). Undo just
+  // un-hides — nothing was committed. While staged, every refetch filters
+  // pendingHide so the poll can't resurrect the cards.
+  const pendingHide = new SvelteSet<string>()
+  const stagedToasts = new Set<number>()
+  const withoutStaged = (tasks: Task[]) => tasks.filter(t => !pendingHide.has(t._id))
+
+  // Refetch unconditionally (the signature check is useless here — staging and
+  // a failed commit both leave the server signature unchanged).
+  async function forceRefetch() {
+    try {
+      const r = await fetch(tasksUrl())
+      if (r.ok) columns = group(withoutStaged(await r.json()))
+    } catch {
+      online = false
+    }
+  }
+
+  function stageRemoval(ids: string[], message: string, commit: () => Promise<void>) {
+    for (const id of ids) pendingHide.add(id)
+    for (const s of KANBAN_STATUSES) columns[s] = columns[s].filter(t => !pendingHide.has(t._id))
+    let tid = 0
+    tid = toast.success(message, {
+      undo: () => {
+        stagedToasts.delete(tid)
+        for (const id of ids) pendingHide.delete(id)
+        forceRefetch()
+      },
+      onExpire: async () => {
+        stagedToasts.delete(tid)
+        try {
+          await commit()
+          online = true
+        } catch {
+          online = false
+          toast.error('Couldn’t save — you appear to be offline. The board re-syncs when you reconnect.')
+          forceRefetch() // the write didn't land; bring the cards back
+        } finally {
+          for (const id of ids) pendingHide.delete(id)
+        }
+      },
+    })
+    stagedToasts.add(tid)
+  }
+
+  // Leaving the board (route change or tab close) commits anything still
+  // staged — the fetches inside the commits use keepalive so they survive
+  // page teardown.
+  function flushStaged() {
+    for (const tid of [...stagedToasts]) toast.dismiss(tid)
+  }
 
   // Which column is visible on mobile (phones show one status at a time via the
   // pill switcher below; desktop shows them all side by side).
@@ -103,33 +159,50 @@
   // through POST /api/tasks/bulk, then the board refetches.
   let selectedIds = new SvelteSet<string>()
   let bulkBusy = $state(false)
-  let bulkMessage = $state('')
   function toggleSelect(id: string) {
     if (selectedIds.has(id)) selectedIds.delete(id)
     else selectedIds.add(id)
   }
   async function runBulk(action: 'status' | 'assign' | 'archive' | 'delete', value?: string) {
     if (!selectedIds.size || bulkBusy) return
+    const ids = [...selectedIds]
+
+    // Destructive bulk actions go through the undo window — the POST runs when
+    // the toast expires, not now.
+    if (action === 'archive' || action === 'delete') {
+      selectedIds.clear()
+      const verb = action === 'delete' ? 'deleted' : 'archived'
+      stageRemoval(ids, `${ids.length} task${ids.length === 1 ? '' : 's'} ${verb}`, async () => {
+        const r = await fetch('/api/tasks/bulk', {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids, action }),
+        })
+        if (!r.ok) throw new Error(`bulk ${r.status}`)
+        const { skipped } = await r.json()
+        if (skipped) toast.info(`${skipped} of those ${skipped === 1 ? 'wasn’t' : 'weren’t'} yours to change — skipped.`)
+      })
+      return
+    }
+
     bulkBusy = true
-    for (const id of selectedIds) markLocal(id)
+    for (const id of ids) markLocal(id)
     try {
       const r = await fetch('/api/tasks/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [...selectedIds], action, ...(value ? { value } : {}) }),
+        body: JSON.stringify({ ids, action, ...(value ? { value } : {}) }),
       })
       if (!r.ok) throw new Error(`bulk ${r.status}`)
       const { done, skipped } = await r.json()
-      bulkMessage = `✓ ${done} task${done === 1 ? '' : 's'} updated${skipped ? ` · ${skipped} skipped` : ''}`
-      setTimeout(() => (bulkMessage = ''), 4000)
+      toast.success(`${done} task${done === 1 ? '' : 's'} updated${skipped ? ` · ${skipped} skipped` : ''}`)
       selectedIds.clear()
       const r2 = await fetch(tasksUrl())
-      if (r2.ok) columns = group(await r2.json())
+      if (r2.ok) columns = group(withoutStaged(await r2.json()))
     } catch {
       online = false
-      saveToast = 'Couldn’t apply the bulk action — check your connection and try again.'
-      clearTimeout(saveToastTimer)
-      saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
+      toast.error('Couldn’t apply the bulk action — check your connection and try again.')
     } finally {
       bulkBusy = false
     }
@@ -146,9 +219,7 @@
     })
     if (!r.ok) {
       online = false
-      saveToast = 'Couldn’t add that task — check your connection and try again.'
-      clearTimeout(saveToastTimer)
-      saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
+      toast.error('Couldn’t add that task — check your connection and try again.')
       return
     }
     const created: Task = await r.json()
@@ -191,7 +262,7 @@
   // Refetch immediately on toggle (don't wait for a signature change).
   function setShowArchived(v: boolean) {
     showArchived = v
-    fetch(tasksUrl()).then(r => (r.ok ? r.json() : null)).then(t => { if (t) columns = group(t) }).catch(() => {})
+    fetch(tasksUrl()).then(r => (r.ok ? r.json() : null)).then(t => { if (t) columns = group(withoutStaged(t)) }).catch(() => {})
   }
 
   // ── "My Work" view (default) ─────────────────────────────────────────
@@ -294,9 +365,7 @@
   // board offline, a successful one clears it. Window online/offline events add
   // instant feedback and refetch on reconnect.
   let online = $state(true)
-  let saveToast = $state('')
   let pollTimer: ReturnType<typeof setInterval>
-  let saveToastTimer: ReturnType<typeof setTimeout>
 
   // Which cards THIS client wrote recently — server-side changes to them within
   // the grace window are ours echoing back, not a teammate's edit to flash.
@@ -330,7 +399,7 @@
       currentSig = sig
       const r2 = await fetch(tasksUrl())
       if (r2.ok) {
-        const fresh: Task[] = await r2.json()
+        const fresh = withoutStaged(await r2.json() as Task[])
         const remote = remoteChangedIds(KANBAN_STATUSES.flatMap(s => columns[s]), fresh, localEdits, Date.now())
         columns = group(fresh)
         flashRemote(remote)
@@ -351,9 +420,7 @@
       online = true
     } catch {
       online = false
-      saveToast = 'Couldn’t save — you appear to be offline. The board re-syncs when you reconnect.'
-      clearTimeout(saveToastTimer)
-      saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
+      toast.error('Couldn’t save — you appear to be offline. The board re-syncs when you reconnect.')
     }
   }
 
@@ -364,9 +431,12 @@
   $effect(() => {
     window.addEventListener('online', goOnline)
     window.addEventListener('offline', goOffline)
+    // Tab closing / app backgrounding: commit staged deletes/archives now.
+    window.addEventListener('pagehide', flushStaged)
     return () => {
       window.removeEventListener('online', goOnline)
       window.removeEventListener('offline', goOffline)
+      window.removeEventListener('pagehide', flushStaged)
     }
   })
 
@@ -407,7 +477,7 @@
 
   onDestroy(() => {
     clearInterval(pollTimer)
-    clearTimeout(saveToastTimer)
+    flushStaged() // navigating away commits anything still in its undo window
   })
 
   // ── Drag-and-drop handlers ───────────────────────────────────────────
@@ -530,9 +600,7 @@
       online = true
     } catch {
       online = false
-      saveToast = 'Couldn’t add that checklist item — check your connection and try again.'
-      clearTimeout(saveToastTimer)
-      saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
+      toast.error('Couldn’t add that checklist item — check your connection and try again.')
     }
   }
 
@@ -572,9 +640,7 @@
       online = true
     } catch {
       online = false
-      saveToast = 'Couldn’t upload that file — check your connection and try again.'
-      clearTimeout(saveToastTimer)
-      saveToastTimer = setTimeout(() => (saveToast = ''), 5000)
+      toast.error('Couldn’t upload that file — check your connection and try again.')
     }
   }
 
@@ -588,26 +654,26 @@
   }
 
   // ── Delete ────────────────────────────────────────────────────────────
-  async function handleDelete(id: string) {
-    markLocal(id)
-    for (const s of KANBAN_STATUSES) {
-      columns[s] = columns[s].filter(t => t._id !== id)
-    }
-    await persist(fetch(`/api/tasks/${id}`, { method: 'DELETE' }))
+  // Staged: the card leaves the board now, the DELETE runs when the undo
+  // toast expires.
+  function handleDelete(id: string) {
+    stageRemoval([id], 'Task deleted', async () => {
+      const r = await fetch(`/api/tasks/${id}`, { method: 'DELETE', keepalive: true })
+      if (!r.ok) throw new Error(`delete ${r.status}`)
+    })
   }
 
   // ── Email sync (admin only) ───────────────────────────────────────────
   async function syncEmails() {
     syncing = true
-    syncMessage = ''
     try {
       const r = await fetch('/api/sync', { method: 'POST' })
       const data = await r.json()
-      syncMessage = data.message ?? 'Done'
+      toast.success(data.message ?? 'Done')
       const r2 = await fetch(tasksUrl())
-      if (r2.ok) columns = group(await r2.json())
+      if (r2.ok) columns = group(withoutStaged(await r2.json()))
     } catch (e) {
-      syncMessage = `Error: ${e}`
+      toast.error(`Couldn’t refresh email — ${e}`)
     } finally {
       syncing = false
     }
@@ -662,9 +728,6 @@
 {#if !online}
   <div class="offline-banner"><Icon name="signal" size={14} /> You’re offline — the board may be out of date, and changes won’t save until you reconnect.</div>
 {/if}
-{#if bulkMessage}
-  <div class="sync-toast">{bulkMessage}</div>
-{/if}
 
 {#if selectedIds.size > 0}
   <!-- Bulk action bar — floats over the board while a selection exists. -->
@@ -695,10 +758,6 @@
     <button class="bb-btn" disabled={bulkBusy} onclick={() => selectedIds.clear()}><Icon name="x" size={11} /> Clear</button>
   </div>
 {/if}
-{#if saveToast}
-  <div class="save-toast"><Icon name="warning" size={13} /> {saveToast}</div>
-{/if}
-
 <div class="board-toolbar">
   <div class="toolbar-left">
     <h1 class="board-title"><Icon name="logo" size={17} /> Blueprint</h1>
@@ -719,35 +778,31 @@
   </div>
 </div>
 
-{#if syncMessage}
-  <div class="sync-toast">{syncMessage}</div>
-{/if}
-
 {#if total === 0 && !showArchived}
   <!-- First-run / fully-empty board: explain where cards come from instead of
        showing six empty columns, and point to the first actions + the guide.
        (Not in the archived view — an empty archive is normal, and the banner
        above already explains the mode.) -->
   <div class="board-empty">
-    <div class="be-icon" aria-hidden="true"><Icon name="board" size={40} /></div>
-    <h2>No tasks yet</h2>
-    <p>Flagged vendor emails sync in automatically and land here as cards — or add the first one yourself.</p>
-    <div class="be-actions">
-      <button class="primary" onclick={() => { showNewTask = true }}><Icon name="pencil" size={13} /> New Task</button>
-      {#if role === 'admin'}
-        <button class="secondary" onclick={syncEmails} disabled={syncing}>
-          {#if syncing}Refreshing…{:else}<Icon name="refresh" size={13} /> Refresh now{/if}
-        </button>
-      {/if}
-    </div>
-    <a
-      class="be-help"
-      href={role === 'admin' ? '/guides/admin-user-guide.pdf' : '/guides/pm-user-guide.pdf'}
-      target="_blank"
-      rel="noopener"
-    >
-      <Icon name="guide" size={14} /> Read the {role === 'admin' ? 'admin' : 'PM'} guide
-    </a>
+    <EmptyState icon="board" title="No tasks yet">
+      Flagged vendor emails sync in automatically and land here as cards — or add the first one yourself.
+      {#snippet actions()}
+        <button class="primary" onclick={() => { showNewTask = true }}><Icon name="pencil" size={13} /> New Task</button>
+        {#if role === 'admin'}
+          <button class="secondary" onclick={syncEmails} disabled={syncing}>
+            {#if syncing}Refreshing…{:else}<Icon name="refresh" size={13} /> Refresh now{/if}
+          </button>
+        {/if}
+        <a
+          class="be-help"
+          href={role === 'admin' ? '/guides/admin-user-guide.pdf' : '/guides/pm-user-guide.pdf'}
+          target="_blank"
+          rel="noopener"
+        >
+          <Icon name="guide" size={14} /> Read the {role === 'admin' ? 'admin' : 'PM'} guide
+        </a>
+      {/snippet}
+    </EmptyState>
   </div>
 {:else}
 <div class="toggles-row">
@@ -1069,32 +1124,18 @@
     text-decoration: underline;
   }
 
-  /* First-run empty board (no tasks at all). */
-  .board-empty {
-    text-align: center;
-    max-width: 460px;
-    margin: 8vh auto 0;
-    padding: 32px 24px;
-    background: var(--card-bg);
-    border: 1px dashed var(--border);
-    border-radius: var(--radius-xl);
-  }
-  .be-icon { color: var(--text-faint); margin-bottom: 8px; }
-  .board-empty h2 { font-size: var(--font-xl); font-weight: 700; color: var(--text); margin: 0 0 8px; }
-  .board-empty p { font-size: var(--font-md); color: var(--text-muted); line-height: 1.5; margin: 0 0 18px; }
-  .be-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
-  .be-help { font-size: var(--font-base); font-weight: 600; color: var(--primary-dark); text-decoration: none; }
-  .be-help:hover { text-decoration: underline; }
-
-  .sync-toast {
-    background: var(--success-bg);
-    color: var(--success);
-    border: 1px solid var(--success-border);
-    border-radius: var(--radius-md);
-    padding: 8px 14px;
+  /* First-run empty board (no tasks at all) — EmptyState does the card; this
+     just drops it below the toolbar and keeps the guide link on its own row. */
+  .board-empty { margin-top: 8vh; }
+  .be-help {
+    flex-basis: 100%; /* wrap below the action buttons */
+    margin-top: 8px;
     font-size: var(--font-base);
-    margin-bottom: 10px;
+    font-weight: 600;
+    color: var(--primary-dark);
+    text-decoration: none;
   }
+  .be-help:hover { text-decoration: underline; }
 
   .offline-banner {
     background: var(--warning-bg);
@@ -1106,16 +1147,6 @@
     font-weight: 500;
     margin-bottom: 10px;
   }
-  .save-toast {
-    background: var(--danger-bg);
-    color: var(--danger);
-    border: 1px solid var(--danger-border);
-    border-radius: var(--radius-md);
-    padding: 8px 14px;
-    font-size: var(--font-base);
-    margin-bottom: 10px;
-  }
-
   .board-columns {
     display: flex;
     gap: 12px;

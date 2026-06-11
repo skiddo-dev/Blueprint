@@ -101,6 +101,7 @@ html, body {
   --z-bar: 50;     /* floating bulk-action bar */
   --z-sheet: 60;   /* detail sheet, search palette, page modals */
   --z-modal: 70;   /* top-level dialogs (new task) */
+  --z-toast: 80;   /* toast stack + nav progress bar — above everything */
 
   /* Motion — one speed language (easing defaults to `ease`). The global
      prefers-reduced-motion rule below neutralizes all of these. Deliberate
@@ -275,6 +276,14 @@ details summary {
   list-style: none;
 }
 details summary::-webkit-details-marker { display: none; }
+
+/* Cross-page crossfade (View Transitions API, wired via onNavigate in the root
+   layout — which also skips it under prefers-reduced-motion). Browsers without
+   the API just hard-cut as before. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--speed);
+}
 
 /* ── Accessibility ──────────────────────────────────────────────────────────
    Honour the OS "reduce motion" setting, and always show a visible focus ring

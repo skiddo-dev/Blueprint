@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte'
   import { onMount } from 'svelte'
+  import { trapFocus } from '$lib/actions/trapFocus'
   import type { Task, TaskStatus } from '$lib/types'
   import { KANBAN_STATUSES } from '$lib/constants'
 
@@ -87,7 +88,7 @@
 <!-- Modal backdrop -->
 <div class="backdrop" onclick={onClose} role="presentation"></div>
 
-<div class="modal" role="dialog" aria-modal="true" aria-label="Create New Task">
+<div class="modal" role="dialog" aria-modal="true" aria-label="Create New Task" use:trapFocus>
   <div class="modal-header">
     <h2><Icon name="pencil" size={15} /> Create New Task</h2>
     <button class="ghost close-btn" onclick={onClose}><Icon name="x" size={14} /></button>

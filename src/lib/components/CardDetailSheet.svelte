@@ -7,6 +7,7 @@
   import Icon from './Icon.svelte'
   import type { IconName } from '$lib/icons'
   import { onMount } from 'svelte'
+  import { trapFocus } from '$lib/actions/trapFocus'
   import DOMPurify from 'dompurify'
   import type { Task, TimelineEntry } from '$lib/types'
   import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, QUOTE_STATUS_META, STATUS_META } from '$lib/constants'
@@ -172,6 +173,7 @@
   aria-modal="true"
   aria-label="Task details — {task.title}"
   style:border-top="4px solid {meta.color}"
+  use:trapFocus
 >
   <header class="sheet-head">
     <span class="status-pill" style:background={meta.bg} style:color={meta.text}>{meta.icon} {task.status}</span>

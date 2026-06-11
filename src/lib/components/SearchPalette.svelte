@@ -2,6 +2,9 @@
   import Icon from './Icon.svelte'
   import { goto } from '$app/navigation'
   import { searchUI } from '$lib/search.svelte'
+  import { trapFocus } from '$lib/actions/trapFocus'
+  import Skeleton from './Skeleton.svelte'
+  import EmptyState from './EmptyState.svelte'
   import type { SearchResults, SearchHit } from '$lib/search'
 
   let q = $state('')
@@ -85,7 +88,7 @@
 
 {#if searchUI.open}
   <div class="search-backdrop" onclick={close} role="presentation"></div>
-  <div class="search-modal" role="dialog" aria-modal="true" aria-label="Search">
+  <div class="search-modal" role="dialog" aria-modal="true" aria-label="Search" use:trapFocus>
     <input
       bind:this={inputEl}
       class="search-input"
@@ -100,9 +103,17 @@
       {#if q.trim().length < 2}
         <div class="search-hint">Type at least 2 characters…</div>
       {:else if loading && empty}
-        <div class="search-hint">Searching…</div>
+        <!-- Result-row-shaped placeholders, so the list doesn't jump on arrival. -->
+        {#each { length: 3 } as _, i (i)}
+          <div class="skel-row">
+            <Skeleton height="13px" width="62%" />
+            <Skeleton height="10px" width="38%" />
+          </div>
+        {/each}
       {:else if empty}
-        <div class="search-hint">No matches for “{q.trim()}”.</div>
+        <EmptyState icon="search" title="No matches" size="sm" framed={false}>
+          Nothing found for “{q.trim()}” — try a store #, PO, vendor, or assignee.
+        </EmptyState>
       {:else}
         {#if results.tasks.length}
           <div class="search-group"><Icon name="list" size={12} /> Tasks</div>
@@ -151,6 +162,7 @@
   }
   .search-results { overflow-y: auto; padding: 6px; }
   .search-hint { padding: 16px; font-size: var(--font-base); color: var(--text-faint); text-align: center; }
+  .skel-row { display: flex; flex-direction: column; gap: 6px; padding: 9px 10px; }
   .search-group {
     font-size: var(--font-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
     color: var(--text-faint); padding: 8px 10px 4px;

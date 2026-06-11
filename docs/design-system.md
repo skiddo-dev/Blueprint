@@ -103,6 +103,7 @@ Every positioned layer in the app, lowest to highest. Backdrops sit at
 | `--z-bar` | 50 | floating bulk-action bar |
 | `--z-sheet` | 60 | card detail sheet, search palette, page modals |
 | `--z-modal` | 70 | top-level dialogs (new task) |
+| `--z-toast` | 80 | toast stack + nav progress bar — above everything |
 
 ## Elevation & focus
 
@@ -130,8 +131,15 @@ via the `[data-theme="dark"]` block.
 | `--speed-slow` | 0.4s | progress fills, larger movements |
 
 Easing defaults to `ease`. The global `prefers-reduced-motion` rule
-neutralizes everything. Deliberate non-scale timings: the search/remote flash
-keyframes (attention cues, not interaction feedback).
+neutralizes everything. Deliberate non-scale timings: the search/remote flash,
+toast-in, skeleton-shimmer, and nav-sweep keyframes (attention cues, not
+interaction feedback).
+
+Page navigations crossfade at `--speed` through the View Transitions API —
+wired once in the root layout's `onNavigate`, which also skips it under
+reduced motion and on browsers without the API (they hard-cut as before). A
+navigation slower than 150ms shows the indeterminate top progress bar
+(`.nav-progress`, root layout); fast hops never flash it.
 
 ## Spacing
 
@@ -158,6 +166,24 @@ elements, 16–18px card padding and section gaps, 24px+ between page regions.
 - **Modals & sheets** — backdrop `var(--backdrop)` at `calc(z - 1)`; panel at
   the layer token with `--shadow-modal` (or the directional `--shadow-sheet`
   / `--shadow-drawer`); `--radius-xl` (top corners only for bottom sheets).
+  Every dialog carries `role="dialog" aria-modal="true"` **and**
+  `use:trapFocus` (`$lib/actions/trapFocus`): Tab cycles inside, Escape
+  closes, and focus returns to whatever opened it.
+- **Toasts** — `$lib/toast` is the one event-feedback channel, rendered by
+  `Toasts.svelte` in the root layout (bottom-center, `--z-toast`). Inline
+  `role="alert"` text next to the field stays the pattern for form
+  validation; persistent conditions (offline) stay banners. Destructive
+  actions use the **staged-undo** pattern: rows leave the screen at once and
+  the server write runs only when the toast expires — Undo means it never
+  happened (see the board's `stageRemoval`).
+- **Skeletons** — `Skeleton.svelte`, for client-side fetches only; shape the
+  bars to the content they replace. Server-loaded pages block navigation
+  instead — the nav progress bar covers those, never a skeleton.
+- **Empty states** — `EmptyState.svelte`: hand-drawn icon + headline + one
+  line of help + the first action. Page-level voids get the full treatment;
+  accounting's in-card table placeholders stay compact `.empty` one-liners
+  by design. `size="sm"` inside palettes/cards, `framed={false}` when the
+  host already draws the card.
 - **Page titles** — `h1` at `--font-2xl`, weight 700–800; 22px is the
   page-title convention everywhere (PageShell, `.acct-head`, login).
 - **Tables** — see `.acct table`: `--font-base` cells, `--font-sm` uppercase
