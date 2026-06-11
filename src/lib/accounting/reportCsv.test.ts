@@ -3,9 +3,11 @@ import { cents } from '$lib/money'
 import type { JournalEntry } from './types'
 import { incomeStatement, balanceSheet } from './statements'
 import { generalLedger, trialBalance, accountRegister } from './ledger'
+import { cashFlow } from './cashflow'
+import { buildAging } from './invoicing'
 import {
   moneyCell, trialBalanceCsv, incomeStatementCsv, balanceSheetCsv,
-  generalLedgerCsv, journalCsv, registerCsv,
+  generalLedgerCsv, journalCsv, registerCsv, cashFlowCsv, agingCsv,
 } from './reportCsv'
 
 const ACCOUNTS = [
@@ -73,6 +75,38 @@ describe('balanceSheetCsv', () => {
     const csv = balanceSheetCsv(bs, '2026-02-28')
     expect(csv).toContain('Net income (current period)')
     expect(csv).toContain(`Total Liabilities & Equity,,,${moneyCell(bs.totalLiabilitiesAndEquity)}`)
+  })
+})
+
+describe('cashFlowCsv', () => {
+  it('books beginning/ending cash and the section + net-change totals', () => {
+    const cf = cashFlow(ENTRIES, new Set(['1000']), ACCOUNTS as never)
+    const csv = cashFlowCsv({ ...cf, beginningCash: cents(10000), endingCash: cents(10000 + cf.netChange) }, '2026-01-01', '2026-02-28')
+    expect(csv).toContain(`Cash at start of period,,,${moneyCell(10000)}`)
+    expect(csv).toContain(`Net cash from operating activities,,,${moneyCell(cf.sections.operating.total)}`)
+    expect(csv).toContain(`Net change in cash,,,${moneyCell(cf.netChange)}`)
+    expect(csv).toContain(`Cash at end of period,,,${moneyCell(10000 + cf.netChange)}`)
+    expect(cf.netChange).toBe(50000 - 12000)
+  })
+})
+
+describe('agingCsv', () => {
+  it('emits the open rows, bucket totals, and grand total', () => {
+    const aging = buildAging(
+      [
+        { _id: 'i1', number: 7, name: 'Acme, Inc', due_date: '2026-02-10', balance: cents(5000) },
+        { _id: 'i2', number: 8, name: 'Beta LLC', due_date: '2025-10-01', balance: cents(20000) },
+      ],
+      '2026-02-15',
+    )
+    const csv = agingCsv(aging, 'ar', '2026-02-15')
+    expect(csv.split('\n')[1]).toBe('Number,Customer,Due,Bucket,Balance')
+    expect(csv).toContain('"Acme, Inc"') // comma stays quoted
+    expect(csv).toContain(`Total 1-30,,,,${moneyCell(5000)}`)
+    expect(csv).toContain(`Total 90+,,,,${moneyCell(20000)}`)
+    expect(csv).toContain(`Total outstanding,,,,${moneyCell(aging.total)}`)
+    // A/P variant labels the party column Vendor
+    expect(agingCsv(aging, 'ap', '2026-02-15').split('\n')[1]).toBe('Number,Vendor,Due,Bucket,Balance')
   })
 })
 

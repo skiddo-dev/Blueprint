@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
   return new Response(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': contentDisposition(`balance-sheet_${asOf}.csv`),
+      'Content-Disposition': contentDisposition(`balance-sheet_${cash ? 'cash_' : ''}${asOf}.csv`),
     },
   })
 }

@@ -55,6 +55,9 @@ describe('searchQuotes', () => {
     expect(searchQuotes(quotes, 'remodel').map(h => h.id)).toEqual(['q1'])
     expect(searchQuotes(quotes, 'nope')).toEqual([])
   })
+  it('deep-links to the dashboard quote tracker', () => {
+    expect(searchQuotes(quotes, 'alex')[0].href).toBe('/dashboard?quote=q1')
+  })
 })
 
 describe('searchProspects', () => {
@@ -66,5 +69,8 @@ describe('searchProspects', () => {
     expect(searchProspects(prospects, 'oakland').map(h => h.id)).toEqual(['p1'])
     expect(searchProspects(prospects, 'troy').map(h => h.id)).toEqual(['p1'])
     expect(searchProspects(prospects, 'detroit')).toEqual([])
+  })
+  it('deep-links to the prospect detail modal', () => {
+    expect(searchProspects(prospects, 'commerce')[0].href).toBe('/prospects?prospect=p1')
   })
 })

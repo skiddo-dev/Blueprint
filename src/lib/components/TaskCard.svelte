@@ -349,7 +349,7 @@
      shouty (the ink stays desaturated on purpose; only the border is themed). */
   .due-chip.overdue {
     border-color: var(--danger-border);
-    color: #b06a72;
+    color: var(--aging-rose);
     background: transparent;
     font-weight: 600;
   }
@@ -358,7 +358,7 @@
   .aging-chip {
     font-size: var(--font-xs);
     font-weight: 600;
-    color: #92670e;
+    color: var(--aging-amber);
     background: transparent;
     border: 1px solid var(--warning-border);
     border-radius: var(--radius-pill);
@@ -366,7 +366,7 @@
     white-space: nowrap;
   }
   .aging-chip.alert {
-    color: #b06a72;
+    color: var(--aging-rose);
     border-color: var(--danger-border);
   }
   .quote-chip {

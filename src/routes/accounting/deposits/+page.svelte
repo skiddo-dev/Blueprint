@@ -1,6 +1,7 @@
 <script lang="ts">
   import { apiError } from '$lib/accounting/api'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
   import SortTh from '$lib/components/accounting/SortTh.svelte'
   import { createSort } from '$lib/accounting/tableSort.svelte'
   import { usd } from '$lib/accounting/format'
@@ -149,7 +150,7 @@
                 <td class="num">{dep.payment_ids.length}</td>
                 <td class="num">{usd(dep.total)}</td>
                 <td>{dep.memo ?? ''}</td>
-                <td>{dep.status === 'void' ? '✕ void' : '✓ posted'}</td>
+                <td><StatusBadge status={dep.status} /></td>
                 <td class="num">
                   {#if dep.status === 'posted'}
                     <button class="btn-secondary danger" type="button" onclick={() => voidDeposit(dep._id)} disabled={saving}>Void</button>

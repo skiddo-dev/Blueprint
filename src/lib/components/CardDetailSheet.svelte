@@ -851,7 +851,7 @@
   }
   input[type="date"].overdue {
     border-color: var(--danger-border);
-    color: #b06a72; /* deliberately calm ink (see the aging chips) */
+    color: var(--aging-rose); /* deliberately calm ink (see the aging chips) */
   }
   select:focus, input:focus, textarea:focus {
     border-color: var(--primary);

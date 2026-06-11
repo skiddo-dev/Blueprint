@@ -199,6 +199,11 @@
 .acct .filter-pills button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 .acct .filter-pills button .count { font-weight: 400; opacity: 0.75; margin-left: 4px; font-variant-numeric: tabular-nums; }
 .acct .search-box { min-width: 180px; font-size: var(--font-base); }
+/* Narrow phones: let the search shrink and take the wrapped row instead of
+   shoving the filter pills off-screen. */
+@media (max-width: 768px) {
+  .acct .search-box { min-width: 0; flex: 1 1 auto; }
+}
 
 /* ── Urgency + payment progress in tables ── */
 .acct .due-chip { font-size: var(--font-sm); white-space: nowrap; color: var(--text-muted); }
@@ -232,12 +237,16 @@
 /* ── Report hint (plain-language subtitle under a statement title) ── */
 .acct .report-hint { font-size: var(--font-base); color: var(--text-muted); margin: -6px 0 14px; max-width: 70ch; }
 
+/* Static basis caption — print-only stand-in for the interactive basis toggle. */
+.acct .print-basis { display: none; }
+
 /* ── Print: statements get handed to banks and accountants. Strip the app
       chrome (drawer, nav, toolbars, buttons) and let the statement card own
       the page. Scoped to accounting pages via .acct. ── */
 @media print {
   aside.sidebar, .sidebar-backdrop, .mobile-topbar { display: none !important; }
-  .acct-nav, .acct-head-actions, .acct .toolbar, .acct .quick-picks, .acct .btn-primary, .acct .btn-secondary { display: none !important; }
+  .acct-nav, .acct-head-actions, .acct .toolbar, .acct .quick-picks, .acct .btn-primary, .acct .btn-secondary, .acct .basis-toggle { display: none !important; }
+  .acct .print-basis { display: block; font-size: var(--font-base); font-weight: 600; margin: 0 0 10px; }
   .app-layout, .main-content { height: auto !important; overflow: visible !important; }
   .main-content { max-width: none !important; padding: 0 !important; }
   .acct .acct-body { max-width: none !important; }

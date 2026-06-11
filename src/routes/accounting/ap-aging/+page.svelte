@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import AgingBars from '$lib/components/accounting/AgingBars.svelte'
   import { usd } from '$lib/accounting/format'
@@ -18,6 +19,11 @@
 
 <AccountingShell {user} title="A/P Aging" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Payables by age' }]}>
+  {#snippet actions()}
+    <a class="btn-secondary" href="/api/accounting/export/ap-aging">⬇ CSV</a>
+    <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
+  {/snippet}
+
   <p class="report-hint">Money you owe vendors, grouped by how many days past due each bill is — anything right of "Current" is late and may strain the relationship.</p>
   <div class="aging-top">
     <AgingBars title="Payables by age" buckets={aging.buckets} total={aging.total} />

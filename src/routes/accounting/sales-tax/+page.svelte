@@ -2,6 +2,7 @@
   import { apiError } from '$lib/accounting/api'
   import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
   import { usd } from '$lib/accounting/format'
   import { confirmDialog } from '$lib/confirm.svelte'
   import { invalidateAll } from '$app/navigation'
@@ -152,7 +153,7 @@
                 <td class="num">{usd(r.amount)}</td>
                 <td class="mono">{r.account_id}</td>
                 <td>{r.memo ?? ''}</td>
-                <td>{r.status === 'void' ? '✕ void' : '✓ posted'}</td>
+                <td><StatusBadge status={r.status} /></td>
                 <td class="num">
                   {#if r.status === 'posted'}
                     <button class="btn-secondary danger" type="button" onclick={() => voidRemittance(r._id)} disabled={saving}>Void</button>

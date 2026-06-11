@@ -576,14 +576,14 @@
   .aging-chip {
     font-size: var(--font-xs);
     font-weight: 600;
-    color: #92670e; /* deliberately calm ink; only the border is themed */
+    color: var(--aging-amber); /* deliberately calm ink; only the border is themed */
     border: 1px solid var(--warning-border);
     border-radius: var(--radius-pill);
     padding: 2px 8px;
     white-space: nowrap;
   }
   .aging-chip.alert {
-    color: #b06a72;
+    color: var(--aging-rose);
     border-color: var(--danger-border);
   }
   /* Co-assignee chip: same pill as the primary, plus an inline remove ✕. */
@@ -754,7 +754,7 @@
      mobile). */
   input[type="date"].overdue {
     border-color: var(--danger-border);
-    color: #b06a72; /* deliberately calm ink (see the aging chips) */
+    color: var(--aging-rose); /* deliberately calm ink (see the aging chips) */
   }
   select:focus, input:focus, textarea:focus {
     border-color: var(--primary);

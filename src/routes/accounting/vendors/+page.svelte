@@ -116,7 +116,7 @@
                 </tr>
               {:else}
                 <tr>
-                  <td><span class="party"><span class="avatar">{v.name.trim().slice(0, 1).toUpperCase()}</span>{v.name}</span></td>
+                  <td><span class="party"><span class="avatar">{v.name.trim().slice(0, 1).toUpperCase()}</span><a href="/accounting/bills?vendor={v._id}" title="View this vendor's bills">{v.name}</a></span></td>
                   <td class="muted">{v.email ?? '—'}</td>
                   <td>{#if v.is_1099}<span class="tag">1099{v.tax_id ? ` · ${maskTaxId(v.tax_id)}` : ''}</span>{:else}<span class="muted">—</span>{/if}</td>
                   <td class="num">{v.billCount}</td>
@@ -135,6 +135,9 @@
 </AccountingShell>
 
 <style>
+  /* Name links to the vendor's bills (/accounting/bills?vendor=). */
+  .party a { color: var(--primary-text); font-weight: 600; text-decoration: none; }
+  .party a:hover, .party a:focus-visible { text-decoration: underline; }
   /* Inline-edit specifics not covered by the shared sheet. */
   tr.editing td { background: var(--primary-bg); }
   td input { padding: 5px 7px; border-radius: var(--radius-md); width: 100%; }

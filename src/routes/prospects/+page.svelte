@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { enhance } from '$app/forms'
+  import { page } from '$app/state'
+  import { toast } from '$lib/toast.svelte'
   import 'leaflet/dist/leaflet.css'
   import type { PageData, ActionData } from './$types'
   import type { Prospect, ProspectStatus, AppSession } from '$lib/types'
@@ -191,6 +193,18 @@
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.address)}`
   const countySearch = (p: Prospect) =>
     `https://www.google.com/search?q=${encodeURIComponent(`Oakland County MI parcel ${p.address}`)}`
+
+  // Deep link from global search: /prospects?prospect=<id> opens that
+  // prospect's detail modal. Waits for the list to populate (prospects can
+  // arrive after a pull), and only handles each id once.
+  let handledProspectId: string | null = null
+  $effect(() => {
+    const pid = page.url.searchParams.get('prospect')
+    if (!pid || pid === handledProspectId || prospectList.length === 0) return
+    handledProspectId = pid
+    if (prospectList.some(p => p._id === pid)) openDetail(pid)
+    else toast.error('That prospect couldn’t be found — it may have been removed.')
+  })
 
   // ── Add to Kanban board ─────────────────────────────────────────────────────
   let addState = $state<'idle' | 'adding' | 'added' | 'error'>('idle')
@@ -570,7 +584,7 @@
   .table-wrap { background: var(--card-bg); border: 1px solid var(--border-card); border-radius: var(--radius-lg); overflow: auto; box-shadow: var(--shadow); }
   table { width: 100%; border-collapse: collapse; font-size: var(--font-base); }
   th, td { padding: 8px 12px; text-align: left; white-space: nowrap; }
-  th { position: sticky; top: 0; background: var(--bg); color: var(--text-soft); font-weight: 700; font-size: var(--font-sm); cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); }
+  th { position: sticky; top: 0; background: var(--card-bg); color: var(--text-soft); font-weight: 700; font-size: var(--font-sm); cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); }
   th:hover { color: var(--primary-text); }
   td { border-bottom: 1px solid var(--border-soft); color: var(--text-body); }
   tbody tr:hover { background: var(--bg); }

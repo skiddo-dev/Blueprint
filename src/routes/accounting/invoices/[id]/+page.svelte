@@ -5,6 +5,7 @@
   import ActivityFeed from '$lib/components/accounting/ActivityFeed.svelte'
   import AttachmentsPanel from '$lib/components/accounting/AttachmentsPanel.svelte'
   import { usd } from '$lib/accounting/format'
+  import { parseMoney } from '$lib/money'
   import { confirmDialog } from '$lib/confirm.svelte'
   import { invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
@@ -39,6 +40,11 @@
   let creditAmount = $state('')
   let creditDate = $state(today)
   let creditMemo = $state('')
+
+  // Affordance only — the endpoints re-validate and stay the source of truth.
+  function isPositiveAmount(s: string): boolean {
+    try { return parseMoney(s) > 0 } catch { return false }
+  }
 
   async function issueCredit() {
     saving = true
@@ -116,7 +122,7 @@
 
   <section class="card">
     <div class="facts">
-      <div><span class="k">Customer</span><span>{inv.customer_name}</span></div>
+      <div><span class="k">Customer</span><a class="party-link" href="/accounting/invoices?customer={inv.customer_id}" title="All invoices for this customer">{inv.customer_name}</a></div>
       <div><span class="k">Issued</span><span class="mono">{inv.issue_date}</span></div>
       <div><span class="k">Due</span><span class="mono">{inv.due_date}</span></div>
       {#if inv.po}<div><span class="k">PO</span><span>{inv.po}</span></div>{/if}
@@ -171,7 +177,7 @@
             {/each}
           </select>
         </label>
-        <button class="btn-primary" type="button" onclick={recordPayment} disabled={saving || !payAmount.trim()}>
+        <button class="btn-primary" type="button" onclick={recordPayment} disabled={saving || !isPositiveAmount(payAmount)}>
           {saving ? 'Recording…' : 'Record payment'}
         </button>
       </div>
@@ -182,7 +188,7 @@
           <label>Amount<input type="text" inputmode="decimal" bind:value={creditAmount} placeholder="0.00" /></label>
           <label>Date<input type="date" bind:value={creditDate} /></label>
           <label class="grow">Reason<input type="text" bind:value={creditMemo} placeholder="why the credit?" /></label>
-          <button class="btn-secondary" type="button" onclick={issueCredit} disabled={saving || !creditAmount.trim()}>
+          <button class="btn-secondary" type="button" onclick={issueCredit} disabled={saving || !isPositiveAmount(creditAmount)}>
             {saving ? 'Working…' : 'Apply credit'}
           </button>
         </div>
@@ -209,6 +215,8 @@
   .facts { display: flex; flex-wrap: wrap; gap: 18px 28px; margin-bottom: 16px; }
   .facts > div { display: flex; flex-direction: column; gap: 2px; }
   .facts .k { font-size: var(--font-xs); text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); font-weight: 600; }
+  .party-link { color: var(--primary-text); font-weight: 600; text-decoration: none; }
+  .party-link:hover, .party-link:focus-visible { text-decoration: underline; }
 
   .totals { margin-top: 14px; margin-left: auto; max-width: 320px; }
   .totals > div { display: flex; justify-content: space-between; gap: 24px; padding: 4px 0; font-size: var(--font-base); color: var(--text-body); }

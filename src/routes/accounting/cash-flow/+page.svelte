@@ -19,6 +19,7 @@
 <AccountingShell {user} title="Cash Flow" maxWidth="760px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Statement of Cash Flows' }]}>
   {#snippet actions()}
+    <a class="btn-secondary" href={`/api/accounting/export/cash-flow?from=${data.from}&to=${data.to}`}>⬇ CSV</a>
     <button class="btn-secondary" type="button" onclick={() => window.print()}><Icon name="printer" size={12} /> Print</button>
   {/snippet}
 
@@ -41,7 +42,7 @@
       <div class="row subtotal"><span>Net cash from {sec.title.toLowerCase()}</span><span class="num" class:neg={sec.total < 0}>{usd(sec.total)}</span></div>
     {/each}
 
-    <div class="row net" class:neg={data.netChange < 0}><span>Net change in cash</span><span class="num">{usd(data.netChange)}</span></div>
+    <div class="row net"><span>Net change in cash</span><span class="num" class:neg={data.netChange < 0}>{usd(data.netChange)}</span></div>
     <div class="row end"><span>Cash at end of period</span><span class="num">{usd(data.endingCash)}</span></div>
   </section>
 </AccountingShell>

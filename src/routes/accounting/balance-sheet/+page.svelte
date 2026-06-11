@@ -45,6 +45,7 @@
     <a class="pill" class:active={data.basis === 'cash'} href={`/accounting/balance-sheet?asOf=${data.asOf}&basis=cash`}
        title="A/R and A/P drop out; cash net income rides equity">Cash</a>
   </div>
+  <p class="print-basis">{data.basis === 'cash' ? 'Cash basis' : 'Accrual basis'}</p>
   <div class="toolbar">
     <div class="quick-picks" role="group" aria-label="Quick as-of picks">
       <button class="btn-secondary" type="button" onclick={() => pick('today')}>Today</button>
@@ -63,7 +64,15 @@
         <div class="row muted"><span>—</span><span class="num">{usd(0)}</span></div>
       {:else}
         {#each sec.lines as l (l.account_id)}
-          <div class="row"><span>{l.name}</span><span class="num">{usd(l.amount)}</span></div>
+          <div class="row">
+            {#if l.account_id.startsWith('_')}
+              <!-- synthetic line (net income) — no register to drill into -->
+              <span>{l.name}</span>
+            {:else}
+              <a class="acct-cell" href="/accounting/register/{l.account_id}">{l.name}</a>
+            {/if}
+            <span class="num">{usd(l.amount)}</span>
+          </div>
         {/each}
       {/if}
       <div class="row subtotal"><span>{totalLabel}</span><span class="num">{usd(sec.total)}</span></div>
@@ -88,6 +97,8 @@
   .sec-title { font-size: var(--font-sm); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 700; margin: 0 0 4px; }
   .row { display: flex; justify-content: space-between; gap: 24px; padding: 5px 0; color: var(--text-body); }
   .row.muted { color: var(--text-faint); }
+  .acct-cell { color: var(--text-body); text-decoration: none; }
+  .acct-cell:hover { color: var(--primary-text); text-decoration: underline; }
   .num { font-variant-numeric: tabular-nums; }
   .subtotal { font-weight: 700; color: var(--text); border-top: 1px solid var(--border-soft); margin-top: 2px; }
   .spacer { height: 14px; }

@@ -335,9 +335,24 @@
   // the card's column (mobile), then scroll it into view and pulse a highlight
   // ring. Re-runs whenever the URL's `task` param changes (works even when
   // already on the board).
+  let deadLinkWarned: string | null = null
   $effect(() => {
     const id = page.url.searchParams.get('task')
     if (!id) return
+    // Stale link (deleted task): the board data is loaded — columns come from
+    // the server — so a missing id is genuinely gone. Say so once and strip
+    // the param so the view/filter resets below stop re-running on each poll.
+    if (!KANBAN_STATUSES.some(s => columns[s].some(t => t._id === id))) {
+      if (deadLinkWarned !== id) {
+        deadLinkWarned = id
+        toast.error('That task no longer exists — it may have been deleted.')
+        const url = new URL(page.url)
+        url.searchParams.delete('task')
+        // Deferred for the same cold-load reason as the /?new=1 handler above.
+        setTimeout(() => replaceState(url, {}), 0)
+      }
+      return
+    }
     setView('all')
     filters = defaultFilters()
     for (const s of KANBAN_STATUSES) {

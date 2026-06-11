@@ -113,8 +113,22 @@
       {/each}
     </nav>
 
+    <!-- Phones hide .acct-head (the title lives in PageShell's sticky topbar),
+         which would otherwise swallow the per-page actions with it. -->
+    {#if actions}<div class="acct-actions-mobile">{@render actions()}</div>{/if}
+
     <div class="acct-body" style:max-width={maxWidth}>
       {@render children()}
     </div>
   </div>
 </PageShell>
+
+<style>
+  .acct-actions-mobile { display: none; }
+  @media (max-width: 768px) {
+    .acct-actions-mobile { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+  }
+  @media print {
+    .acct-actions-mobile { display: none !important; }
+  }
+</style>

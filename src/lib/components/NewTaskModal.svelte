@@ -88,9 +88,9 @@
 <!-- Modal backdrop -->
 <div class="backdrop" onclick={onClose} role="presentation"></div>
 
-<div class="modal" role="dialog" aria-modal="true" aria-label="Create New Task" use:trapFocus>
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="nt-title" use:trapFocus>
   <div class="modal-header">
-    <h2><Icon name="pencil" size={15} /> Create New Task</h2>
+    <h2 id="nt-title"><Icon name="pencil" size={15} /> Create New Task</h2>
     <button class="ghost close-btn" onclick={onClose}><Icon name="x" size={14} /></button>
   </div>
 
@@ -102,6 +102,8 @@
         type="text"
         bind:value={title}
         placeholder="What needs to get done?"
+        aria-required="true"
+        aria-describedby={error ? 'nt-error' : undefined}
         autofocus
       />
     </label>
@@ -168,7 +170,7 @@
     </label>
 
     {#if error}
-      <p class="error">{error}</p>
+      <p class="error" id="nt-error">{error}</p>
     {/if}
   </div>
 

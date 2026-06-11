@@ -26,6 +26,7 @@ html, body {
   --primary-dark: #4f46e5;
   --primary-bg: #eef2ff;
   --primary-text: #4338ca;
+  --primary-border: #c7d2fe; /* brand-tinted hover/active border (same both themes) */
   /* Link/active ink — the readable indigo for text. Aliased per theme because
      the fill anchor (--primary-dark) is too dim to read on dark surfaces. */
   --link: var(--primary-dark);
@@ -68,6 +69,10 @@ html, body {
   /* Fixed accents — same in both themes (white-on-navy store chips). */
   --store-chip: #1e3a8a;
   --store-chip-hover: #1e40af;
+  /* Calm aging/overdue chip inks — deliberately desaturated kin of warning/
+     danger; sanctioned theme-invariants (only the chip border themes). */
+  --aging-amber: #92670e;
+  --aging-rose: #b06a72;
 
   /* Radius scale — sm: micro controls inside controls · md: buttons, inputs,
      square-ish chips · lg: cards, panels, popovers · xl: modals, sheets, hero
@@ -143,6 +148,7 @@ html, body {
   --primary-dark: #5f62ef; /* nudged from #6366f1 so white button text holds 4.5:1 */
   --primary-bg: #1e1b4b;
   --primary-text: #c7d2fe;
+  --primary-border: #c7d2fe; /* deliberately same as light */
   --link: var(--primary);
 
   --text: #f1f5f9;
@@ -183,6 +189,10 @@ html, body {
   --danger-border: #7f1d1d;
   --info: #93c5fd;
   --info-bg: #1e3a5f;
+
+  /* Aging/overdue chip inks stay theme-invariant (calm by design). */
+  --aging-amber: #92670e;
+  --aging-rose: #b06a72;
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -305,6 +315,9 @@ details summary::-webkit-details-marker { display: none; }
      handled in-component). */
   button.primary:hover, button.secondary:hover,
   .btn-primary:hover, .btn-secondary:hover { transform: none !important; }
+  /* Freeze the indeterminate nav sweep (root layout) to a static bar segment —
+     !important to out-rank the component-scoped animation shorthand. */
+  .nav-progress::after { animation: none !important; }
 }
 :focus-visible {
   outline: 2px solid var(--primary);
