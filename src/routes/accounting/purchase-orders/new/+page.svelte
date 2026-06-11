@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto } from '$app/navigation'
   import { parseMoney } from '$lib/money'
   import { usd } from '$lib/accounting/format'
+  import { guardUnsaved } from '$lib/unsavedGuard'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -37,6 +39,22 @@
   let anyInvalid = $derived(lines.some((l, i) => !l.account_id || !(amounts[i] > 0)))
   let canSubmit = $derived(!anyInvalid && total > 0 && vendorName.trim() !== '' && !saving)
 
+  // Why the create button is disabled, in words (shown next to it).
+  const missing = $derived.by(() => {
+    const m: string[] = []
+    if (vendorName.trim() === '') m.push('a vendor')
+    if (total <= 0) m.push('at least one line with an amount')
+    else if (anyInvalid) m.push('an expense account and a valid amount on every line')
+    return m
+  })
+
+  const dirty = $derived(
+    vendorName.trim() !== '' || vendorEmail.trim() !== '' || expectedDate !== '' ||
+    job.trim() !== '' || memo.trim() !== '' ||
+    lines.some((l) => l.account_id !== '' || l.description.trim() !== '' || l.amount.trim() !== ''),
+  )
+  const guard = guardUnsaved(() => dirty)
+
   function addLine() { lines = [...lines, blank()] }
   function removeLine(i: number) { if (lines.length > 1) lines = lines.filter((_, j) => j !== i) }
 
@@ -57,8 +75,9 @@
           lines: lines.map((l) => ({ account_id: l.account_id, description: l.description, amount: l.amount })),
         }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       const po = await r.json()
+      guard.disarm()
       await goto(`/accounting/purchase-orders/${po._id}`)
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -111,6 +130,7 @@
 
     {#if error}<p class="error">{error}</p>{/if}
     <div class="actions">
+      {#if !saving && missing.length}<p class="req-hint">To create, add {missing.join(' and ')}.</p>{/if}
       <a class="btn-secondary" href="/accounting/purchase-orders">Cancel</a>
       <button class="btn-primary" type="button" onclick={submit} disabled={!canSubmit}>
         {saving ? 'Creating…' : 'Create PO'}

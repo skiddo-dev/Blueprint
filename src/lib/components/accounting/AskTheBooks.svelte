@@ -2,6 +2,7 @@
   // "Ask the books": one question in, one narrated report out. The answer
   // always cites the report it came from ("Based on: …") with a link to the
   // full page — the model narrates that report's data and nothing else.
+  import { apiError } from '$lib/accounting/api'
   import Icon from '$lib/components/Icon.svelte'
 
   let { ai = true }: { ai?: boolean } = $props()
@@ -30,7 +31,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: text }),
       })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       const out = await r.json()
       if (!out.configured) { error = 'Ask the books isn’t configured on this server (OPENAI_API_KEY).'; return }
       answer = out.answer

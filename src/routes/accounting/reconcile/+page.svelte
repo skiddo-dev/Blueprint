@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto, invalidateAll } from '$app/navigation'
@@ -89,7 +90,7 @@
           lines: unmatchedRows.map((u) => ({ date: u.line.date, description: u.line.description, amount: u.line.amount })),
         }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       const { configured, suggestions } = (await r.json()) as { configured: boolean; suggestions: LineSuggestion[] }
       if (!configured) { aiMsg = 'AI suggestions aren’t configured on this server (OPENAI_API_KEY).'; return }
       let filled = 0
@@ -147,7 +148,7 @@
           }),
         })
       }
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       const entry = await r.json()
       if (entry?._id) checked[entry._id] = true
       unmatchedRows = unmatchedRows.filter((_, j) => j !== i)
@@ -169,7 +170,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ account_id: data.accountId, statement_date: statementDate, statement_balance: statementBalanceStr, cleared_entry_ids }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       checked = {}
       statementBalanceStr = ''
       await invalidateAll()

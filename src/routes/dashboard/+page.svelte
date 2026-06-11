@@ -155,6 +155,18 @@
       workTypeFilter !== 'All',
     ].filter(Boolean).length,
   )
+  // The collapsed row should still say WHAT is filtering, not just how many.
+  const filterSummary = $derived.by(() => {
+    const parts: string[] = []
+    if (yearFrom !== yearMin || yearTo !== yearMax) parts.push(`${Math.min(yearFrom, yearTo)}–${Math.max(yearFrom, yearTo)}`)
+    if (amtLo !== 0 || amtHi !== amtCeil)
+      parts.push(`${money(Math.min(amtLo, amtHi))}–${Math.max(amtLo, amtHi) >= amtCeil ? money(amtCeil) + '+' : money(Math.max(amtLo, amtHi))}`)
+    if (monthFrom !== 1 || monthTo !== 12) parts.push(`${MONTHS[Math.min(monthFrom, monthTo) - 1]}–${MONTHS[Math.max(monthFrom, monthTo) - 1]}`)
+    if (minSample !== 5) parts.push(`≥${minSample} decided`)
+    if (estimatorFilter !== 'All') parts.push(estimatorFilter)
+    if (workTypeFilter !== 'All') parts.push(workTypeFilter)
+    return parts
+  })
   function resetFilters() {
     yearFrom = yearMin; yearTo = yearMax; amtLo = 0; amtHi = amtCeil
     monthFrom = 1; monthTo = 12; minSample = 5
@@ -621,7 +633,9 @@
           <Icon name="sliders" size={13} /> Filters{#if activeFilterCount}<span class="df-badge">{activeFilterCount}</span>{/if}
           {filtersOpen ? '▴' : '▾'}
         </button>
-        <span class="df-summary">{fq.length} of {totalQuotes} quotes</span>
+        <span class="df-summary">
+          {fq.length} of {totalQuotes} quotes{filterSummary.length && !filtersOpen ? ` · ${filterSummary.join(' · ')}` : ''}
+        </span>
         <div class="df-controls" class:open={filtersOpen}>
           <div class="filter-group">
             <span class="filter-label">Years <strong>{Math.min(yearFrom, yearTo)}–{Math.max(yearFrom, yearTo)}</strong></span>
@@ -1001,7 +1015,16 @@
       min-height: 0;
       cursor: pointer;
     }
-    .df-summary { display: inline; font-size: var(--font-sm); color: var(--text-faint); }
+    .df-summary {
+      display: inline-block;
+      font-size: var(--font-sm);
+      color: var(--text-faint);
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .df-controls { display: none; }
     .df-controls.open {
       display: flex;
@@ -1047,7 +1070,17 @@
   .mark-won:hover { border-color: var(--success); }
   .mark-won:disabled { opacity: 0.5; cursor: wait; }
 
-  .table-wrap { overflow-x: auto; }
+  /* Same edge-hint recipe as the accounting tables (see accounting.css). */
+  .table-wrap {
+    overflow-x: auto;
+    background:
+      linear-gradient(90deg, var(--card-bg) 30%, transparent) left / 28px 100%,
+      linear-gradient(270deg, var(--card-bg) 30%, transparent) right / 28px 100%,
+      radial-gradient(farthest-side at 0 50%, var(--scroll-shadow-ink), transparent) left / 12px 100%,
+      radial-gradient(farthest-side at 100% 50%, var(--scroll-shadow-ink), transparent) right / 12px 100%;
+    background-repeat: no-repeat;
+    background-attachment: local, local, scroll, scroll;
+  }
   table { width: 100%; border-collapse: collapse; font-size: var(--font-sm); }
   th { background: var(--bg); color: var(--text-muted); font-weight: 600; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
   td { padding: 8px 10px; border-bottom: 1px solid var(--border-soft); color: var(--text-body); }

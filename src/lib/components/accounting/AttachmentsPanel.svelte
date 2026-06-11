@@ -1,6 +1,7 @@
 <script lang="ts">
   // Upload/list/delete files on an accounting document. Downloads go through
   // the shared /api/attachments/[id] endpoint (admin-gated for these owners).
+  import { apiError } from '$lib/accounting/api'
   import { invalidateAll } from '$app/navigation'
   import { confirmDialog } from '$lib/confirm.svelte'
 
@@ -28,7 +29,7 @@
       form.set('owner_id', ownerId)
       form.set('file', file)
       const r = await fetch('/api/accounting/attachments', { method: 'POST', body: form })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       await invalidateAll()
     } catch (err) {
       errorMsg = err instanceof Error ? err.message : String(err)
@@ -43,7 +44,7 @@
     errorMsg = ''
     try {
       const r = await fetch(`/api/accounting/attachments/${id}`, { method: 'DELETE' })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       await invalidateAll()
     } catch (err) {
       errorMsg = err instanceof Error ? err.message : String(err)

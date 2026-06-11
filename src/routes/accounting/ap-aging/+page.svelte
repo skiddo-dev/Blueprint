@@ -2,6 +2,7 @@
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import AgingBars from '$lib/components/accounting/AgingBars.svelte'
   import { usd } from '$lib/accounting/format'
+  import { goto } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -32,8 +33,8 @@
           <thead><tr><th>#</th><th>Vendor</th><th>Due</th><th>Age</th><th class="num">Balance</th></tr></thead>
           <tbody>
             {#each aging.rows as r (r._id)}
-              <tr class="row-link" onclick={() => (window.location.href = `/accounting/bills/${r._id}`)}>
-                <td class="mono">#{r.number}</td>
+              <tr class="row-link" onclick={() => goto(`/accounting/bills/${r._id}`)}>
+                <td class="mono"><a class="row-anchor" href={`/accounting/bills/${r._id}`} onclick={(e) => e.stopPropagation()}>#{r.number}</a></td>
                 <td>{r.name}</td>
                 <td class="mono">{r.due_date}</td>
                 <td><span class="chip" class:overdue={r.bucket !== 'current'}>{labels[r.bucket]}</span></td>

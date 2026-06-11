@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto } from '$app/navigation'
@@ -35,7 +36,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ month: data.month, force }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       const out = await r.json()
       narrative = out.narrative
       narrativeAt = out.generated_at

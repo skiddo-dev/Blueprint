@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto } from '$app/navigation'
+  import { guardUnsaved } from '$lib/unsavedGuard'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -29,6 +31,21 @@
 
   const canSubmit = $derived(!saving && accountId !== '' && paidFrom !== '' && amount.trim() !== '')
 
+  // Why the post button is disabled, in words (shown next to it).
+  const missing = $derived.by(() => {
+    const m: string[] = []
+    if (accountId === '') m.push('an expense account')
+    if (paidFrom === '') m.push('a paid-from account')
+    if (amount.trim() === '') m.push('an amount')
+    return m
+  })
+
+  const dirty = $derived(
+    payee.trim() !== '' || accountId !== '' || amount.trim() !== '' ||
+    job.trim() !== '' || memo.trim() !== '' || scanFile !== null,
+  )
+  const guard = guardUnsaved(() => dirty)
+
   async function scanReceipt(e: Event) {
     const input = e.currentTarget as HTMLInputElement
     const file = input.files?.[0]
@@ -40,7 +57,7 @@
       const form = new FormData()
       form.set('file', file)
       const r = await fetch('/api/accounting/receipt-scan', { method: 'POST', body: form })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       const { prefill } = await r.json()
       if (prefill.payee) payee = prefill.payee
       if (prefill.amount) amount = prefill.amount
@@ -65,7 +82,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date, payee, account_id: accountId, paid_from: paidFrom, amount, job: job.trim() || undefined, memo }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
+      guard.disarm()
       const entry = await r.json()
       if (scanFile && entry?._id) {
         const form = new FormData()
@@ -132,6 +150,7 @@
     {#if error}<p class="error">{error}</p>{/if}
 
     <div class="actions">
+      {#if !saving && missing.length}<p class="req-hint">To post, add {missing.join(' and ')}.</p>{/if}
       <a class="btn-secondary" href="/accounting">Cancel</a>
       <button class="btn-primary" type="button" onclick={submit} disabled={!canSubmit}>
         {saving ? 'Posting…' : 'Record expense'}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import ActivityFeed from '$lib/components/accounting/ActivityFeed.svelte'
   import { usd } from '$lib/accounting/format'
@@ -48,7 +49,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       await invalidateAll()
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -70,7 +71,7 @@
           lines: draft.filter((l) => l.amount.trim()),
         }),
       })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       const bill = await r.json()
       await goto(`/accounting/bills/${bill._id}`)
     } catch (e) {
@@ -131,7 +132,7 @@
         <tbody>
           {#each po.bills as b (b._id)}
             <tr class="row-link" onclick={() => goto(`/accounting/bills/${b._id}`)}>
-              <td class="mono">#{b.year}-{String(b.number).padStart(4, '0')}</td>
+              <td class="mono"><a class="row-anchor" href={`/accounting/bills/${b._id}`} onclick={(e) => e.stopPropagation()}>#{b.year}-{String(b.number).padStart(4, '0')}</a></td>
               <td class="mono">{b.bill_date}</td>
               <td class="num">{usd(b.total)}</td>
               <td><span class="chip">{b.status}</span></td>

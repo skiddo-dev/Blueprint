@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto } from '$app/navigation'
   import { parseMoney } from '$lib/money'
   import { usd } from '$lib/accounting/format'
+  import { guardUnsaved } from '$lib/unsavedGuard'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -46,7 +48,8 @@
           },
         }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
+      guard.disarm()
       await goto('/accounting/recurring')
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -77,6 +80,21 @@
   )
   let canSubmit = $derived(!anyInvalid && linesOk && difference === 0 && totalDebit > 0 && !saving)
 
+  // Why the post button is disabled, in words (shown next to it).
+  const missing = $derived.by(() => {
+    const m: string[] = []
+    if (totalDebit <= 0) m.push('add at least one debit line')
+    else if (anyInvalid || !linesOk) m.push('give every line an account and exactly one of debit or credit')
+    if (totalDebit > 0 && difference !== 0) m.push(`balance the entry (off by ${usd(Math.abs(difference))})`)
+    return m
+  })
+
+  const dirty = $derived(
+    memo.trim() !== '' ||
+    lines.some((l) => l.account_id !== '' || l.debit.trim() !== '' || l.credit.trim() !== '' || l.memo.trim() !== ''),
+  )
+  const guard = guardUnsaved(() => dirty)
+
   function addLine() { lines = [...lines, blank()] }
   function removeLine(i: number) { if (lines.length > 2) lines = lines.filter((_, j) => j !== i) }
 
@@ -93,7 +111,8 @@
           lines: lines.map((l) => ({ account_id: l.account_id, debit: l.debit, credit: l.credit, memo: l.memo })),
         }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
+      guard.disarm()
       await goto('/accounting')
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -164,6 +183,7 @@
     {#if error}<p class="error">{error}</p>{/if}
 
     <div class="actions">
+      {#if !saving && missing.length}<p class="req-hint">To post: {missing.join('; ')}.</p>{/if}
       <a class="btn-secondary" href="/accounting">Cancel</a>
       <button class="btn-primary" type="button" onclick={submit} disabled={!canSubmit}>
         {saving ? 'Posting…' : 'Post entry'}

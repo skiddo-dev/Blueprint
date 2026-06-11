@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
   import ActivityFeed from '$lib/components/accounting/ActivityFeed.svelte'
@@ -46,7 +47,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: creditAmount, date: creditDate, memo: creditMemo }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       creditAmount = ''
       creditMemo = ''
       await invalidateAll()
@@ -69,7 +70,7 @@
     error = ''
     try {
       const r = await fetch(`/api/accounting/bills/${bill._id}/void`, { method: 'POST' })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       await invalidateAll()
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -87,7 +88,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: payAmount, date: payDate, method: payMethod }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       payAmount = ''
       payMethod = ''
       await invalidateAll()

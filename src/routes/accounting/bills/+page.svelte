@@ -5,6 +5,7 @@
   import SortTh from '$lib/components/accounting/SortTh.svelte'
   import { createSort } from '$lib/accounting/tableSort.svelte'
   import { usd, relativeDue } from '$lib/accounting/format'
+  import { goto } from '$app/navigation'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -110,8 +111,8 @@
               {#each sorted as b (b._id)}
                 {@const due = relativeDue(b.due_date, today)}
                 <tr class="row-link" class:row-overdue={isOverdue(b)}
-                  onclick={() => (window.location.href = `/accounting/bills/${b._id}`)}>
-                  <td class="mono">{b.year}-{String(b.number).padStart(4, '0')}</td>
+                  onclick={() => goto(`/accounting/bills/${b._id}`)}>
+                  <td class="mono"><a class="row-anchor" href={`/accounting/bills/${b._id}`} onclick={(e) => e.stopPropagation()}>{b.year}-{String(b.number).padStart(4, '0')}</a></td>
                   <td>{b.vendor_name}</td>
                   <td><span class="due-chip" class:overdue={isOverdue(b)} title={b.due_date}>
                     {isOpen(b.status) ? due.label : b.due_date}

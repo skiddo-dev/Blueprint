@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import ActivityFeed from '$lib/components/accounting/ActivityFeed.svelte'
   import { usd } from '$lib/accounting/format'
@@ -34,7 +35,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: dispDate, proceeds, cash_account_id: cashAccount }),
       })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       await invalidateAll()
     } catch (e) {
       errorMsg = e instanceof Error ? e.message : String(e)
@@ -54,7 +55,7 @@
     errorMsg = ''
     try {
       const r = await fetch(`/api/accounting/assets/${a._id}/dispose`, { method: 'DELETE' })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       await invalidateAll()
     } catch (e) {
       errorMsg = e instanceof Error ? e.message : String(e)
