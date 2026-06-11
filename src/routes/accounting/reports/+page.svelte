@@ -2,6 +2,7 @@
   import Icon from '$lib/components/Icon.svelte'
   import type { IconName } from '$lib/icons'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import AskTheBooks from '$lib/components/accounting/AskTheBooks.svelte'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -28,6 +29,8 @@
 <AccountingShell {user} title="Reports" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports' }]}>
   <p class="report-hint">Financial statements plus the working reports your accountant asks for at tax time. Every report prints clean.</p>
+
+  <AskTheBooks ai={data.ai} />
 
   <div class="report-grid">
     {#each REPORTS as r (r.href)}

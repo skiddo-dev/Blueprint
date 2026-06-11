@@ -9,13 +9,17 @@ import { env } from '$env/dynamic/private'
 import { getClient, MODEL } from './openai'
 import { getDb } from './db'
 import { extractText, imageMime } from './attachmentParse'
-import { getAccounts, getLedgerBalances } from './accounting'
+import { getAccounts, getLedgerBalances, getTrialBalance, getPeriodBalances, listPostedEntries } from './accounting'
 import { getArAging } from './invoicing'
-import { getApAging } from './payables'
+import { getApAging, listVendorsWithStats } from './payables'
 import { getBudget } from './budgets'
 import { getMonthAnomalies } from './anomalies'
-import { incomeStatement } from '$lib/accounting/statements'
+import { getJobDocs } from './jobs'
+import { jobProfitability } from '$lib/accounting/jobs'
+import { budgetVsActual } from '$lib/accounting/budgets'
+import { incomeStatement, balanceSheet, type StatementSection } from '$lib/accounting/statements'
 import { isCashLike } from '$lib/accounting/coa'
+import { normalizeRoute, describeRoute, routeHref, ASK_REPORT_IDS, type AskRoute } from '$lib/accounting/ask'
 import {
   buildMonthEndFacts,
   fallbackNarrative,
@@ -362,4 +366,227 @@ export async function narrateMonthEnd(facts: MonthEndFacts): Promise<{ narrative
   const text = parsed?.narrative?.trim()
   if (!text) return { narrative: fallbackNarrative(facts), ai: false }
   return { narrative: text.slice(0, 2000), ai: true }
+}
+
+// ── Ask the books ─────────────────────────────────────────────────────────────
+// The model routes a question to ONE deterministic report, the report runs
+// exactly as it would for its page, and the model narrates the result. It
+// never writes a query and never computes a figure — the data it narrates is
+// already usd-formatted.
+
+const ROUTE_GUIDE = `Reports you can route to:
+- income_statement (params from,to): revenue, costs, profit for a date range. "How did May go", "profit this year".
+- balance_sheet (param asOf): what the business owns/owes on a date.
+- ar_aging: open customer invoices by age. "Who owes us", "overdue invoices".
+- ap_aging: open vendor bills by age. "What do we owe", "bills due".
+- cash: current bank account balances.
+- vendor_spend (param year): total billed per vendor. "How much have we spent with Acme".
+- job_profit: revenue, costs, profit per job. "Which jobs made money".
+- register (params account,from,to): one account's activity; account is the 4-digit code from the chart.
+- budget_vs_actual (param year): plan vs reality.
+- none: not answerable from these books (payroll detail, forecasts, anything outside the ledger).`
+
+/** Pick the report (and parameters) that answers a question. Null when the
+ *  books can't answer it. */
+export async function routeQuestion(question: string, today: string): Promise<AskRoute | null> {
+  const accounts = await getAccounts()
+  const schema = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['report', 'from', 'to', 'asOf', 'account', 'year'],
+    properties: {
+      report: { type: 'string', enum: [...ASK_REPORT_IDS], description: 'The one report that answers the question, or "none".' },
+      from: { type: ['string', 'null'], description: 'ISO YYYY-MM-DD range start, when the question implies one.' },
+      to: { type: ['string', 'null'], description: 'ISO YYYY-MM-DD range end.' },
+      asOf: { type: ['string', 'null'], description: 'ISO date for balance_sheet.' },
+      account: { type: ['string', 'null'], description: 'Account code for register, from the chart provided.' },
+      year: { type: ['integer', 'null'], description: 'Year for vendor_spend / budget_vs_actual.' },
+    },
+  }
+  const raw = await structuredCall<Record<string, unknown>>({
+    system:
+      `You route a question about a small construction company's books to exactly one report.\n${ROUTE_GUIDE}\n` +
+      `Today is ${today}. Resolve relative dates ("last month", "this year") to ISO dates yourself. ` +
+      `Pick "none" rather than a report that only half-fits.`,
+    user:
+      `Chart of accounts (for register routing):\n${accounts.filter((a) => a.active).map((a) => `${a.code} ${a.name}`).join('\n')}\n\n` +
+      `Question: ${question}`,
+    schemaName: 'ask_route',
+    schema,
+  })
+  return normalizeRoute(raw, today)
+}
+
+const sec = (s: StatementSection) => ({
+  lines: s.lines.map((l) => ({ name: l.name, amount: usd(l.amount) })),
+  total: usd(s.total),
+})
+
+type AgingResult = Awaited<ReturnType<typeof getArAging>>
+function agingData(aging: AgingResult) {
+  return {
+    total_outstanding: usd(aging.total),
+    by_age: Object.fromEntries(Object.entries(aging.buckets).map(([k, v]) => [k, usd(v as number)])),
+    largest_open: aging.rows
+      .slice()
+      .sort((a, b) => b.balance - a.balance)
+      .slice(0, 12)
+      .map((r) => ({ who: r.name, doc_number: r.number, balance: usd(r.balance), due: r.due_date, age: r.bucket })),
+  }
+}
+
+/** Run one route exactly the way its report page would. Everything returned is
+ *  display-ready (usd strings) — the narration model copies, never computes. */
+export async function runAskRoute(route: AskRoute): Promise<unknown> {
+  switch (route.report) {
+    case 'income_statement': {
+      const [accounts, balances] = await Promise.all([
+        getAccounts(),
+        getLedgerBalances({ from: route.from, to: route.to, excludeClosing: true }),
+      ])
+      const s = incomeStatement(balances, accounts)
+      return {
+        period: `${route.from} → ${route.to}`,
+        revenue: sec(s.revenue),
+        cogs: sec(s.cogs),
+        gross_profit: usd(s.grossProfit),
+        operating_expenses: sec(s.expenses),
+        net_income: usd(s.netIncome),
+      }
+    }
+    case 'balance_sheet': {
+      const [accounts, balances] = await Promise.all([getAccounts(), getLedgerBalances({ to: route.asOf })])
+      const b = balanceSheet(balances, accounts)
+      return {
+        as_of: route.asOf,
+        assets: sec(b.assets),
+        liabilities: sec(b.liabilities),
+        equity: sec(b.equity),
+        balanced: b.balanced,
+      }
+    }
+    case 'ar_aging': return { customers_owe_us: agingData(await getArAging()) }
+    case 'ap_aging': return { we_owe_vendors: agingData(await getApAging()) }
+    case 'cash': {
+      const [accounts, tb] = await Promise.all([getAccounts(), getTrialBalance()])
+      const cashAccts = accounts.filter((a) => a.type === 'asset' && isCashLike(a) && a.active)
+      const rows = cashAccts.map((a) => ({
+        account: `${a.code} ${a.name}`,
+        balance: usd(tb.rows.find((r) => r.account_id === a._id)?.net ?? 0),
+      }))
+      const total = cashAccts.reduce((s, a) => s + (tb.rows.find((r) => r.account_id === a._id)?.net ?? 0), 0)
+      return { note: 'current book balances', accounts: rows, total: usd(total) }
+    }
+    case 'vendor_spend': {
+      const vendors = await listVendorsWithStats()
+      return {
+        note: 'totals are all-time billed amounts per vendor',
+        vendors: vendors
+          .filter((v) => v.billCount > 0)
+          .sort((a, b) => b.totalBilled - a.totalBilled)
+          .slice(0, 15)
+          .map((v) => ({ vendor: v.name, bills: v.billCount, total_billed: usd(v.totalBilled), open_balance: usd(v.outstanding) })),
+      }
+    }
+    case 'job_profit': {
+      const { invoices, bills, expenses } = await getJobDocs()
+      const report = jobProfitability(invoices, bills, expenses)
+      const pc = (m: number | null) => (m === null ? null : `${(m * 100).toFixed(1)}%`)
+      return {
+        jobs: report.rows.map((r) => ({
+          job: r.job, revenue: usd(r.revenue), costs: usd(r.costs), profit: usd(r.profit), margin: pc(r.margin),
+        })),
+        totals: { revenue: usd(report.totals.revenue), costs: usd(report.totals.costs), profit: usd(report.totals.profit), margin: pc(report.totals.margin) },
+      }
+    }
+    case 'register': {
+      const accounts = await getAccounts()
+      const account = accounts.find((a) => a._id === route.account)
+      if (!account) return { error: `No account ${route.account} in the chart` }
+      const entries = await listPostedEntries({ account: route.account, from: route.from, to: route.to })
+      let debit = 0
+      let credit = 0
+      const rows: { date: string; memo: string; debit: string; credit: string }[] = []
+      for (const e of entries) {
+        let d = 0
+        let c = 0
+        for (const l of e.lines) {
+          if (l.account_id !== route.account) continue
+          d += l.debit
+          c += l.credit
+        }
+        if (d === 0 && c === 0) continue
+        debit += d
+        credit += c
+        rows.push({ date: e.date, memo: e.memo ?? '', debit: d ? usd(d) : '', credit: c ? usd(c) : '' })
+      }
+      return {
+        account: `${account.code} ${account.name}`,
+        period: `${route.from} → ${route.to}`,
+        activity: rows.slice(-40),
+        shown: Math.min(rows.length, 40),
+        total_rows: rows.length,
+        period_debits: usd(debit),
+        period_credits: usd(credit),
+        period_net: usd(debit - credit),
+      }
+    }
+    case 'budget_vs_actual': {
+      const year = route.year as number
+      const [accounts, period, budget] = await Promise.all([getAccounts(), getPeriodBalances(), getBudget(year)])
+      if (!budget) return { error: `No budget exists for ${year}` }
+      const now = new Date().toISOString().slice(0, 7)
+      const through = now.startsWith(String(year)) ? Number(now.slice(5, 7)) : 12
+      const r = budgetVsActual(period, budget, accounts, year, through)
+      const row = (b: typeof r.totals.income) => ({
+        actual_ytd: usd(b.actualYtd), budget_ytd: usd(b.budgetYtd), variance_ytd_favorable: usd(b.varianceYtd),
+      })
+      return {
+        year,
+        months_counted: through,
+        income: row(r.totals.income),
+        expenses: row(r.totals.expense),
+        biggest_variances: r.rows
+          .slice()
+          .sort((a, b) => Math.abs(b.varianceYtd) - Math.abs(a.varianceYtd))
+          .slice(0, 8)
+          .map((x) => ({ account: x.name, type: x.type, actual_ytd: usd(x.actualYtd), budget_ytd: usd(x.budgetYtd), variance_favorable: usd(x.varianceYtd) })),
+      }
+    }
+  }
+}
+
+export interface BooksAnswer {
+  answer: string
+  basedOn: string | null
+  href: string | null
+}
+
+const CANT_ANSWER =
+  "I can't answer that from the books. I can read the income statement, balance sheet, A/R and A/P aging, cash balances, vendor spend, job profitability, an account register, or budget vs actual."
+
+/** The full ask pipeline: route → run → narrate. Every step degrades to an
+ *  honest "can't answer" rather than a guess. */
+export async function answerBooksQuestion(question: string, today: string): Promise<BooksAnswer> {
+  const route = await routeQuestion(question, today)
+  if (!route) return { answer: CANT_ANSWER, basedOn: null, href: null }
+  const data = await runAskRoute(route)
+  const parsed = await structuredCall<{ answer: string }>({
+    system:
+      `You answer a question about a small construction company's books from ONE report's data, provided as JSON.\n` +
+      `Rules: use ONLY this data — copy dollar amounts verbatim, never compute or estimate a number. ` +
+      `Plain English, ≤120 words, no headings. If the data doesn't actually contain the answer, say what's missing. ` +
+      `Numbers in the data are already formatted; "variance_favorable" amounts are positive when favorable.`,
+    user: `Question: ${question}\n\nReport: ${describeRoute(route)}\nData:\n${JSON.stringify(data, null, 1).slice(0, 12000)}`,
+    schemaName: 'books_answer',
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['answer'],
+      properties: { answer: { type: 'string', description: 'The plain-English answer, ≤120 words.' } },
+    },
+  })
+  const text = parsed?.answer?.trim()
+  if (!text) return { answer: CANT_ANSWER, basedOn: describeRoute(route), href: routeHref(route) }
+  return { answer: text.slice(0, 1500), basedOn: describeRoute(route), href: routeHref(route) }
 }
