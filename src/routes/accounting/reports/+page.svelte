@@ -46,7 +46,7 @@
   .report-card {
     display: flex; gap: 14px; align-items: flex-start; text-decoration: none;
     background: var(--card-bg); border: 1px solid var(--border-card); border-radius: var(--radius-lg);
-    padding: 16px 18px; box-shadow: var(--shadow); transition: box-shadow 0.12s, transform 0.12s;
+    padding: 16px 18px; box-shadow: var(--shadow); transition: box-shadow var(--speed-fast), transform var(--speed-fast);
   }
   .report-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
   .ico { display: inline-flex; color: var(--primary); margin-top: 1px; }

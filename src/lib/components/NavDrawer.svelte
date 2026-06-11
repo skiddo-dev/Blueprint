@@ -31,6 +31,7 @@
     { href: '/infra', icon: 'spend', label: 'Infra Spend' },
     { href: '/prospects', icon: 'prospects', label: 'Prospects' },
     { href: '/competitive-landscape', icon: 'map', label: 'Competitive Landscape' },
+    { href: '/design', icon: 'palette', label: 'Design System' },
   ]
   const isActive = (href: string) =>
     href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href)
@@ -196,13 +197,13 @@
     border-radius: var(--radius-md); padding: 7px 12px; font-size: var(--font-base); font-weight: 600; cursor: pointer;
   }
   .nav-search:hover { border-color: var(--primary); color: var(--primary-text); }
-  .nav-search-label { display: inline-flex; align-items: center; gap: 7px; }
+  .nav-search-label { display: inline-flex; align-items: center; gap: 8px; }
 
   .nav-help {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 7px;
+    gap: 8px;
     width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
@@ -231,7 +232,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--bg);
-    transition: background 0.15s, border-color 0.15s;
+    transition: background var(--speed), border-color var(--speed);
   }
   .nav-link:hover { background: var(--primary-bg); border-color: #c7d2fe; color: var(--primary-text); }
   /* Highlight the page you're on. */

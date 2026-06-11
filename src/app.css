@@ -102,6 +102,14 @@ html, body {
   --z-sheet: 60;   /* detail sheet, search palette, page modals */
   --z-modal: 70;   /* top-level dialogs (new task) */
 
+  /* Motion — one speed language (easing defaults to `ease`). The global
+     prefers-reduced-motion rule below neutralizes all of these. Deliberate
+     non-scale timings: the search/remote flash keyframes (attention, not
+     interaction). */
+  --speed-fast: 0.12s; /* color/opacity ticks, small hovers */
+  --speed: 0.15s;      /* default control + card transitions */
+  --speed-slow: 0.4s;  /* progress fills, larger movements */
+
   /* Effects (themed) — referenced so dark mode can soften/strengthen them. */
   --shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
   --shadow-hover: 0 6px 20px rgba(15, 23, 42, 0.11);
@@ -182,7 +190,7 @@ button {
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   padding: 7px 14px;
-  transition: all 0.15s ease;
+  transition: all var(--speed) ease;
   /* Remove the 300ms tap delay / double-tap-to-zoom on controls. */
   touch-action: manipulation;
 }
@@ -253,7 +261,7 @@ select {
   color: var(--text-body);
   width: 100%;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color var(--speed), box-shadow var(--speed);
 }
 input:focus, textarea:focus, select:focus {
   border-color: var(--primary);

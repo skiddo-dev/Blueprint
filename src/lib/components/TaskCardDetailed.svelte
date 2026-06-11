@@ -426,7 +426,7 @@
     margin-bottom: 8px;
     position: relative;
     box-shadow: var(--shadow);
-    transition: box-shadow 0.18s, transform 0.18s;
+    transition: box-shadow var(--speed), transform var(--speed);
   }
   .card:hover {
     box-shadow: var(--shadow-hover);
@@ -476,7 +476,7 @@
     min-height: 0;
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.12s;
+    transition: opacity var(--speed-fast);
     z-index: 2;
   }
   .card:hover .select-box,

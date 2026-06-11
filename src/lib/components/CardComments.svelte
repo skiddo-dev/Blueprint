@@ -341,7 +341,7 @@
   /* Reaction chips + the add-bar. */
   .reaction-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 5px; }
   .reaction-chip {
-    display: inline-flex; align-items: center; gap: 3px;
+    display: inline-flex; align-items: center; gap: 4px;
     background: var(--bg); border: 1px solid var(--border); color: var(--text-soft);
     border-radius: var(--radius-pill); padding: 1px 8px; font-size: var(--font-xs); font-weight: 600; min-height: 0; cursor: pointer;
   }

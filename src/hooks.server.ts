@@ -264,7 +264,8 @@ const guard: Handle = async ({ event, resolve }) => {
       path.startsWith('/prospects') ||
       path.startsWith('/accounting') ||
       path.startsWith('/infra') ||
-      path.startsWith('/competitive-landscape')) &&
+      path.startsWith('/competitive-landscape') ||
+      path.startsWith('/design')) &&
     user.role !== 'admin'
   ) {
     throw redirect(302, '/')

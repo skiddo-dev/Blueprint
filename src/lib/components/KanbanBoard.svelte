@@ -1194,7 +1194,7 @@
       flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       background: var(--card-bg);
       border: 1px solid var(--border);
       color: var(--text-soft);

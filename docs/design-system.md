@@ -2,10 +2,15 @@
 
 The reference for how Blueprint's UI is built. Everything visual in the app is
 expressed through the tokens and recipes below; if you're adding a page or a
-component, you should not need to invent a color, size, radius, shadow, or
-z-index — only compose existing ones. The iOS app mirrors the same values
-(`/api/config` serves the status palette; the SwiftUI color set mirrors the
-chrome tokens).
+component, you should not need to invent a color, size, radius, shadow,
+z-index, or transition speed — only compose existing ones. The iOS app mirrors
+the same values (`/api/config` serves the status palette; the SwiftUI color
+set mirrors the chrome tokens).
+
+**Living style guide:** `/design` (admin-only, in the nav drawer) renders this
+entire language from the live tokens — palette, type ramp, radii, elevation,
+buttons, chips/badges, z layers, motion, and the full icon set — in whichever
+theme is active. If a token changes, that page shows it immediately.
 
 **Sources of truth**
 
@@ -116,6 +121,26 @@ Every positioned layer in the app, lowest to highest. Backdrops sit at
 All shadows and both focus treatments strengthen/recolor automatically in dark
 via the `[data-theme="dark"]` block.
 
+## Motion
+
+| Token | Value | Use |
+|---|---|---|
+| `--speed-fast` | 0.12s | color/opacity ticks, small hovers |
+| `--speed` | 0.15s | default control + card transitions |
+| `--speed-slow` | 0.4s | progress fills, larger movements |
+
+Easing defaults to `ease`. The global `prefers-reduced-motion` rule
+neutralizes everything. Deliberate non-scale timings: the search/remote flash
+keyframes (attention cues, not interaction feedback).
+
+## Spacing
+
+Spacing is **not** tokenized — it doesn't theme, and `gap: 8px` reads better
+than a variable. The rule is the **2px grid**: every `gap`/`padding`/`margin`
+value is even (1px is allowed only for hairline alignment). Layout rhythm
+conventions: 4–8px inside controls and chip rows, 10–12px between related
+elements, 16–18px card padding and section gaps, 24px+ between page regions.
+
 ## Component language
 
 - **Buttons** — `button.primary` / `.btn-primary` (anchors) is *the* primary
@@ -175,6 +200,10 @@ grep -rn 'border-radius: [0-9.]*px' src --include='*.svelte' --include='*.css'
 grep -rn 'box-shadow:' src --include='*.svelte' --include='*.css' | grep -v 'var(--' | grep -v none
 # z-index: only local stacking (0/2/5)
 grep -rn 'z-index' src --include='*.svelte' --include='*.css' | grep -v 'var(--z\|calc(var'
+# transitions: durations come from the speed tokens (flash keyframes exempt)
+grep -rn 'transition:' src --include='*.svelte' --include='*.css' | grep -E '0\.[0-9]+s' | grep -v 'var(--speed'
+# spacing: the 2px grid — no odd gap values
+grep -rn 'gap: [0-9]*[13579]px' src --include='*.svelte' --include='*.css' | grep -v 'gap: 1px'
 # color fills/borders: no raw hex chrome in components. Allowed leftovers:
 #   chart/data-viz literals (Principle #4), the quotes paper-white PDF preview,
 #   the competitive-landscape blueprint field. `color: #fff` on solid indigo/
