@@ -18,6 +18,7 @@
   import { toggleReactor } from '$lib/reactions'
   import { isOwnedBy } from '$lib/ownership'
   import { statusOnAssign } from '$lib/taskRules'
+  import { openSearch } from '$lib/search.svelte'
   import { toast } from '$lib/toast.svelte'
 
   let {
@@ -705,6 +706,10 @@
   // ── Board stats ───────────────────────────────────────────────────────
   let total = $derived(KANBAN_STATUSES.reduce((n, s) => n + columns[s].length, 0))
   let done = $derived(columns['Done'].length)
+  let activeTotal = $derived(total - done - columns['Cancelled'].length)
+  let overdueTotal = $derived(KANBAN_STATUSES.reduce((n, s) => n + columns[s].filter(isOverdue).length, 0))
+  let reviewTotal = $derived(columns['Review'].length)
+  let storeTotal = $derived(new Set(KANBAN_STATUSES.flatMap(s => columns[s].flatMap(taskStores))).size)
   let pct = $derived(total > 0 ? Math.round(done / total * 100) : 0)
 </script>
 
@@ -774,12 +779,20 @@
     <button class="bb-btn" disabled={bulkBusy} onclick={() => selectedIds.clear()}><Icon name="x" size={11} /> Clear</button>
   </div>
 {/if}
-<div class="board-toolbar">
-  <div class="toolbar-left">
-    <h1 class="board-title"><Icon name="logo" size={17} /> Blueprint</h1>
-    <p class="board-sub">Email-to-Task Kanban · Grocery Construction</p>
+<div class="board-command" class:offline={!online}>
+  <div class="command-main">
+    <div class="command-kicker">
+      <span class="live-dot" class:offline={!online}></span>
+      {online ? 'Live workspace' : 'Offline mode'} · {view === 'mine' ? 'My work' : 'All tasks'} · {matchCount} visible
+    </div>
+    <h1 class="board-title"><Icon name="logo" size={19} /> Blueprint</h1>
+    <p class="board-sub">Grocery construction command center</p>
   </div>
-  <div class="toolbar-right">
+
+  <div class="command-actions">
+    <button class="secondary search-action" type="button" onclick={openSearch}>
+      <Icon name="search" size={13} /> Search <kbd>⌘K</kbd>
+    </button>
     {#if role === 'admin'}
       <button
         class="secondary"
@@ -791,6 +804,29 @@
       </button>
     {/if}
     <button class="primary" onclick={() => { showNewTask = true }}><Icon name="pencil" size={13} /> New Task</button>
+  </div>
+
+  <div class="command-metrics" aria-label="Board health">
+    <div class="metric-card">
+      <span class="metric-label">Open work</span>
+      <strong>{activeTotal}</strong>
+      <span class="metric-note">{done} closed · {pct}%</span>
+    </div>
+    <div class="metric-card risk" class:clear={overdueTotal === 0}>
+      <span class="metric-label">Past due</span>
+      <strong>{overdueTotal}</strong>
+      <span class="metric-note">{myOverdue} mine</span>
+    </div>
+    <div class="metric-card review">
+      <span class="metric-label">In review</span>
+      <strong>{reviewTotal}</strong>
+      <span class="metric-note">handoff lane</span>
+    </div>
+    <div class="metric-card stores">
+      <span class="metric-label">Stores</span>
+      <strong>{storeTotal}</strong>
+      <span class="metric-note">active sites</span>
+    </div>
   </div>
 </div>
 
@@ -976,29 +1012,130 @@
 {/if}
 
 <style>
-  .board-toolbar {
+  .board-command {
+    display: grid;
+    grid-template-columns: minmax(250px, 1.15fr) minmax(420px, 1.85fr) auto;
+    grid-template-areas: "main metrics actions";
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding: 14px;
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--primary-bg) 38%, var(--card-bg)) 0%, var(--card-bg) 44%, var(--bg) 100%);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow);
+  }
+  .board-command.offline {
+    border-color: var(--warning-border);
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--warning-bg) 36%, var(--card-bg)) 0%, var(--card-bg) 44%, var(--bg) 100%);
+  }
+  .command-main {
+    grid-area: main;
+    min-width: 0;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+  .command-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    color: var(--text-faint);
+    font-size: var(--font-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success-vivid);
+    box-shadow: 0 0 0 4px var(--success-bg);
+    flex-shrink: 0;
+  }
+  .live-dot.offline {
+    background: var(--warning);
+    box-shadow: 0 0 0 4px var(--warning-bg);
   }
   .board-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-size: var(--font-2xl);
     font-weight: 800;
     color: var(--text);
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
   }
   .board-sub {
     font-size: var(--font-sm);
-    color: var(--text-faint);
+    color: var(--text-muted);
     margin-top: 2px;
   }
-  .toolbar-right {
+  .command-actions {
+    grid-area: actions;
     display: flex;
     gap: 8px;
     align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    align-content: center;
+  }
+  .search-action kbd {
+    font-family: inherit;
+    font-size: var(--font-xs);
+    color: var(--text-faint);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0 5px;
+    background: var(--card-bg);
+  }
+  .command-metrics {
+    grid-area: metrics;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(92px, 1fr));
+    gap: 8px;
+    min-width: 0;
+  }
+  .metric-card {
+    min-width: 0;
+    min-height: 84px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 10px 11px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--primary);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+  }
+  .metric-card.risk { border-top-color: var(--danger); }
+  .metric-card.risk.clear { border-top-color: var(--success-vivid); }
+  .metric-card.review { border-top-color: #3b82f6; }
+  .metric-card.stores { border-top-color: var(--store-chip); }
+  .metric-label {
+    color: var(--text-faint);
+    font-size: var(--font-xs);
+    font-weight: 700;
+  }
+  .metric-card strong {
+    color: var(--text);
+    font-size: var(--font-3xl);
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+  .metric-note {
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* Segmented toggles (My Work / All + card density), side by side. */
@@ -1176,6 +1313,18 @@
      app.css — is hidden on desktop.) */
   .col-wrap { display: contents; }
 
+  @media (min-width: 769px) and (max-width: 1260px) {
+    .board-command {
+      grid-template-columns: minmax(240px, 0.9fr) minmax(360px, 1.4fr);
+      grid-template-areas:
+        "main actions"
+        "metrics metrics";
+    }
+    .command-actions {
+      justify-content: flex-end;
+    }
+  }
+
   @media (max-width: 768px) {
     .board-columns {
       flex-direction: column;
@@ -1188,11 +1337,34 @@
 
     /* Top spacing lives here, not on the .main-content scroll container, so the
        sticky bar below can pin flush to the top (notch-safe). */
-    .board-toolbar {
+    .board-command {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "main"
+        "metrics"
+        "actions";
+      padding: 12px;
+      margin-bottom: 10px;
       padding-top: max(0.5rem, env(safe-area-inset-top));
     }
-    /* The page identity is obvious on a phone — drop the tagline row. */
-    .board-sub { display: none; }
+    .command-actions {
+      justify-content: stretch;
+    }
+    .command-actions > button {
+      flex: 1 1 auto;
+    }
+    .search-action {
+      display: none;
+    }
+    .command-metrics {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .metric-card {
+      min-height: 74px;
+    }
+    .metric-card strong {
+      font-size: var(--font-2xl);
+    }
 
     /* Fold the advanced controls behind the View button so the first card
        is reachable without scrolling past rows of chrome. The badge counts
