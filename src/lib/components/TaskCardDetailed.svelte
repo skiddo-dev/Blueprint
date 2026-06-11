@@ -369,6 +369,16 @@
 
   {#if openPanel === 'email' && task.full_body}
     <div class="tool-panel">
+      {#if task.web_link}
+        <a
+          class="outlook-link"
+          href={task.web_link}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open this email thread in Outlook on the web"
+          onclick={(e) => e.stopPropagation()}
+        ><Icon name="link" size={11} /> Open in Outlook</a>
+      {/if}
       {#if mounted}<div class="email-body">{@html safeBody}</div>{/if}
     </div>
   {/if}
@@ -693,6 +703,16 @@
     margin-top: 4px;
     background: var(--bg);
   }
+  .outlook-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--link);
+    text-decoration: none;
+  }
+  .outlook-link:hover { text-decoration: underline; }
 
   .row-2 {
     display: grid;

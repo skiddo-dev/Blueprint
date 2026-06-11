@@ -15,6 +15,7 @@ export interface SyncEmail {
   date: string
   body: string
   conversation_id?: string | null
+  web_link?: string | null // Graph webLink — opens the message in Outlook on the web
 }
 
 /** A mailbox to scan, plus the display name of its owner (used as the default
@@ -172,6 +173,7 @@ export function buildNewTask(
     status: 'To Do',
     exchange_id: email.id,
     conversation_id: email.conversation_id ?? null,
+    web_link: email.web_link ?? null,
     email_date: email.date,          // receivedDateTime — the flag-time proxy (pins this card's cutoff date)
     source_mailbox: opts.mailbox,
     from: email.from,
@@ -209,6 +211,8 @@ export function buildThreadPatch(
   if (union.length !== (task.store_numbers?.length ?? 0)) set.store_numbers = union
 
   set.exchange_id = email.id
+  // Keep the Outlook link pointing at the thread's newest message.
+  if (email.web_link) set.web_link = email.web_link
 
   const timelineEntry: TimelineEntry = {
     at: new Date().toISOString(),

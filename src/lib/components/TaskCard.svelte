@@ -74,6 +74,9 @@
   let clDone = $derived((task.checklist ?? []).filter(i => i.done).length)
   let attCount = $derived(task.attachments?.length || (task.attachment_ids ?? []).length || 0)
   let commentCount = $derived((task.timeline ?? []).filter(e => e.kind === 'comment').length)
+  // Replies synced onto this card from its email thread — a live thread is worth
+  // noticing without opening the sheet.
+  let emailReplies = $derived((task.timeline ?? []).filter(e => e.kind === 'email').length)
   let hasNote = $derived(!!(task.notes ?? '').trim())
   let inbox = $derived(task.source_mailbox ? task.source_mailbox.split('@')[0] : '')
 
@@ -179,6 +182,7 @@
     </span>
     <span class="created" title="Created {createdFull}"><Icon name="calendar" size={11} /> {createdShort}</span>
     <span class="counts">
+      {#if emailReplies}<span class="count" title="{emailReplies} email {emailReplies === 1 ? 'reply' : 'replies'} synced onto this card"><Icon name="mail" size={11} />{emailReplies}</span>{/if}
       {#if clTotal}<span class="count" class:cl-complete={clDone === clTotal} title="Checklist — {clDone} of {clTotal} done"><Icon name="checklist" size={11} />{clDone}/{clTotal}</span>{/if}
       {#if hasNote}<span class="count" title="Has a note"><Icon name="note" size={11} /></span>{/if}
       {#if attCount}<span class="count" title="{attCount} attachment{attCount === 1 ? '' : 's'}"><Icon name="attachment" size={11} />{attCount}</span>{/if}

@@ -1,5 +1,5 @@
 import { env } from '$env/dynamic/private'
-import { getTasks, getUsers, insertTask, saveAttachment, patchTask, tryAcquireLease, releaseLease, normName, getSyncTombstoneKeys } from './db'
+import { getTasks, getUsers, insertTask, saveAttachment, patchTask, tryAcquireLease, releaseLease, normName, getSyncTombstoneKeys, setMeta } from './db'
 import { fetchRecentEmails, getGraphToken, GraphAuthError } from './email'
 import { parseEmailWithLLM } from './llm'
 import { analyzeAttachment } from './attachmentParse'
@@ -35,6 +35,27 @@ export interface SyncResult {
   message: string
   skipped?: boolean
   authError?: boolean    // Microsoft sign-in failed (expired secret / revoked consent)
+}
+
+/** What the board's "Synced Xm ago" indicator reads (meta id `last_email_sync`).
+ *  Written after every completed run — manual button or webhook push — so admins
+ *  can see the automatic background sync actually happening. */
+export interface LastSyncStatus {
+  at: string
+  new: number
+  updated: number
+  failed: number         // mailboxes that couldn't be read this run
+  authError?: boolean
+  trigger: string        // who/what kicked it off ("Bob", "Email push")
+}
+
+// Best-effort: the status record must never fail a sync that already did its work.
+async function recordSyncStatus(status: LastSyncStatus): Promise<void> {
+  try {
+    await setMeta('last_email_sync', { ...status })
+  } catch (e) {
+    console.error('[email-sync] could not record sync status:', e)
+  }
 }
 
 // Download, store, and READ each attachment (text docs locally, image scans via
@@ -83,6 +104,13 @@ async function processAttachments(
 // sweep instead of stampeding. A reply on a thread we already track patches the
 // existing card (and flags it for review) instead of creating a duplicate.
 export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Promise<SyncResult> {
+  // Mock mode must NEVER sweep real mailboxes: .env still carries live Graph +
+  // Mongo credentials in dev, but getTasks() serves the mock list — so dedupe
+  // can't see the real board and every flagged email would be re-inserted into
+  // the REAL database as a duplicate card.
+  if (env.USE_MOCK_DATA === 'true') {
+    return { count: 0, message: '🧪 Mock mode — email sync is off (no real mailboxes are read).', skipped: true }
+  }
   if (!(await tryAcquireLease('email_sync', 5 * 60_000))) {
     return { count: 0, message: '⏳ A sync is already in progress.', skipped: true }
   }
@@ -102,6 +130,10 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
       // message instead of throwing a bare 500 that reads as "Internal error".
       if (e instanceof GraphAuthError) {
         console.error('[email-sync] Graph auth failed:', e.message)
+        await recordSyncStatus({
+          at: new Date().toISOString(), new: 0, updated: 0, failed: 0,
+          authError: true, trigger: triggeredBy,
+        })
         return {
           count: 0,
           authError: true,
@@ -207,6 +239,11 @@ export async function runEmailSync({ triggeredBy }: { triggeredBy: string }): Pr
       ? `✅ Synced ${bits.join(' + ')} across ${mailboxes.length} inbox(es)!`
       : `📭 No new flagged emails (scanned ${mailboxes.length} inbox(es)).`
     if (failed.length) message += ` ⚠️ ${failed.length} inbox(es) couldn’t be read.`
+
+    await recordSyncStatus({
+      at: new Date().toISOString(), new: newCount, updated: updatedCount,
+      failed: failed.length, trigger: triggeredBy,
+    })
 
     return { count: newCount, updated: updatedCount, message }
   } finally {

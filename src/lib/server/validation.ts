@@ -53,6 +53,8 @@ export const userUpsertSchema = z.object({
 // Per-field value rules for PATCH /api/tasks/[id]. The field NAME is allowlisted by
 // the route; this validates the VALUE. Fields not listed accept any value.
 const TASK_FIELD_VALUE: Record<string, z.ZodTypeAny> = {
+  title: z.string().trim().min(1, 'title is required').max(300),
+  description: z.string().max(10_000),
   status: oneOf(KANBAN_STATUSES, 'status'),
   assigned_to: z.string().max(120),
   co_assignees: z.array(z.string().trim().min(1).max(120)).max(20),
