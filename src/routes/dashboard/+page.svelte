@@ -875,7 +875,7 @@
     background: var(--card-bg); border: 1px solid var(--border-card); border-radius: var(--radius-lg);
     padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow);
   }
-  .filter-group { display: flex; flex-direction: column; gap: 3px; min-width: 220px; flex: 1; }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; min-width: 220px; flex: 1; }
   .filter-label { font-size: var(--font-sm); color: var(--text-muted); }
   .filter-label strong { color: var(--text); font-weight: 700; }
   .filter-group input[type="range"] { width: 100%; accent-color: var(--primary-dark); margin: 0; height: 18px; }
@@ -902,7 +902,7 @@
 
   .tracker-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
   .filter-row { display: flex; gap: 6px; }
-  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: var(--font-sm); padding: 4px 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text-soft); border-radius: var(--radius-pill); cursor: pointer; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: var(--font-sm); padding: 4px 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text-soft); border-radius: var(--radius-pill); cursor: pointer; }
   .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
   .muted-note { font-size: var(--font-xs); color: var(--text-faint); margin: 4px 2px 10px; }
   .error { color: var(--danger); font-size: var(--font-base); background: var(--danger-bg); border-radius: var(--radius-md); padding: 8px 12px; margin: 6px 0 10px; }

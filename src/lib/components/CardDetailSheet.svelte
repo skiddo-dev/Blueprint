@@ -459,7 +459,7 @@
   .status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     border-radius: var(--radius-pill);
     padding: 3px 11px;
     font-size: var(--font-sm);
@@ -658,7 +658,7 @@
   }
 
   .activity { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-  .act-row { display: flex; align-items: baseline; gap: 7px; font-size: var(--font-sm); }
+  .act-row { display: flex; align-items: baseline; gap: 8px; font-size: var(--font-sm); }
   .act-icon { flex-shrink: 0; }
   .act-text { color: var(--text-soft); line-height: 1.4; min-width: 0; }
   .act-from { color: var(--text-faint); }

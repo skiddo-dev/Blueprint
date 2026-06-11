@@ -286,7 +286,7 @@
     color: var(--text-body);
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
   }
   .dot {
     width: 8px;
@@ -314,7 +314,7 @@
     background: var(--success-vivid);
     border-radius: var(--radius-sm);
     height: 5px;
-    transition: width 0.4s ease;
+    transition: width var(--speed-slow) ease;
   }
   .completion-pct { color: var(--success-vivid); font-weight: 600; }
 
@@ -370,7 +370,7 @@
   .req-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
   .req-actions .secondary { font-size: var(--font-xs); padding: 3px 7px; }
 
-  label { display: flex; flex-direction: column; gap: 3px; font-size: var(--font-xs); color: var(--text-body); }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-xs); color: var(--text-body); }
   .checkbox-label { flex-direction: row; align-items: center; gap: 6px; font-size: var(--font-sm); }
   .danger-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 

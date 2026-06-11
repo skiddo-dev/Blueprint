@@ -114,6 +114,6 @@
   td input { padding: 5px 7px; border-radius: var(--radius-md); width: 100%; }
   .row-actions { text-align: right; white-space: nowrap; }
   .ten99-edit { min-width: 150px; }
-  .ten99-edit .check { display: flex; align-items: center; gap: 5px; font-size: var(--font-sm); font-weight: 600; margin-bottom: 4px; }
+  .ten99-edit .check { display: flex; align-items: center; gap: 6px; font-size: var(--font-sm); font-weight: 600; margin-bottom: 4px; }
   .ten99-edit .check input { width: auto; }
 </style>

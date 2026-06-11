@@ -41,15 +41,15 @@
   font-size: var(--font-base); font-weight: 600; color: var(--text-muted); text-decoration: none;
 }
 .acct .basis-toggle .pill.active { background: var(--primary-bg); border-color: var(--primary); color: var(--primary); }
-.acct-nav .group { display: flex; flex-wrap: nowrap; align-items: center; gap: 5px; flex-shrink: 0; }
+.acct-nav .group { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; flex-shrink: 0; }
 .acct-nav .group:not(:first-child)::before {
   content: ''; align-self: center; width: 1px; height: 20px; background: var(--border); margin: 0 1px;
 }
 .acct-nav a {
-  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; line-height: 1.1;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; line-height: 1.1;
   font-size: var(--font-base); font-weight: 600; text-decoration: none; color: var(--text-body);
   background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 6px 9px;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  transition: background var(--speed-fast), border-color var(--speed-fast), color var(--speed-fast);
 }
 .acct-nav a:hover { background: var(--primary-bg); border-color: var(--primary); color: var(--primary-text); }
 .acct-nav a.active { background: var(--primary); border-color: var(--primary); color: #fff; }
@@ -152,7 +152,7 @@
 }
 
 /* ── Party (customer/vendor) initial avatars in directory lists ── */
-.acct .party { display: inline-flex; align-items: center; gap: 9px; }
+.acct .party { display: inline-flex; align-items: center; gap: 8px; }
 .acct .avatar {
   width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;

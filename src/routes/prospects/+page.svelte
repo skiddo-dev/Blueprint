@@ -514,7 +514,7 @@
   .count { font-size: var(--font-sm); color: var(--text-faint); font-weight: 600; }
 
   .chip {
-    display: inline-flex; align-items: center; gap: 5px;
+    display: inline-flex; align-items: center; gap: 6px;
     padding: 5px 10px; font-size: var(--font-sm); font-weight: 600; border: 1px solid var(--border);
     border-radius: var(--radius-md); background: var(--bg); color: var(--text-soft); cursor: pointer; text-decoration: none;
   }

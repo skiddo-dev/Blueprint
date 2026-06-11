@@ -314,7 +314,7 @@
 
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
   .span-2 { grid-column: span 2; }
-  label { display: flex; flex-direction: column; gap: 5px; font-size: var(--font-base); font-weight: 600; color: var(--text-soft); }
+  label { display: flex; flex-direction: column; gap: 6px; font-size: var(--font-base); font-weight: 600; color: var(--text-soft); }
   .optional { font-weight: 400; color: var(--text-faint); }
   .hint { font-size: var(--font-sm); font-weight: 400; color: var(--text-faint); }
 
@@ -335,14 +335,14 @@
     display: block; width: 100%; height: 100%;
     border-radius: var(--radius-pill);
     background: var(--scrollbar-thumb);
-    transition: background 0.15s ease;
+    transition: background var(--speed) ease;
   }
   .switch .track::after {
     content: ''; position: absolute; top: 2px; left: 2px;
     width: 16px; height: 16px; border-radius: 50%;
     background: #fff;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.3);
-    transition: transform 0.15s ease;
+    transition: transform var(--speed) ease;
   }
   .switch input:checked + .track { background: var(--primary); }
   .switch input:checked + .track::after { transform: translateX(16px); }

@@ -196,7 +196,7 @@
     margin-bottom: 8px;
     position: relative;
     box-shadow: var(--shadow);
-    transition: box-shadow 0.18s, transform 0.18s;
+    transition: box-shadow var(--speed), transform var(--speed);
     cursor: pointer;
     text-align: left;
   }
@@ -232,7 +232,7 @@
     min-height: 0;
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.12s;
+    transition: opacity var(--speed-fast);
     z-index: 2;
   }
   .card:hover .select-box,
@@ -318,7 +318,7 @@
   .chip-row {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     flex-wrap: wrap;
     margin-bottom: 7px;
   }
@@ -415,7 +415,7 @@
     flex: 1 1 auto;
   }
   .created { font-size: var(--font-xs); color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }
-  .counts { display: inline-flex; gap: 5px; flex-shrink: 0; }
+  .counts { display: inline-flex; gap: 6px; flex-shrink: 0; }
   .count { font-size: var(--font-xs); color: var(--text-faint); white-space: nowrap; }
   .count.cl-complete { color: var(--success-vivid); font-weight: 600; }
 

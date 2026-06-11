@@ -60,7 +60,7 @@
     background: var(--card-bg); border: 1px solid var(--border-card); border-top: 3px solid var(--primary);
     border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow);
   }
-  .tile.link { transition: box-shadow 0.12s, transform 0.12s; }
+  .tile.link { transition: box-shadow var(--speed-fast), transform var(--speed-fast); }
   .tile.link:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
   .val { font-size: var(--font-2xl); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.15; }
   .lbl { font-size: var(--font-sm); color: var(--text-faint); margin-top: 3px; }

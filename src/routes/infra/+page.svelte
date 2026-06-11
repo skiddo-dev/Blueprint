@@ -157,7 +157,7 @@
   .mtd-num { font-size: var(--font-2xl); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
   .mtd-label { font-size: var(--font-sm); color: var(--text-muted); }
 
-  .trend { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .trend { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
   .trend-row { display: grid; grid-template-columns: 36px 1fr 90px; align-items: center; gap: 8px; }
   .trend-month { font-size: var(--font-sm); color: var(--text-muted); }
   .bar-track { background: var(--bg); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); height: 14px; overflow: hidden; }
