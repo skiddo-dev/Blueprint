@@ -7,6 +7,7 @@
   import { csvCell } from '$lib/sanitize'
   import Chart from '$lib/components/Chart.svelte'
   import PageShell from '$lib/components/PageShell.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
   import StatTile from '$lib/components/accounting/StatTile.svelte'
   import Icon from '$lib/components/Icon.svelte'
   import { theme } from '$lib/theme.svelte'
@@ -586,7 +587,14 @@
   {/snippet}
 
     {#if tasks.length === 0 && genQuotes.length === 0}
-      <p class="empty">No tasks or generated quotes found yet.</p>
+      <div style="margin-top: 6vh">
+        <EmptyState icon="dashboard" title="Nothing to chart yet">
+          Metrics light up as tasks land on the board and quotes get logged.
+          {#snippet actions()}
+            <a class="btn-primary" href="/"><Icon name="board" size={13} /> Open the board</a>
+          {/snippet}
+        </EmptyState>
+      </div>
     {:else}
       <!-- Interactive filters (sliders) — every chart/metric below reacts live -->
       <div class="filter-bar">
@@ -868,7 +876,6 @@
   .page-sub { font-size: var(--font-sm); color: var(--text-faint); margin-top: 2px; }
   .section-heading { display: flex; align-items: center; gap: 8px; font-size: var(--font-lg); font-weight: 700; color: var(--text); margin-bottom: 12px; }
   .section-heading :global(svg) { color: var(--primary); flex-shrink: 0; }
-  .empty { color: var(--text-faint); font-size: var(--font-md); }
 
   .filter-bar {
     display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-end;

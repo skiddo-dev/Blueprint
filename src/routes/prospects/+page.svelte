@@ -12,6 +12,9 @@
   import PageShell from '$lib/components/PageShell.svelte'
   import Chart from '$lib/components/Chart.svelte'
   import Icon from '$lib/components/Icon.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
+  import Skeleton from '$lib/components/Skeleton.svelte'
+  import { trapFocus } from '$lib/actions/trapFocus'
   import { escapeHtml } from '$lib/sanitize'
   import type { ChartData, ChartOptions } from 'chart.js'
 
@@ -303,7 +306,7 @@
   {/snippet}
 
     <!-- Pull controls -->
-    <form method="POST" action="?/refresh" use:enhance={handlePull} class="pull-bar">
+    <form id="pull-form" method="POST" action="?/refresh" use:enhance={handlePull} class="pull-bar">
       <label>Radius (mi)<input type="number" name="radiusMiles" min="1" max="50" bind:value={radiusMiles} /></label>
       <label>Min size (sf)<input type="number" name="minSqft" min="0" step="1000" bind:value={minSqft} /></label>
       <label>Max size (sf)<input type="number" name="maxSqft" min="0" step="1000" bind:value={maxSqft} /></label>
@@ -318,7 +321,25 @@
     {#if saveError}<p class="result err" style="margin:-8px 0 12px">{saveError}</p>{/if}
 
     {#if prospectList.length === 0}
-      <p class="empty">No prospects yet. Click <strong>Pull prospects</strong> to fetch warehouses near {center.label}.</p>
+      {#if pulling}
+        <!-- Summary-card-shaped placeholders while the first pull runs. -->
+        <div class="cards" aria-hidden="true">
+          {#each { length: 4 } as _, i (i)}
+            <div class="card"><Skeleton height="10px" width="56px" /><Skeleton height="22px" width="72px" /></div>
+          {/each}
+        </div>
+      {:else}
+        <div style="margin: 4vh 0 18px">
+          <EmptyState icon="prospects" title="No prospects yet">
+            Pull warehouses near {center.label} to start a list — size, owner, and distance come in automatically.
+            {#snippet actions()}
+              <button class="primary" type="submit" form="pull-form" disabled={pulling}>
+                <Icon name="refresh" size={13} /> Pull prospects
+              </button>
+            {/snippet}
+          </EmptyState>
+        </div>
+      {/if}
     {:else}
       <!-- Filters -->
       <div class="filter-bar">
@@ -423,15 +444,24 @@
         </table>
       </div>
     {:else if prospectList.length > 0}
-      <p class="empty">No prospects match the current filters. <button class="chip" onclick={resetFilters}>Reset</button></p>
+      <div style="margin-top: 14px">
+        <EmptyState icon="sliders" title="No prospects match" size="sm">
+          Every prospect is filtered out right now.
+          {#snippet actions()}
+            <button class="secondary" onclick={resetFilters}>Reset filters</button>
+          {/snippet}
+        </EmptyState>
+      </div>
     {/if}
 </PageShell>
+
+<svelte:window onkeydown={(e) => { if (e.key === 'Escape' && modalId) modalId = null }} />
 
 <!-- Detail modal -->
 {#if modal}
   {@const p = modal}
   <div class="modal-backdrop" onclick={() => (modalId = null)} role="presentation"></div>
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Prospect details">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Prospect details" use:trapFocus>
     <div class="modal-head">
       <div>
         <h2>{p.address}</h2>
@@ -490,7 +520,6 @@
 <style>
   .page-title { font-size: var(--font-2xl); font-weight: 800; color: var(--text); }
   .page-sub { font-size: var(--font-sm); color: var(--text-faint); margin-top: 2px; }
-  .empty { color: var(--text-faint); font-size: var(--font-md); }
 
   .badge.mock {
     display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: var(--radius-lg);

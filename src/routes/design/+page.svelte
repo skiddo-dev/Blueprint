@@ -1,7 +1,10 @@
 <script lang="ts">
   import PageShell from '$lib/components/PageShell.svelte'
   import Icon from '$lib/components/Icon.svelte'
+  import EmptyState from '$lib/components/EmptyState.svelte'
+  import Skeleton from '$lib/components/Skeleton.svelte'
   import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
+  import { toast } from '$lib/toast.svelte'
   import { ICONS, type IconName } from '$lib/icons'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -77,6 +80,7 @@
     ['--z-bar', '50', 'floating bulk-action bar'],
     ['--z-sheet', '60', 'detail sheet · search palette · page modals'],
     ['--z-modal', '70', 'top-level dialogs (new task)'],
+    ['--z-toast', '80', 'toast stack · nav progress bar'],
   ]
   const speeds: [string, string, string][] = [
     ['--speed-fast', '0.12s', 'color / opacity ticks'],
@@ -257,7 +261,60 @@
           </div>
         {/each}
       </div>
-      <p class="foot">All of it collapses under <code>prefers-reduced-motion</code> — the flash keyframes too.</p>
+      <p class="foot">
+        Page navigations crossfade at <code>--speed</code> through the View Transitions API (wired in the
+        root layout); a nav slower than 150ms shows the indeterminate top progress bar. All of it collapses
+        under <code>prefers-reduced-motion</code> — the flash keyframes too.
+      </p>
+    </section>
+
+    <!-- ── Feedback ─────────────────────────────────────────────────────── -->
+    <section class="card">
+      <div class="card-head"><h2><Icon name="bell" size={16} /> Feedback</h2><span class="muted src">$lib/toast · Toasts.svelte in the root layout</span></div>
+      <p class="section-title">Toasts — the one event-feedback channel (these are live)</p>
+      <div class="btn-row">
+        <button class="secondary" type="button" onclick={() => toast.success('Saved — nice work.')}>Success</button>
+        <button class="secondary" type="button" onclick={() => toast.info('Heads up: 2 cards were skipped.')}>Info</button>
+        <button class="secondary" type="button" onclick={() => toast.error('Couldn’t save — you appear to be offline.')}>Error</button>
+        <button class="secondary" type="button" onclick={() => {
+          toast.success('Task deleted', {
+            undo: () => toast.info('Restored — nothing was committed.'),
+            onExpire: () => toast.info('Undo window passed — the write just ran.'),
+          })
+        }}>Destructive + Undo</button>
+      </div>
+      <p class="foot">
+        Destructive actions use the staged-undo pattern: the row leaves the screen immediately, and the
+        server write only runs when the toast expires — Undo means it never happened. Inline
+        <code>role="alert"</code> text next to the field stays the pattern for form validation; persistent
+        conditions (offline) stay banners, not toasts.
+      </p>
+      <p class="section-title">Skeletons — client-side fetches only</p>
+      <div class="skel-demo">
+        <Skeleton lines={3} />
+      </div>
+      <p class="foot">
+        Shape placeholders to the content they replace so the layout doesn't jump. Server-loaded pages
+        block navigation instead — the top progress bar covers those, never a skeleton.
+      </p>
+    </section>
+
+    <!-- ── Empty states ─────────────────────────────────────────────────── -->
+    <section class="card">
+      <div class="card-head"><h2>Empty states</h2><span class="muted src">EmptyState.svelte · icon + headline + first action</span></div>
+      <EmptyState icon="prospects" title="No prospects yet" size="sm">
+        Pull warehouses near Walled Lake to start a list — size, owner, and distance come in automatically.
+        {#snippet actions()}
+          <button class="primary" type="button" onclick={() => toast.info('This one’s just a demo.')}>
+            <Icon name="refresh" size={13} /> Pull prospects
+          </button>
+        {/snippet}
+      </EmptyState>
+      <p class="foot">
+        Page-level voids get the full treatment (board, dashboard, prospects); in-card table placeholders
+        in accounting stay compact one-liners by design. <code>size="sm"</code> inside palettes and cards,
+        <code>framed={'{false}'}</code> when the host already draws the card.
+      </p>
     </section>
 
     <!-- ── Iconography ──────────────────────────────────────────────── -->
@@ -350,6 +407,9 @@
     padding: 2px 10px; font-size: var(--font-xs); font-weight: 700;
   }
   .demo-pills { margin-bottom: 0; }
+
+  /* Feedback */
+  .skel-demo { max-width: 420px; }
 
   /* Motion */
   .speed-box {

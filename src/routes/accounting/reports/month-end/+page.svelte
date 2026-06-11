@@ -138,7 +138,7 @@
   .gen-at { font-size: var(--font-sm); color: var(--text-muted); margin: 4px 0 0; }
 
   .figures { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-  .fig { background: var(--bg); border: 1px solid var(--border-soft); border-radius: var(--radius-lg); padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+  .fig { background: var(--bg); border: 1px solid var(--border-soft); border-radius: var(--radius-lg); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
   .fig .k { font-size: var(--font-xs); color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
   .fig .v { font-size: var(--font-lg); font-weight: 700; color: var(--text); }
   .fig .n { font-size: var(--font-sm); color: var(--text-muted); }
