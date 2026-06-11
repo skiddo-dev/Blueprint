@@ -83,7 +83,7 @@
           <tbody>
             {#each sorted as p (p._id)}
               <tr class="row-link" onclick={() => goto(`/accounting/purchase-orders/${p._id}`)}>
-                <td class="mono">{poNumber(p)}</td>
+                <td class="mono"><a class="row-anchor" href={`/accounting/purchase-orders/${p._id}`} onclick={(e) => e.stopPropagation()}>{poNumber(p)}</a></td>
                 <td>{p.vendor_name}</td>
                 <td class="mono">{p.date}</td>
                 <td class="num">{usd(p.total)}</td>

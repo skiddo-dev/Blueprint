@@ -197,6 +197,17 @@ elements, 16–18px card padding and section gaps, 24px+ between page regions.
   outline and put initial focus on Cancel, so Enter never destroys. Esc and
   the backdrop cancel; the ask is an `alertdialog` and trap-focused like
   every other dialog.
+- **Form feedback** — three rules on the document forms:
+  1. API failures go through `apiError(r)` (`$lib/accounting/api.ts`), which
+     unwraps the `{ message }` envelope — never render `r.text()` raw.
+  2. A disabled post button always says why: the `.req-hint` line ("To post,
+     add a customer and at least one line with an amount.") sits left of the
+     actions and disappears the moment the form is postable.
+  3. Dirty drafts don't die silently: `guardUnsaved(() => dirty)`
+     (`$lib/unsavedGuard.ts`) challenges in-app navigation with the confirm
+     dialog ("Discard this draft?" / "Keep editing") and lets the browser's
+     own prompt cover tab-close. Call `disarm()` before the post-success
+     redirect.
 - **Skeletons** — `Skeleton.svelte`, for client-side fetches only; shape the
   bars to the content they replace. Server-loaded pages block navigation
   instead — the nav progress bar covers those, never a skeleton.
@@ -225,7 +236,13 @@ elements, 16–18px card padding and section gaps, 24px+ between page regions.
   (`$lib/accounting/tableSort.svelte.ts`): the header cell is a real button
   carrying `aria-sort`, first click ascends, second flips. Registers do
   **not** sort (the running balance only means anything in date order) —
-  they pin their header instead (`.table-wrap.tall`).
+  they pin their header instead (`.table-wrap.tall`). Clickable rows
+  (`tr.row-link`) must carry a real `<a class="row-anchor">` on the document
+  number — that's the keyboard/screen-reader path (Tab + Enter,
+  `:focus-within` highlights the row); the `tr` onclick is mouse convenience
+  only and uses `goto()`, never `window.location`. Horizontally-scrollable
+  wraps show an edge shadow (`--scroll-shadow-ink` recipe in accounting.css)
+  on whichever side has more table.
 - **Accounting section nav** — `.acct-nav` groups (Receivables · Payables ·
   Reports · Banking) carry visible micro-labels on desktop and wrap as
   units; on phones the nav collapses to one horizontally-scrollable,

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto, invalidateAll } from '$app/navigation'
   import type { PageData } from './$types'
@@ -54,7 +55,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amounts: grid }),
       })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       savedAt = new Date().toLocaleTimeString()
       await invalidateAll()
     } catch (e) {

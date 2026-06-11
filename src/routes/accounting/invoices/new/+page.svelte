@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { goto } from '$app/navigation'
@@ -6,6 +7,7 @@
   import { parseMoney } from '$lib/money'
   import { usd } from '$lib/accounting/format'
   import { dueDate } from '$lib/accounting/invoicing'
+  import { guardUnsaved } from '$lib/unsavedGuard'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -63,7 +65,8 @@
           },
         }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
+      guard.disarm()
       await goto('/accounting/recurring')
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -90,6 +93,22 @@
 
   let anyInvalid = $derived(amounts.some((n) => Number.isNaN(n)) || lines.some((l) => !l.description.trim()))
   let canSubmit = $derived(!anyInvalid && total > 0 && customerName.trim() !== '' && !saving)
+
+  // Why the post button is disabled, in words (shown next to it).
+  const missing = $derived.by(() => {
+    const m: string[] = []
+    if (customerName.trim() === '') m.push('a customer')
+    if (total <= 0) m.push('at least one line with an amount')
+    else if (anyInvalid) m.push('a description and a valid amount on every line')
+    return m
+  })
+
+  const dirty = $derived(
+    customerName.trim() !== '' || customerEmail.trim() !== '' || po.trim() !== '' ||
+    job.trim() !== '' || memo.trim() !== '' ||
+    lines.some((l) => l.description.trim() !== '' || l.unit_price.trim() !== ''),
+  )
+  const guard = guardUnsaved(() => dirty)
 
   function addLine() { lines = [...lines, blank()] }
   function removeLine(i: number) { if (lines.length > 1) lines = lines.filter((_, j) => j !== i) }
@@ -134,8 +153,9 @@
           lines: lines.map((l) => ({ description: l.description, quantity: Number(l.quantity) || 1, unit_price: l.unit_price })),
         }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       const inv = await r.json()
+      guard.disarm()
       await goto(`/accounting/invoices/${inv._id}`)
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -226,6 +246,7 @@
     {#if error}<p class="error">{error}</p>{/if}
 
     <div class="actions">
+      {#if !saving && missing.length}<p class="req-hint">To post, add {missing.join(' and ')}.</p>{/if}
       <a class="btn-secondary" href="/accounting/invoices">Cancel</a>
       <button class="btn-primary" type="button" onclick={submit} disabled={!canSubmit}>
         {saving ? 'Creating…' : 'Create & post invoice'}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
   import SortTh from '$lib/components/accounting/SortTh.svelte'
@@ -46,7 +47,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, acquired_date: acquired, cost, salvage: salvage || undefined, life_months: Number(lifeMonths) }),
       })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       name = ''; cost = ''; salvage = ''; showNew = false
       await invalidateAll()
     } catch (e) {
@@ -68,7 +69,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ through }),
         })
-        if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+        if (!r.ok) throw new Error(await apiError(r))
         posted += (await r.json()).posted
       }
       note = posted ? `Posted ${posted} depreciation entr${posted === 1 ? 'y' : 'ies'} through ${through}.` : `Nothing to post — everything is current through ${through}.`
@@ -128,7 +129,7 @@
           <tbody>
             {#each sorted as a (a._id)}
               <tr class="row-link" onclick={() => goto(`/accounting/assets/${a._id}`)}>
-                <td>{a.name}</td>
+                <td><a class="row-anchor" href={`/accounting/assets/${a._id}`} onclick={(e) => e.stopPropagation()}>{a.name}</a></td>
                 <td class="mono">{a.in_service}</td>
                 <td class="num">{usd(a.cost)}</td>
                 <td class="num">{a.accumulated ? usd(a.accumulated) : ''}</td>

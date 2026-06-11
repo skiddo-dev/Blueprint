@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import StatTile from '$lib/components/accounting/StatTile.svelte'
@@ -42,7 +43,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ through }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       await invalidateAll()
     } catch (e) {
       lockError = e instanceof Error ? e.message : String(e)
@@ -68,7 +69,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ through }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       await invalidateAll()
     } catch (e) {
       lockError = e instanceof Error ? e.message : String(e)

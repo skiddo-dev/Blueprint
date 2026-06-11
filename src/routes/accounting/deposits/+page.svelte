@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import SortTh from '$lib/components/accounting/SortTh.svelte'
   import { createSort } from '$lib/accounting/tableSort.svelte'
@@ -42,7 +43,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ account_id: accountId, date, payment_ids: pickedIds, memo: memo || undefined }),
       })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       picked = {}; memo = ''
       await invalidateAll()
     } catch (e) {
@@ -64,7 +65,7 @@
     errorMsg = ''
     try {
       const r = await fetch(`/api/accounting/deposits/${id}/void`, { method: 'POST' })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       await invalidateAll()
     } catch (e) {
       errorMsg = e instanceof Error ? e.message : String(e)

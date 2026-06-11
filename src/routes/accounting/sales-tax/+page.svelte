@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import Icon from '$lib/components/Icon.svelte'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import { usd } from '$lib/accounting/format'
@@ -35,7 +36,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount, date, account_id: accountId, memo: memo || undefined }),
       })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       amount = ''; memo = ''
       await invalidateAll()
     } catch (e) {
@@ -57,7 +58,7 @@
     errorMsg = ''
     try {
       const r = await fetch(`/api/accounting/sales-tax/remittances/${id}/void`, { method: 'POST' })
-      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      if (!r.ok) throw new Error(await apiError(r))
       await invalidateAll()
     } catch (e) {
       errorMsg = e instanceof Error ? e.message : String(e)

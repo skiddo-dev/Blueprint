@@ -36,6 +36,15 @@
    viewport entirely. */
 .acct-nav { position: relative; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; margin: 0 0 18px; }
 
+/* Why a disabled post button is disabled, in words — sits left of the form's
+   action buttons and disappears the moment the form is postable. */
+.acct .req-hint {
+  margin: 0 auto 0 0;
+  align-self: center;
+  font-size: var(--font-sm);
+  color: var(--text-faint);
+}
+
 /* Accrual | Cash basis toggle on the statements. */
 .acct .basis-toggle { display: inline-flex; gap: 6px; margin-bottom: 10px; }
 .acct .basis-toggle .pill {
@@ -104,11 +113,30 @@
 .acct tfoot td { font-weight: 700; color: var(--text); border-top: 2px solid var(--border); border-bottom: none; }
 .acct tr.row-link { cursor: pointer; }
 .acct tbody tr.row-link:hover td { background: var(--primary-bg); }
+/* The keyboard path into a clickable row: its first cell holds a real link
+   (the document number), so Tab reaches every row and Enter opens it. The
+   row highlights when the link inside holds focus, mirroring hover. */
+.acct tbody tr.row-link:focus-within td { background: var(--primary-bg); }
+.acct .row-anchor { color: inherit; text-decoration: none; }
+.acct .row-anchor:hover, .acct .row-anchor:focus-visible { text-decoration: underline; }
 .acct .num { text-align: right; font-variant-numeric: tabular-nums; }
 .acct .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-body); }
 .acct .neg { color: var(--warning); }
 .acct .owed { font-weight: 600; color: var(--warning); }
-.acct .table-wrap { overflow-x: auto; }
+/* Horizontal scroll with an edge hint: shadow layers scroll with the content
+   (background-attachment scroll) while card-colored covers pinned to the
+   content edges (local) hide them at either end — so the shadow only shows
+   on the side with more table. Cells are transparent, so it reads through. */
+.acct .table-wrap {
+  overflow-x: auto;
+  background:
+    linear-gradient(90deg, var(--card-bg) 30%, transparent) left / 28px 100%,
+    linear-gradient(270deg, var(--card-bg) 30%, transparent) right / 28px 100%,
+    radial-gradient(farthest-side at 0 50%, var(--scroll-shadow-ink), transparent) left / 12px 100%,
+    radial-gradient(farthest-side at 100% 50%, var(--scroll-shadow-ink), transparent) right / 12px 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
 
 /* Sortable column headers (SortTh.svelte) — the whole header cell is a button
    dressed as a plain th; the active column shows its direction and aria-sort. */

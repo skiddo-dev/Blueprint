@@ -116,6 +116,7 @@ html, body {
 
   /* Effects (themed) — referenced so dark mode can soften/strengthen them. */
   --shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+  --scroll-shadow-ink: rgba(15, 23, 42, 0.16); /* edge hint on horizontally-scrollable tables */
   --shadow-hover: 0 6px 20px rgba(15, 23, 42, 0.11);
   --shadow-pop: 0 8px 28px rgba(15, 23, 42, 0.16);    /* popovers / dropdowns */
   --shadow-modal: 0 20px 60px rgba(15, 23, 42, 0.25); /* modals / sheets */
@@ -157,6 +158,7 @@ html, body {
   --border-card: #334155;
 
   --shadow: 0 1px 4px rgba(0, 0, 0, 0.40);
+  --scroll-shadow-ink: rgba(0, 0, 0, 0.55);
   --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.55);
   --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.5);
   --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.6);

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { apiError } from '$lib/accounting/api'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
   import EmptyState from '$lib/components/EmptyState.svelte'
   import SortTh from '$lib/components/accounting/SortTh.svelte'
@@ -48,7 +49,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: draftName, email: draftEmail }),
       })
-      if (!r.ok) throw new Error(await r.text())
+      if (!r.ok) throw new Error(await apiError(r))
       editingId = null
       await invalidateAll()
     } catch (e) {
