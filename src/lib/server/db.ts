@@ -1155,11 +1155,20 @@ export async function resolveAccessRequest(email: string, status: 'approved' | '
 // (up to 2) replicas so they don't double-fire.
 
 export async function getMeta(id: string): Promise<Record<string, unknown> | null> {
+  // Mock mode has no Mongo: serve a plausible last-sync record so the board's
+  // "Synced Xm ago" indicator renders in dev; every other meta id is absent.
+  if (USE_MOCK) {
+    if (id === 'last_email_sync') {
+      return { at: new Date(Date.now() - 4 * 60_000).toISOString(), new: 2, updated: 1, failed: 0, trigger: 'Email push' }
+    }
+    return null
+  }
   const d = await getDb()
   return col(d, 'meta').findOne({ _id: id })
 }
 
 export async function setMeta(id: string, doc: Record<string, unknown>): Promise<void> {
+  if (USE_MOCK) return
   const d = await getDb()
   await col(d, 'meta').updateOne(
     { _id: id },
@@ -1173,6 +1182,7 @@ export async function setMeta(id: string, doc: Record<string, unknown>): Promise
  *  deadlock it. Used to debounce email syncs and single-thread the
  *  subscription-renewal timer. */
 export async function tryAcquireLease(name: string, ttlMs: number): Promise<boolean> {
+  if (USE_MOCK) return true // no Mongo to coordinate through — single dev process
   const d = await getDb()
   const now = new Date()
   const until = new Date(now.getTime() + ttlMs)
@@ -1192,6 +1202,7 @@ export async function tryAcquireLease(name: string, ttlMs: number): Promise<bool
 
 /** Release a lease early (otherwise it just expires after its TTL). */
 export async function releaseLease(name: string): Promise<void> {
+  if (USE_MOCK) return
   const d = await getDb()
   await col(d, 'meta').updateOne({ _id: `lease:${name}` }, { $set: { lockedUntil: new Date(0) } })
 }

@@ -6,11 +6,13 @@ import { validateTaskFieldValue } from '$lib/server/validation'
 import { statusOnAssign } from '$lib/taskRules'
 
 // Allowlist of task fields a client may set via PATCH. Mirrors the edit controls
-// in TaskCard.svelte. Without it, `updateTaskField` does `$set:{[field]:value}`
-// with a caller-supplied key — letting an owner rewrite `created_by` / `created_at`
-// (reassign authorship, dodge the ownership check) or inject arbitrary fields the
-// dashboard later trusts. Adding a new editable field? Add it here too.
+// in TaskCard.svelte / CardDetailSheet.svelte. Without it, `updateTaskField` does
+// `$set:{[field]:value}` with a caller-supplied key — letting an owner rewrite
+// `created_by` / `created_at` (reassign authorship, dodge the ownership check) or
+// inject arbitrary fields the dashboard later trusts. Adding a new editable
+// field? Add it here too.
 const EDITABLE_FIELDS = new Set([
+  'title', 'description',
   'status', 'assigned_to', 'co_assignees', 'date',
   'quote', 'quote_type', 'quote_status', 'quote_assignee',
   'notes',

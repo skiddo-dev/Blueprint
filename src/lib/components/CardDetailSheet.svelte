@@ -72,11 +72,15 @@
       ? task.sender_name || task.sender_email || 'Email'
       : task.created_by || 'Manual'
   )
-  let createdFull = $derived.by(() => {
-    const d = new Date(task.created_at)
+  const fullDateTime = (iso: string | null | undefined): string => {
+    const d = new Date(iso ?? '')
     if (Number.isNaN(d.getTime())) return ''
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-  })
+  }
+  let createdFull = $derived(fullDateTime(task.created_at))
+  // When the source email actually arrived — usually earlier than the card's
+  // created stamp (a PM flags mail hours after it lands).
+  let receivedFull = $derived(task.exchange_id ? fullDateTime(task.email_date) : '')
 
   // The sheet never SSRs (it mounts on interaction), but gate the raw-email
   // sanitize on mount anyway so DOMPurify only ever runs with a real DOM.
@@ -94,6 +98,48 @@
       onFieldUpdate(task._id, 'notes', notesValue)
       notesDirty = false
     }
+  }
+
+  // ── Title (click the pencil to rename) ──────────────────────────────────────
+  // Email-synced cards get their title from the parsed subject line, so renaming
+  // has to live somewhere — this is it. Local copy while editing (the 2s poll
+  // can't clobber a half-typed rename); Enter/blur saves, Esc cancels.
+  let titleEditing = $state(false)
+  let titleValue = $state('')
+  function startTitleEdit() {
+    titleValue = task.title
+    titleEditing = true
+  }
+  function saveTitle() {
+    const t = titleValue.trim()
+    titleEditing = false
+    if (t && t !== task.title) onFieldUpdate(task._id, 'title', t)
+  }
+  function titleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') { e.preventDefault(); saveTitle() }
+    else if (e.key === 'Escape') { e.stopPropagation(); titleEditing = false }
+  }
+
+  // ── Summary (the LLM's email digest — editable the same way) ───────────────
+  let descEditing = $state(false)
+  let descValue = $state('')
+  function startDescEdit() {
+    descValue = task.description ?? ''
+    descEditing = true
+  }
+  function saveDesc() {
+    descEditing = false
+    if (descValue !== (task.description ?? '')) onFieldUpdate(task._id, 'description', descValue)
+  }
+  function descKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') { e.stopPropagation(); descEditing = false }
+    else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveDesc() }
+  }
+
+  // Focus a just-mounted edit control (and put the caret at the end).
+  function autofocus(el: HTMLInputElement | HTMLTextAreaElement) {
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length)
   }
 
   // ── Co-assignees ────────────────────────────────────────────────────────────
@@ -180,13 +226,49 @@
     <button class="sheet-close" onclick={close} aria-label="Close task details"><Icon name="x" size={15} /></button>
   </header>
 
-  <h2 class="sheet-title">{task.title}</h2>
+  {#if titleEditing}
+    <!-- svelte-ignore a11y_autofocus -->
+    <input
+      class="title-input"
+      type="text"
+      maxlength="300"
+      aria-label="Task title"
+      bind:value={titleValue}
+      use:autofocus
+      onkeydown={titleKeydown}
+      onblur={saveTitle}
+    />
+  {:else}
+    <h2 class="sheet-title">
+      {task.title}
+      <button
+        type="button"
+        class="edit-btn"
+        onclick={startTitleEdit}
+        aria-label="Rename task"
+        title="Rename"
+      ><Icon name="pencil" size={13} /></button>
+    </h2>
+  {/if}
 
   <div class="sheet-meta">
     <span class="src"><Icon name={sourceIcon} size={12} /> {source}</span>
-    {#if createdFull}<span class="src" title="Created {createdFull}"><Icon name="calendar" size={12} /> {createdFull}</span>{/if}
+    {#if receivedFull}
+      <span class="src" title="Email received {receivedFull} (card created {createdFull})"><Icon name="mail" size={12} /> {receivedFull}</span>
+    {:else if createdFull}
+      <span class="src" title="Created {createdFull}"><Icon name="calendar" size={12} /> {createdFull}</span>
+    {/if}
     {#if isAdmin && task.source_mailbox}
       <span class="src" title="Flagged in {task.source_mailbox}"><Icon name="import" size={12} /> {inbox}</span>
+    {/if}
+    {#if task.web_link}
+      <a
+        class="outlook-link"
+        href={task.web_link}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Open this email thread in Outlook on the web"
+      ><Icon name="link" size={12} /> Open in Outlook</a>
     {/if}
     {#if task.po}<span class="po-chip"><Icon name="bill" size={12} /> PO {task.po}</span>{/if}
   </div>
@@ -312,10 +394,33 @@
     </section>
   {/if}
 
-  {#if task.description}
+  {#if task.description || descEditing}
     <section class="sect">
-      <h3 class="sect-title">Summary</h3>
-      <p class="desc">{task.description}</p>
+      <h3 class="sect-title">
+        Summary
+        {#if !descEditing}
+          <button
+            type="button"
+            class="edit-btn"
+            onclick={startDescEdit}
+            aria-label="Edit summary"
+            title="Edit summary"
+          ><Icon name="pencil" size={12} /></button>
+        {/if}
+      </h3>
+      {#if descEditing}
+        <textarea
+          rows="4"
+          maxlength="10000"
+          aria-label="Task summary"
+          bind:value={descValue}
+          use:autofocus
+          onkeydown={descKeydown}
+          onblur={saveDesc}
+        ></textarea>
+      {:else}
+        <p class="desc">{task.description}</p>
+      {/if}
     </section>
   {/if}
 
@@ -492,6 +597,36 @@
     line-height: 1.35;
     margin: 0 0 8px;
   }
+  /* Rename field: same type as the h2 it replaces, so nothing jumps. */
+  .title-input {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: var(--font-xl);
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.35;
+    margin: 0 0 8px;
+    padding: 2px 6px;
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-md);
+    background: var(--card-bg);
+    outline: none;
+    box-shadow: var(--focus-halo);
+  }
+  /* Pencil beside the title / Summary heading — quiet until hovered. */
+  .edit-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-faint);
+    padding: 2px 5px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    line-height: 1;
+    min-height: 0;
+    vertical-align: middle;
+  }
+  .edit-btn:hover, .edit-btn:focus-visible { color: var(--link); background: var(--bg); }
   .sheet-meta {
     display: flex;
     align-items: center;
@@ -500,6 +635,13 @@
     margin-bottom: 8px;
   }
   .src { font-size: var(--font-sm); color: var(--text-faint); }
+  .outlook-link {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--link);
+    text-decoration: none;
+  }
+  .outlook-link:hover { text-decoration: underline; }
   .po-chip {
     display: inline-block;
     background: var(--success-bg);

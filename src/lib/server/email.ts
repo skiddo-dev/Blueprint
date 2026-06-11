@@ -73,7 +73,7 @@ export async function fetchRecentEmails(mailbox: string, pageSize = 30) {
   const cutoffIso = new Date(env.EMAIL_SYNC_CUTOFF ?? EMAIL_SYNC_CUTOFF_DEFAULT).toISOString()
   const params = new URLSearchParams({
     $top: String(pageSize),
-    $select: 'id,conversationId,subject,from,receivedDateTime,bodyPreview,body',
+    $select: 'id,conversationId,subject,from,receivedDateTime,bodyPreview,body,webLink',
     $filter: `flag/flagStatus eq 'flagged' and receivedDateTime ge ${cutoffIso}`,
   })
 
@@ -144,6 +144,7 @@ export async function fetchRecentEmails(mailbox: string, pageSize = 30) {
       sender_email: senderEmail,
       date: (msg.receivedDateTime as string) ?? '',
       body,
+      web_link: (msg.webLink as string) ?? null, // "open this message in Outlook on the web"
       attachments,
     })
   }

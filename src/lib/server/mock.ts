@@ -104,6 +104,10 @@ export function generateMockTasks(count = 35): Task[] {
       status: pick(KANBAN_STATUSES) as TaskStatus,
       exchange_id: `mock_exchange_${String(i).padStart(3, '0')}`,
       conversation_id: `mock_thread_${String(i).padStart(3, '0')}`,
+      // Outlook deep link + received stamp so the sheet's email affordances
+      // render in mock mode (most cards; a few without to cover the fallback).
+      web_link: i % 5 === 0 ? null : `https://outlook.office365.com/owa/?ItemID=mock${i}&viewmodel=ReadMessageItem`,
+      email_date: new Date(Date.parse(createdAt) - randInt(48) * 3_600_000).toISOString(),
       source_mailbox: pick(MOCK_INBOXES),
       created_by: 'system',
       attachment_ids: [],

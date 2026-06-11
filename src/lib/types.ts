@@ -52,6 +52,7 @@ export interface Task {
   archived_at?: string         // set when a stale Done/Cancelled card is auto-archived; any status change clears it
   exchange_id?: string
   conversation_id?: string     // Graph thread id — replies match back to this card
+  web_link?: string | null     // Outlook-on-the-web deep link to the thread's newest synced message
   email_date?: string          // source email's receivedDateTime (flag-time proxy; drives the sync cutoff)
   source_mailbox?: string      // which PM inbox this flagged email was synced from
   from?: string

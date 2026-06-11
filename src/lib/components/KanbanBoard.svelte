@@ -14,6 +14,7 @@
   import { KANBAN_STATUSES, STATUS_META, SUPERVISORS, WIP_LIMITS } from '$lib/constants'
   import { defaultFilters, taskMatchesFilters, taskStores, anyFilterActive, activeFilterCount } from '$lib/boardFilters'
   import { remoteChangedIds } from '$lib/boardSync'
+  import { relTime } from '$lib/relTime'
   import { parseMentions } from '$lib/mentions'
   import { toggleReactor } from '$lib/reactions'
   import { isOwnedBy } from '$lib/ownership'
@@ -382,6 +383,7 @@
   // instant feedback and refetch on reconnect.
   let online = $state(true)
   let pollTimer: ReturnType<typeof setInterval>
+  let syncStatusTimer: ReturnType<typeof setInterval>
 
   // Which cards THIS client wrote recently — server-side changes to them within
   // the grace window are ours echoing back, not a teammate's edit to flash.
@@ -489,10 +491,15 @@
         online = false
       }
     }, 2000)
+    if (role === 'admin') {
+      fetchSyncStatus()
+      syncStatusTimer = setInterval(fetchSyncStatus, 60_000)
+    }
   })
 
   onDestroy(() => {
     clearInterval(pollTimer)
+    clearInterval(syncStatusTimer)
     flushStaged() // navigating away commits anything still in its undo window
   })
 
@@ -680,18 +687,50 @@
   }
 
   // ── Email sync (admin only) ───────────────────────────────────────────
+  // Last completed sync — manual or the Graph webhook push — so admins can see
+  // the background sync working ("Synced 4m ago" by the Refresh button). Fetched
+  // on mount and once a minute (the same tick refreshes the relative stamp).
+  interface LastSync { at?: string; new?: number; updated?: number; failed?: number; authError?: boolean; trigger?: string }
+  let lastSync = $state<LastSync | null>(null)
+  let syncStatusNow = $state(Date.now())
+  async function fetchSyncStatus() {
+    if (role !== 'admin') return
+    try {
+      const r = await fetch('/api/sync')
+      if (r.ok) lastSync = (await r.json()).last
+      syncStatusNow = Date.now()
+    } catch { /* indicator only — the offline banner covers connectivity */ }
+  }
+  let syncStamp = $derived(lastSync?.at ? relTime(lastSync.at, syncStatusNow) : '')
+  let syncTip = $derived.by(() => {
+    if (!lastSync?.at) return ''
+    if (lastSync.authError) return 'The last email sync couldn’t sign in to Microsoft 365 — an admin needs to renew the app credentials.'
+    const bits = [`Last sync${lastSync.trigger ? ` (${lastSync.trigger})` : ''}: ${lastSync.new ?? 0} new · ${lastSync.updated ?? 0} updated`]
+    if (lastSync.failed) bits.push(`${lastSync.failed} inbox(es) couldn’t be read`)
+    return bits.join(' · ')
+  })
+
   async function syncEmails() {
     syncing = true
     try {
       const r = await fetch('/api/sync', { method: 'POST' })
-      const data = await r.json()
-      toast.success(data.message ?? 'Done')
-      const r2 = await fetch(tasksUrl())
-      if (r2.ok) columns = group(withoutStaged(await r2.json()))
-    } catch (e) {
-      toast.error(`Couldn’t refresh email — ${e}`)
+      let data: { ok?: boolean; message?: string } | null = null
+      try { data = await r.json() } catch { /* non-JSON error body */ }
+      // The server toasts honestly: a Graph sign-in failure or unexpected error
+      // comes back ok:false with an actionable message — that's not a success.
+      if (!r.ok || data?.ok === false) {
+        toast.error(data?.message ?? 'Couldn’t refresh email — please try again in a minute.')
+      } else {
+        toast.success(data?.message ?? 'Done')
+        const r2 = await fetch(tasksUrl())
+        if (r2.ok) columns = group(withoutStaged(await r2.json()))
+      }
+    } catch {
+      online = false
+      toast.error('Couldn’t refresh email — you appear to be offline.')
     } finally {
       syncing = false
+      fetchSyncStatus()
     }
   }
 
@@ -781,8 +820,14 @@
   </div>
   <div class="toolbar-right">
     {#if role === 'admin'}
+      {#if lastSync?.authError && !syncing}
+        <span class="sync-status warn" title={syncTip}><Icon name="warning" size={12} /> Sync needs attention</span>
+      {:else if syncStamp && !syncing}
+        <span class="sync-status" title={syncTip}>Synced {syncStamp}</span>
+      {/if}
       <button
         class="secondary refresh-btn"
+        class:syncing
         onclick={syncEmails}
         disabled={syncing}
         aria-label="Refresh now"
@@ -1001,6 +1046,23 @@
     gap: 8px;
     align-items: center;
   }
+  /* "Synced 4m ago" — proof the background email sync is alive (admin only). */
+  .sync-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--font-sm);
+    color: var(--text-faint);
+    white-space: nowrap;
+    cursor: default;
+  }
+  .sync-status.warn { color: var(--warning); font-weight: 600; }
+  /* Spin the refresh glyph while a manual sync runs. */
+  .refresh-btn.syncing :global(svg) { animation: sync-spin 0.9s linear infinite; }
+  @keyframes sync-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .refresh-btn.syncing :global(svg) { animation: none; }
+  }
 
   /* Segmented toggles (My Work / All + card density), side by side. */
   .toggles-row {
@@ -1202,6 +1264,9 @@
     .board-sub { display: none; }
     .toolbar-right :global(button) { padding: 7px 11px; font-size: var(--font-sm); min-height: 0; }
     .refresh-btn .refresh-label { display: none; }
+    /* Chrome diet: the stamp is desktop comfort, not phone-critical — except a
+       broken sync, which stays visible everywhere. */
+    .sync-status:not(.warn) { display: none; }
 
     /* Fold the advanced controls behind the View button so the first card
        is reachable without scrolling past rows of chrome. The badge counts

@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { runEmailSync } from '$lib/server/emailSync'
+import { getMeta } from '$lib/server/db'
 
 // Manual "Sync now" trigger (admin only). The actual work — and the real-time
 // Graph webhook push — both go through runEmailSync().
@@ -23,4 +24,14 @@ export const POST: RequestHandler = async ({ locals }) => {
       { status: 502 },
     )
   }
+}
+
+// Last completed run (manual or webhook) — feeds the board's "Synced Xm ago"
+// indicator so admins can see the automatic background sync working.
+export const GET: RequestHandler = async ({ locals }) => {
+  const session = await locals.auth()
+  const user = session?.user as Record<string, unknown> | undefined
+  if (!user) throw error(401)
+  if (user.role !== 'admin') throw error(403)
+  return json({ last: await getMeta('last_email_sync') })
 }

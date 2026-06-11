@@ -124,6 +124,11 @@ describe('buildNewTask', () => {
     const doc = buildNewTask(email({ date: '2026-06-09T14:00:00Z' }), parsed(), [], 'admin')
     expect(doc.email_date).toBe('2026-06-09T14:00:00Z')
   })
+  it('carries the Outlook webLink (null when Graph gave none)', () => {
+    const doc = buildNewTask(email({ web_link: 'https://outlook.office365.com/owa/?ItemID=AAMk' }), parsed(), [], 'admin')
+    expect(doc.web_link).toBe('https://outlook.office365.com/owa/?ItemID=AAMk')
+    expect(buildNewTask(email(), parsed(), [], 'admin').web_link).toBeNull()
+  })
 })
 
 describe('flag cutoff helpers', () => {
@@ -170,6 +175,14 @@ describe('buildThreadPatch', () => {
     const t = task({ assigned_to: 'Unassigned' })
     const { set } = buildThreadPatch(t, parsed({ assigned_to: 'Kris' }), email())
     expect(set.assigned_to).toBe('Kris')
+  })
+
+  it('repoints the Outlook link at the newest message, but never clears it', () => {
+    const t = task({ web_link: 'https://outlook.example/old' })
+    const { set } = buildThreadPatch(t, parsed(), email({ web_link: 'https://outlook.example/new' }))
+    expect(set.web_link).toBe('https://outlook.example/new')
+    const { set: noLink } = buildThreadPatch(t, parsed(), email())
+    expect(noLink.web_link).toBeUndefined() // reply without a link leaves the old one alone
   })
 })
 
