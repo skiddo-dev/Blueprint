@@ -31,6 +31,11 @@ export default defineConfig({
       DEV_FAKE_AUTH: 'true',
       ADMIN_EMAILS: 'e2e@local',
       AUTH_SECRET: 'e2e-smoke-secret',
+      // Unreachable on purpose: mock mode promises the app renders with no
+      // Mongo, and a developer's local mongod must never quietly fill a
+      // coverage hole here that then 500s in CI (it happened: getUsersByRole
+      // wasn't mock-aware, local runs passed, CI had no Mongo and failed).
+      MONGODB_URI: 'mongodb://127.0.0.1:1/e2e-must-not-connect',
     },
   },
 })

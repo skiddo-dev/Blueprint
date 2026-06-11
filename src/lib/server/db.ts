@@ -1,7 +1,7 @@
 import { MongoClient, type Db } from 'mongodb'
 import { env } from '$env/dynamic/private'
 import type { Task, User, Quote, Prospect, TimelineEntry, Attachment, ChecklistItem } from '$lib/types'
-import { generateMockTasks, generateMockProspects, generateMockQuotes } from './mock'
+import { generateMockTasks, generateMockProspects, generateMockQuotes, generateMockUsers } from './mock'
 import { PROSPECT_CENTER, PROSPECT_DEFAULTS, ARCHIVE_AFTER_DAYS } from '$lib/constants'
 import { requireInProd } from './config'
 import { ensureAccountingIndexes, ensureAccountingConstraints, seedChartOfAccounts } from './accounting-schema'
@@ -997,11 +997,16 @@ export async function deleteAttachment(taskId: string, attId: string): Promise<b
 }
 
 export async function getUsers(): Promise<User[]> {
+  if (USE_MOCK) return generateMockUsers()
   const d = await getDb()
   return col(d, 'users').find().sort({ _id: 1 }).toArray()
 }
 
+// Mock-aware: the board page's load calls this, so without it USE_MOCK_DATA
+// breaks its own no-Mongo promise (the board 500s where no Mongo is reachable
+// — caught by the e2e job, which runs with an unreachable MONGODB_URI).
 export async function getUsersByRole(role: string): Promise<User[]> {
+  if (USE_MOCK) return generateMockUsers().filter((u) => u.role === role)
   const d = await getDb()
   return col(d, 'users').find({ role }).sort({ name: 1 }).toArray()
 }

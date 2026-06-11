@@ -1,6 +1,6 @@
 // Dev-only mock task generator. Enabled by USE_MOCK_DATA=true so the app
 // (dashboard, board) renders without a populated MongoDB.
-import type { Task, TaskStatus, Prospect, Quote, TimelineEntry, ProspectStatus } from '$lib/types'
+import type { Task, TaskStatus, Prospect, Quote, TimelineEntry, ProspectStatus, User } from '$lib/types'
 import { KANBAN_STATUSES, QUOTE_TYPES, QUOTE_PEOPLE, QUOTE_STATUSES, QUOTE_WORK_TYPES, PROSPECT_CENTER } from '$lib/constants'
 import { milesBetween, destinationPoint } from '$lib/geo'
 import { spreadRanks } from '$lib/rank'
@@ -137,6 +137,18 @@ export function generateMockTasks(count = 35): Task[] {
 // ── Mock tracked quotes ──────────────────────────────────────────────────────
 // Backs USE_MOCK_DATA for the quotes log + dashboard quote analytics, so the
 // win/loss metrics and the Quotes page render with realistic numbers offline.
+/** Deterministic users so user-backed reads (the board's PM list, admin views)
+ *  work in mock mode without Mongo — the same no-Atlas contract as the other
+ *  generators. Names come from ASSIGNEES so ownership lookups line up with the
+ *  generated tasks. */
+export function generateMockUsers(): User[] {
+  const pms = ['Andrew', 'Mike', 'Riley', 'Kris']
+  return [
+    { _id: 'dev@local', name: 'Dev Admin', role: 'admin' },
+    ...pms.map((name) => ({ _id: `${name.toLowerCase()}@mock.local`, name, role: 'pm' as const })),
+  ]
+}
+
 // Status spread is weighted (more open, a healthy win share) so the dashboard
 // charts look representative.
 const QUOTE_OUTCOMES: Array<'won' | 'lost' | 'open'> = [
