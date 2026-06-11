@@ -207,8 +207,12 @@
       {#if data.closeThrough}
         <button class="btn-ghost" type="button" onclick={() => saveLock('')} disabled={savingLock}>Clear lock</button>
       {/if}
+      <a class="btn-secondary" href={`/accounting/reports/month-end${lockDate ? `?month=${lockDate.slice(0, 7)}` : ''}`}
+        title="Key figures, review flags, and a plain-English summary for the month">
+        <Icon name="spark" size={13} /> Month-end review
+      </a>
     </div>
-    <p class="lock-hint"><strong>Lock period</strong> just blocks back-dated posting. <strong>Close year-end</strong> also posts a closing entry rolling net income into Retained Earnings.</p>
+    <p class="lock-hint"><strong>Lock period</strong> just blocks back-dated posting. <strong>Close year-end</strong> also posts a closing entry rolling net income into Retained Earnings. Run the <strong>month-end review</strong> first — it flags duplicate-looking bills and expenses before the period locks.</p>
     {#if lockError}<p class="error">{lockError}</p>{/if}
   </section>
 </AccountingShell>

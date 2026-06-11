@@ -9,6 +9,22 @@ import { env } from '$env/dynamic/private'
 import { getClient, MODEL } from './openai'
 import { getDb } from './db'
 import { extractText, imageMime } from './attachmentParse'
+import { getAccounts, getLedgerBalances } from './accounting'
+import { getArAging } from './invoicing'
+import { getApAging } from './payables'
+import { getBudget } from './budgets'
+import { getMonthAnomalies } from './anomalies'
+import { incomeStatement } from '$lib/accounting/statements'
+import { isCashLike } from '$lib/accounting/coa'
+import {
+  buildMonthEndFacts,
+  fallbackNarrative,
+  monthBounds,
+  prevMonth,
+  type MonthEndFacts,
+} from '$lib/accounting/narrative'
+import type { Anomaly } from '$lib/accounting/anomalies'
+import { cents, type Cents } from '$lib/money'
 import {
   categoryAccounts,
   sanitizeSuggestions,
@@ -270,4 +286,80 @@ export async function parseBillDocument(
     })),
     confidence: typeof raw.confidence === 'number' ? Math.min(1, Math.max(0, raw.confidence)) : 0,
   }
+}
+
+// ── Month-end review ──────────────────────────────────────────────────────────
+
+/** Everything the month-end page shows, computed deterministically — the AI
+ *  narrative sits on top of these facts and never replaces them. */
+export async function getMonthEndData(month: string): Promise<{ facts: MonthEndFacts; anomalies: Anomaly[] }> {
+  if (!/^\d{4}-\d{2}$/.test(month)) throw new Error('month must be YYYY-MM')
+  const cur = monthBounds(month)
+  const prev = monthBounds(prevMonth(month))
+  const [accounts, balances, prevBalances, arAging, apAging, budget, anomalies] = await Promise.all([
+    getAccounts(),
+    getLedgerBalances({ from: cur.from, to: cur.to, excludeClosing: true }),
+    getLedgerBalances({ from: prev.from, to: prev.to, excludeClosing: true }),
+    getArAging(),
+    getApAging(),
+    getBudget(Number(month.slice(0, 4))),
+    getMonthAnomalies(month),
+  ])
+
+  const cashIds = new Set(accounts.filter((a) => a.type === 'asset' && isCashLike(a)).map((a) => a._id))
+  const cashNet = cents(balances.reduce((s, b) => s + (cashIds.has(b.account_id) ? b.debit - b.credit : 0), 0))
+
+  let budgetMonth: { income: Cents; expense: Cents } | null = null
+  if (budget) {
+    const idx = Number(month.slice(5, 7)) - 1
+    const typeOf = new Map(accounts.map((a) => [a._id, a.type]))
+    let income = 0
+    let expense = 0
+    for (const [id, months] of Object.entries(budget.amounts)) {
+      const t = typeOf.get(id)
+      if (t === 'income') income += months[idx] ?? 0
+      else if (t === 'expense') expense += months[idx] ?? 0
+    }
+    if (income > 0 || expense > 0) budgetMonth = { income: cents(income), expense: cents(expense) }
+  }
+
+  const facts = buildMonthEndFacts({
+    month,
+    statement: incomeStatement(balances, accounts),
+    prevStatement: incomeStatement(prevBalances, accounts),
+    cashNet,
+    arTotal: arAging.total,
+    arOverdue: cents(arAging.total - arAging.buckets.current),
+    apTotal: apAging.total,
+    budgetMonth,
+    anomalies,
+  })
+  return { facts, anomalies }
+}
+
+/** Turn the finished facts into 2–3 short plain-English paragraphs. The model
+ *  is told to use the provided figures verbatim and compute nothing; on any
+ *  failure the deterministic fallback paragraph ships instead. */
+export async function narrateMonthEnd(facts: MonthEndFacts): Promise<{ narrative: string; ai: boolean }> {
+  if (!aiConfigured()) return { narrative: fallbackNarrative(facts), ai: false }
+  const parsed = await structuredCall<{ narrative: string }>({
+    system:
+      `You write the month-end summary for the owner of a small commercial remodel/construction company. ` +
+      `He is not an accountant — plain English, no jargon, no headings or bullet lists.\n` +
+      `Rules: 2–3 short paragraphs, ≤180 words total. Use ONLY the figures provided, copied verbatim — ` +
+      `never compute, estimate, or round a number yourself. Lead with how the month actually went, ` +
+      `then where the money stands (cash, receivables, payables), and close with the review flags if any — ` +
+      `they are possible bookkeeping errors to check before closing the books, not business problems.`,
+    user: facts.promptLines.join('\n'),
+    schemaName: 'month_end_narrative',
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['narrative'],
+      properties: { narrative: { type: 'string', description: 'The 2–3 paragraph summary, plain text.' } },
+    },
+  })
+  const text = parsed?.narrative?.trim()
+  if (!text) return { narrative: fallbackNarrative(facts), ai: false }
+  return { narrative: text.slice(0, 2000), ai: true }
 }

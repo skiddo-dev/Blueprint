@@ -10,6 +10,7 @@
   const user = $derived({ name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' })
 
   const REPORTS: { href: string; ico: IconName; name: string; blurb: string }[] = [
+    { href: '/accounting/reports/month-end', ico: 'spark', name: 'Month-end review', blurb: 'The month in plain English — key figures, biggest costs, and review flags before you close.' },
     { href: '/accounting/income-statement', ico: 'reports', name: 'Income statement', blurb: 'Revenue − costs = net income for any period (P&L).' },
     { href: '/accounting/balance-sheet', ico: 'scales', name: 'Balance sheet', blurb: 'What the business owns vs owes on a date.' },
     { href: '/accounting/cash-flow', ico: 'spend', name: 'Cash flow', blurb: 'Where cash actually moved: operating, investing, financing.' },
