@@ -4,7 +4,8 @@
   import { goto, invalidateAll } from '$app/navigation'
   import { parseMoney } from '$lib/money'
   import { usd } from '$lib/accounting/format'
-  import { parseStatementCsv, autoMatch } from '$lib/accounting/statement-import'
+  import { parseStatementCsv, autoMatch, type StatementLine } from '$lib/accounting/statement-import'
+  import type { LineSuggestion } from '$lib/accounting/categorize'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -44,17 +45,117 @@
   // Optional: paste a bank-statement CSV to auto-tick the matching transactions.
   let csvText = $state('')
   let importMsg = $state('')
+
+  // Unmatched statement lines, ready to be categorized + recorded in place.
+  // The AI only ever fills the dropdown; "Record" posts through the normal
+  // expense/journal endpoints and the new entry gets auto-ticked.
+  type UnmatchedRow = {
+    line: StatementLine
+    account_id: string
+    confidence: number | null
+    recording: boolean
+    error: string
+  }
+  let unmatchedRows = $state<UnmatchedRow[]>([])
+  let aiBusy = $state(false)
+  let aiMsg = $state('')
+
   function importStatement() {
     importMsg = ''
+    aiMsg = ''
     try {
       const lines = parseStatementCsv(csvText)
       if (!lines.length) { importMsg = 'No transactions found — expected Date, Description, Amount columns.'; return }
       const res = autoMatch(lines, data.uncleared)
       for (const id of res.matchedTxnIds) checked[id] = true
+      unmatchedRows = res.unmatchedStatement.map((line) => ({
+        line, account_id: '', confidence: null, recording: false, error: '',
+      }))
       importMsg = `Matched ${res.matchedCount} of ${lines.length} statement line${lines.length === 1 ? '' : 's'}`
         + (res.unmatchedStatement.length ? ` · ${res.unmatchedStatement.length} unmatched (no uncleared entry with that amount)` : '')
     } catch (e) {
       importMsg = `Couldn't parse the CSV: ${e instanceof Error ? e.message : String(e)}`
+    }
+  }
+
+  async function suggestCategories() {
+    aiBusy = true
+    aiMsg = ''
+    try {
+      const r = await fetch('/api/accounting/categorize-lines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lines: unmatchedRows.map((u) => ({ date: u.line.date, description: u.line.description, amount: u.line.amount })),
+        }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      const { configured, suggestions } = (await r.json()) as { configured: boolean; suggestions: LineSuggestion[] }
+      if (!configured) { aiMsg = 'AI suggestions aren’t configured on this server (OPENAI_API_KEY).'; return }
+      let filled = 0
+      for (const s of suggestions) {
+        const row = unmatchedRows[s.index]
+        if (!row || !s.account_id) continue
+        row.account_id = s.account_id
+        row.confidence = s.confidence
+        filled++
+      }
+      aiMsg = filled
+        ? `Suggested accounts for ${filled} of ${unmatchedRows.length} line${unmatchedRows.length === 1 ? '' : 's'} — review, then record.`
+        : 'No confident suggestions — pick the accounts by hand.'
+    } catch (e) {
+      aiMsg = e instanceof Error ? e.message : String(e)
+    } finally {
+      aiBusy = false
+    }
+  }
+
+  // Record one unmatched line: money OUT posts a quick expense, money IN posts
+  // a deposit journal entry (Dr bank / Cr income). The new entry is ticked
+  // immediately so the reconciliation difference closes as you go.
+  async function recordRow(i: number) {
+    const row = unmatchedRows[i]
+    if (!row || !row.account_id) return
+    row.recording = true
+    row.error = ''
+    const dollars = (Math.abs(row.line.amount) / 100).toFixed(2)
+    try {
+      let r: Response
+      if (row.line.amount < 0) {
+        r = await fetch('/api/accounting/expenses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: row.line.date,
+            payee: row.line.description,
+            account_id: row.account_id,
+            paid_from: data.accountId,
+            amount: dollars,
+          }),
+        })
+      } else {
+        r = await fetch('/api/accounting/journal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: row.line.date,
+            memo: row.line.description,
+            lines: [
+              { account_id: data.accountId, debit: dollars, credit: '' },
+              { account_id: row.account_id, debit: '', credit: dollars },
+            ],
+          }),
+        })
+      }
+      if (!r.ok) throw new Error(await r.text())
+      const entry = await r.json()
+      if (entry?._id) checked[entry._id] = true
+      unmatchedRows = unmatchedRows.filter((_, j) => j !== i)
+      await invalidateAll()
+    } catch (e) {
+      row.error = e instanceof Error ? e.message : String(e)
+    } finally {
+      row.recording = false
     }
   }
 
@@ -118,6 +219,51 @@
           {#if importMsg}<span class="import-msg">{importMsg}</span>{/if}
         </div>
       </details>
+    {/if}
+
+    {#if unmatchedRows.length}
+      <section class="card">
+        <div class="card-head">
+          <h2>Unmatched statement lines</h2>
+          <button class="btn-secondary" type="button" onclick={suggestCategories} disabled={aiBusy || !data.ai}
+            title={data.ai ? 'Suggest an account for each line from your chart of accounts and payee history' : 'Set OPENAI_API_KEY to enable AI suggestions'}>
+            <Icon name="spark" size={13} /> {aiBusy ? 'Suggesting…' : 'Suggest categories'}
+          </button>
+        </div>
+        <p class="report-hint">These statement lines aren’t in the books yet. Pick an account (or let AI suggest one), then record — money out posts an expense, money in posts a deposit, and the new entry ticks itself.</p>
+        {#if aiMsg}<p class="ai-msg">{aiMsg}</p>{/if}
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Description</th><th class="num">Amount</th><th>Account</th><th></th></tr></thead>
+            <tbody>
+              {#each unmatchedRows as row, i (row.line.date + row.line.description + row.line.amount + i)}
+                <tr>
+                  <td class="mono">{row.line.date}</td>
+                  <td>{row.line.description || '—'}</td>
+                  <td class="num" class:neg={row.line.amount < 0}>{usd(row.line.amount)}</td>
+                  <td class="acct">
+                    <select bind:value={row.account_id} aria-label="Account for this line">
+                      <option value="" disabled>Select account…</option>
+                      {#each row.line.amount < 0 ? data.category.expense : data.category.income as a (a._id)}
+                        <option value={a._id}>{a.code} · {a.name}</option>
+                      {/each}
+                    </select>
+                    {#if row.confidence !== null && row.account_id}
+                      <span class="chip ai-chip" title="AI suggestion — confirm before recording">AI {Math.round(row.confidence * 100)}%</span>
+                    {/if}
+                  </td>
+                  <td class="rec">
+                    <button class="btn-secondary" type="button" onclick={() => recordRow(i)} disabled={!row.account_id || row.recording}>
+                      {row.recording ? 'Posting…' : row.line.amount < 0 ? 'Record expense' : 'Record deposit'}
+                    </button>
+                    {#if row.error}<span class="error">{row.error}</span>{/if}
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      </section>
     {/if}
 
     <section class="card">
@@ -206,4 +352,11 @@
   .import-card textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--font-sm); resize: vertical; }
   .import-actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
   .import-msg { font-size: var(--font-base); color: var(--text-body); }
+
+  .ai-msg { font-size: var(--font-base); color: var(--text-body); margin: 0 0 10px; }
+  .acct { display: flex; align-items: center; gap: 8px; }
+  .acct select { min-width: 200px; }
+  .ai-chip { color: var(--primary-text); border-color: var(--primary); white-space: nowrap; }
+  .rec { white-space: nowrap; }
+  .rec .error { display: block; margin-top: 4px; }
 </style>

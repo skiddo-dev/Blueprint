@@ -2,6 +2,7 @@
   import Icon from '$lib/components/Icon.svelte'
   import type { IconName } from '$lib/icons'
   import AccountingShell from '$lib/components/accounting/AccountingShell.svelte'
+  import AskTheBooks from '$lib/components/accounting/AskTheBooks.svelte'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
 
@@ -10,6 +11,7 @@
   const user = $derived({ name: session?.user?.displayName ?? 'Admin', role: session?.user?.role ?? 'admin' })
 
   const REPORTS: { href: string; ico: IconName; name: string; blurb: string }[] = [
+    { href: '/accounting/reports/month-end', ico: 'spark', name: 'Month-end review', blurb: 'The month in plain English — key figures, biggest costs, and review flags before you close.' },
     { href: '/accounting/income-statement', ico: 'reports', name: 'Income statement', blurb: 'Revenue − costs = net income for any period (P&L).' },
     { href: '/accounting/balance-sheet', ico: 'scales', name: 'Balance sheet', blurb: 'What the business owns vs owes on a date.' },
     { href: '/accounting/cash-flow', ico: 'spend', name: 'Cash flow', blurb: 'Where cash actually moved: operating, investing, financing.' },
@@ -27,6 +29,8 @@
 <AccountingShell {user} title="Reports" maxWidth="1000px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Reports' }]}>
   <p class="report-hint">Financial statements plus the working reports your accountant asks for at tax time. Every report prints clean.</p>
+
+  <AskTheBooks ai={data.ai} />
 
   <div class="report-grid">
     {#each REPORTS as r (r.href)}

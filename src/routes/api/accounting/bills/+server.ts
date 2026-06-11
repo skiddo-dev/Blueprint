@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { createBill, listBills, type CreateBillInput } from '$lib/server/payables'
+import { getPO } from '$lib/server/purchaseOrders'
 import { parseMoney, cents, type Cents } from '$lib/money'
 
 // Admin-only. GET lists bills; POST creates + posts one. Line amounts arrive as
@@ -35,6 +36,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     throw error(400, 'A vendor name is required')
   }
 
+  // A po_id link (e.g. from the bill scan's PO match) must point at a real,
+  // billable PO — the PO's billed/status are derived from linked bills, so a
+  // junk id would quietly corrupt that derivation.
+  let po_id: string | undefined
+  if (body.po_id) {
+    const po = await getPO(String(body.po_id))
+    if (!po) throw error(400, 'po_id does not match a purchase order')
+    if (po.status === 'cancelled') throw error(400, 'Cannot bill a cancelled purchase order')
+    po_id = po._id
+  }
+
   let input: CreateBillInput
   try {
     input = {
@@ -44,6 +56,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       net_days: Number.isFinite(Number(body.net_days)) ? Number(body.net_days) : 30,
       vendor_invoice_no: body.vendor_invoice_no ? String(body.vendor_invoice_no) : undefined,
       po: body.po ? String(body.po) : undefined,
+      po_id,
       job: body.job ? String(body.job) : undefined,
       memo: body.memo ? String(body.memo) : undefined,
       created_by: (user.email as string) ?? (user.displayName as string),

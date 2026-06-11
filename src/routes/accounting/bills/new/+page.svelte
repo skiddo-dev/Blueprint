@@ -31,6 +31,59 @@
   let saving = $state(false)
   let error = $state('')
 
+  // Bill scan: AI-prefill the whole form from a vendor invoice (PDF/photo); the
+  // file itself uploads onto the bill AFTER the user reviews and posts
+  // (orphan-free, same contract as the expense receipt scan).
+  type PoMatch = { po_id: string; label: string; vendor_name: string; remaining_display: string }
+  let scanFile = $state<File | null>(null)
+  let scanning = $state(false)
+  let scanNote = $state('')
+  let poMatch = $state<PoMatch | null>(null)
+  let poId = $state('')
+
+  async function scanBill(e: Event) {
+    const input = e.currentTarget as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+    scanning = true
+    scanNote = ''
+    error = ''
+    poMatch = null
+    poId = ''
+    try {
+      const form = new FormData()
+      form.set('file', file)
+      const r = await fetch('/api/accounting/bill-scan', { method: 'POST', body: form })
+      if (!r.ok) throw new Error((await r.json().catch(() => null))?.message ?? `HTTP ${r.status}`)
+      const { prefill, po_match } = await r.json()
+      if (prefill.vendor_name) vendorName = prefill.vendor_name
+      if (prefill.vendor_invoice_no) vendorInvoiceNo = prefill.vendor_invoice_no
+      if (prefill.bill_date) billDate = prefill.bill_date
+      if (prefill.memo && !memo) memo = prefill.memo
+      if (Array.isArray(prefill.lines) && prefill.lines.length) {
+        lines = prefill.lines.map((l: { description: string; amount: string; account_id: string }) => ({
+          account_id: l.account_id ?? '',
+          description: l.description ?? '',
+          amount: l.amount ?? '',
+        }))
+      }
+      poMatch = po_match
+      scanFile = file
+      scanNote = `Read ${file.name} — check every field, then post; the invoice attaches to the bill.`
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err)
+    } finally {
+      scanning = false
+      input.value = ''
+    }
+  }
+
+  function linkPo() {
+    if (!poMatch) return
+    po = poMatch.label
+    poId = poMatch.po_id
+  }
+
   let recName = $state('')
   let recInterval = $state(1)
   let recUnit = $state<'week' | 'month'>('month')
@@ -98,6 +151,7 @@
           net_days: Number(netDays) || 30,
           vendor_invoice_no: vendorInvoiceNo,
           po,
+          po_id: poId || undefined,
           job: job.trim() || undefined,
           memo,
           lines: lines.map((l) => ({ account_id: l.account_id, description: l.description, amount: l.amount })),
@@ -105,6 +159,14 @@
       })
       if (!r.ok) throw new Error(await r.text())
       const bill = await r.json()
+      if (scanFile && bill?._id) {
+        const form = new FormData()
+        form.set('owner_type', 'bill')
+        form.set('owner_id', bill._id)
+        form.set('file', scanFile)
+        // Best-effort: a failed upload shouldn't strand the posted bill.
+        await fetch('/api/accounting/attachments', { method: 'POST', body: form }).catch(() => null)
+      }
       await goto(`/accounting/bills/${bill._id}`)
     } catch (e) {
       error = e instanceof Error ? e.message : String(e)
@@ -119,6 +181,23 @@
 <AccountingShell {user} title="New bill" maxWidth="860px"
   crumbs={[{ label: 'Accounting', href: '/accounting' }, { label: 'Bills', href: '/accounting/bills' }, { label: 'New' }]}>
   <section class="card">
+    {#if data.ai}
+      <div class="scan-row">
+        <label class="btn-secondary scan" class:busy={scanning}>
+          {#if scanning}Reading invoice…{:else}<Icon name="spark" size={13} /> Scan a bill{/if}
+          <input type="file" accept="image/*,.pdf,.txt" onchange={scanBill} disabled={scanning} hidden />
+        </label>
+        {#if scanNote}<span class="scan-note">✓ {scanNote}</span>{/if}
+        {#if poMatch && !poId}
+          <span class="po-chip">
+            Looks like <strong>{poMatch.label}</strong> — {poMatch.vendor_name}, {poMatch.remaining_display} unbilled
+            <button class="btn-ghost" type="button" onclick={linkPo}>Link it</button>
+          </span>
+        {:else if poId}
+          <span class="po-chip linked">✓ Linked to {poMatch?.label} — billing counts toward this PO</span>
+        {/if}
+      </div>
+    {/if}
     <div class="meta-grid">
       <label class="grow">Vendor
         <input type="text" list="vendor-list" bind:value={vendorName} placeholder="Vendor / subcontractor" />
@@ -216,6 +295,13 @@
   .rec-grid input[type='number'] { width: 70px; }
   .rec-hint { font-size: var(--font-sm); color: var(--text-muted); margin: 8px 0 0; }
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+  .scan-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px dashed var(--border); font-weight: 400; }
+  .scan { cursor: pointer; }
+  .scan.busy { opacity: 0.6; }
+  .scan-note { font-size: var(--font-base); color: var(--success); }
+  .po-chip { display: inline-flex; align-items: center; gap: 8px; font-size: var(--font-base); color: var(--text-body); background: var(--primary-bg); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: 4px 10px; }
+  .po-chip.linked { color: var(--success); background: var(--success-bg); border-color: var(--success-border); }
 
   @media (max-width: 640px) {
     .lines-head { display: none; }
