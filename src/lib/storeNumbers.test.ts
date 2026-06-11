@@ -34,6 +34,25 @@ describe('extractStoreNumbers', () => {
   it('pulls the explicit D-store even when a dollar amount is present', () => {
     expect(extractStoreNumbers('D-412 quote $12,300')).toEqual(['412'])
   })
+
+  it('matches the explicit "#455" form', () => {
+    expect(extractStoreNumbers('Kroger #455 remodel')).toEqual(['455'])
+    expect(extractStoreNumbers('Kroger # 455 remodel')).toEqual(['455'])
+  })
+
+  it('ignores hyphenated job/permit codes — "RMI 026-150" is not two stores', () => {
+    // The reported regression: only the #-tagged store should survive.
+    expect(extractStoreNumbers('Kroger #455 - Roseville, MI (RMI 026-150)')).toEqual(['455'])
+    expect(extractStoreNumbers('Permit 026-150 filed')).toEqual([])
+  })
+
+  it('still matches a store next to a spaced hyphen ("412 - cooler repair")', () => {
+    expect(extractStoreNumbers('412 - cooler repair')).toEqual(['412'])
+  })
+
+  it('trusts an explicit # tag even when hyphenated ("#455-Roseville")', () => {
+    expect(extractStoreNumbers('#455-Roseville walkthrough')).toEqual(['455'])
+  })
 })
 
 describe('normalizeStoreNumbers', () => {
@@ -51,5 +70,11 @@ describe('normalizeStoreNumbers', () => {
 
   it('returns [] for an empty list', () => {
     expect(normalizeStoreNumbers([])).toEqual([])
+  })
+
+  it('drops hyphenated job codes whole, but keeps the "D-412" prefix form', () => {
+    expect(normalizeStoreNumbers(['026-150'])).toEqual([])
+    expect(normalizeStoreNumbers(['RMI 026-150'])).toEqual([])
+    expect(normalizeStoreNumbers(['D-412', '026-150', '455'])).toEqual(['412', '455'])
   })
 })
