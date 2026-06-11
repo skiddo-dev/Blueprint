@@ -9,6 +9,11 @@ build/
 .svelte-kit/
 *.tsbuildinfo
 
+# Test artifacts (vitest coverage, Playwright runs)
+coverage/
+test-results/
+playwright-report/
+
 # Runtime attachment storage at repo root (binary files, not source).
 # Anchored with a leading slash so it does NOT match src/routes/api/attachments/.
 /attachments/

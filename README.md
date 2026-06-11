@@ -93,20 +93,43 @@ paths; use the replica-set URI to exercise those locally the way prod does.
 ## Testing
 
 ```bash
-npm test          # run the Vitest unit suite once
-npm run test:watch # watch mode while developing
-npm run check     # svelte-check typecheck
+npm test              # Vitest unit suite once (live-Mongo file auto-skips)
+npm run test:watch    # watch mode while developing
+npm run test:coverage # unit suite + V8 coverage (thresholds act as a ratchet)
+npm run test:e2e      # Playwright browser smoke (boots its own dev server)
+npm run check         # svelte-check typecheck
+
+# Integration against a REAL (throwaway!) mongod — exercises cold-connect
+# ordering, withTxn's standalone fallback, and postEntry idempotency:
+LIVE_MONGO_URI=mongodb://127.0.0.1:27017/ npm run test:live
+
+# Boot the production build against that mongod and probe /healthz, /readyz,
+# and the sign-in path (the endpoints whose failure modes have actually shipped):
+npm run build && MONGODB_URI=mongodb://127.0.0.1:27017/ npm run test:boot
+
+# iOS unit tests (XCTest on the first available iPhone simulator):
+ios/scripts/test.sh
 ```
 
-Tests run through SvelteKit's Vite plugin, so `$lib` and `$env/*` resolve and
-server-only modules (`$lib/server/*`) are importable. The OpenAI SDK is mocked,
-so the suite makes no network calls and needs no real keys. Coverage spans the
-high-blast-radius logic — email parsing / field-mapping and its never-block-a-sync
-fallback, the sync cutoff + backfill, mailbox resolution, and the comments,
-attachments, CSV-import, and search API routes.
+Unit tests run through SvelteKit's Vite plugin, so `$lib` and `$env/*` resolve
+and server-only modules (`$lib/server/*`) are importable. The OpenAI SDK is
+mocked, so the suite makes no network calls and needs no real keys. Coverage
+spans the high-blast-radius logic — email parsing / field-mapping and its
+never-block-a-sync fallback, the sync cutoff + backfill, mailbox resolution,
+the accounting ledger, and the task/comments/attachments/CSV-import/search API
+routes.
+
+The e2e suite (`e2e/`) runs against `vite dev` with `USE_MOCK_DATA` +
+`DEV_FAKE_AUTH` — no Mongo, Entra, or keys — and asserts structure (columns,
+dialogs, charts, the login page), never mock-randomized content.
 
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) gates every pull
-request on `npm run check`, `npm test`, and a production `npm run build`.
+request with three jobs: `verify` (typecheck, unit tests + coverage ratchet,
+production build), `e2e` (Playwright smoke), and `live-mongo` (integration
+tests + production-build boot probe against a standalone mongod service).
+iOS tests run in a separate path-filtered workflow
+([`.github/workflows/ios.yml`](.github/workflows/ios.yml)) so macOS runner
+minutes are only spent when `ios/` actually changes.
 
 ## Microsoft Entra setup
 
