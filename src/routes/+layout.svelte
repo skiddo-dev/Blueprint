@@ -4,6 +4,7 @@
   import { onNavigate } from '$app/navigation'
   import { navigating } from '$app/state'
   import SearchPalette from '$lib/components/SearchPalette.svelte'
+  import ShortcutsHelp from '$lib/components/ShortcutsHelp.svelte'
   import Toasts from '$lib/components/Toasts.svelte'
   import type { LayoutData } from './$types'
 
@@ -47,9 +48,10 @@
 
 {@render children()}
 
-<!-- Global ⌘K search — only for signed-in users (absent on /login). -->
+<!-- Global ⌘K search/commands + ? shortcuts — only for signed-in users (absent on /login). -->
 {#if data.session?.user}
   <SearchPalette />
+  <ShortcutsHelp />
 {/if}
 
 <Toasts />

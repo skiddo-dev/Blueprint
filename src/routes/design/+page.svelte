@@ -5,6 +5,7 @@
   import Skeleton from '$lib/components/Skeleton.svelte'
   import StatusBadge from '$lib/components/accounting/StatusBadge.svelte'
   import { toast } from '$lib/toast.svelte'
+  import { openShortcuts } from '$lib/shortcuts.svelte'
   import { ICONS, type IconName } from '$lib/icons'
   import type { PageData } from './$types'
   import type { AppSession } from '$lib/types'
@@ -32,6 +33,7 @@
     ['--primary-dark', 'gradient anchor'],
     ['--primary-bg', 'soft brand fill'],
     ['--primary-text', 'brand ink on light fills'],
+    ['--link', 'link / active ink (per-theme alias)'],
   ]
   const surfaces: [string, string][] = [
     ['--bg', 'app background'],
@@ -148,7 +150,10 @@
       <p class="foot">
         Plus <code>--success-vivid</code> (progress fills), <code>--danger-bg-subtle</code> (overdue row tint),
         and the theme-fixed <code>--store-chip</code> navy. Vivid chart/data colors stay literal in
-        <code>constants.ts</code> by design.
+        <code>constants.ts</code> by design. Every designed ink-on-fill pair above is
+        <strong>contrast-tested in CI</strong> (<code>src/lib/contrast.test.ts</code>): 4.5:1 AA for text
+        and chip inks in both themes, 3:1 for <code>--text-faint</code> (placeholders/glyphs only) and
+        the white-on-gradient button face.
       </p>
     </section>
 
@@ -299,6 +304,23 @@
       </p>
     </section>
 
+    <!-- ── Keyboard & commands ──────────────────────────────────────────── -->
+    <section class="card">
+      <div class="card-head"><h2>Keyboard &amp; commands</h2><span class="muted src">SearchPalette.svelte · ShortcutsHelp.svelte</span></div>
+      <p class="kbd-line">
+        <kbd>⌘</kbd><kbd>K</kbd> is search <em>and</em> the command bar — an empty query lists every
+        command (navigation, theme, new task, this guide); typing filters them alongside results.
+        <kbd>?</kbd> opens the shortcuts overlay anywhere outside a text field.
+      </p>
+      <div class="btn-row">
+        <button class="secondary" type="button" onclick={openShortcuts}>View the shortcuts overlay</button>
+      </div>
+      <p class="foot">
+        Commands are role-aware (PMs see no admin routes). “New task” deep-links the board with
+        <code>?new=1</code>, so it works from any page.
+      </p>
+    </section>
+
     <!-- ── Empty states ─────────────────────────────────────────────────── -->
     <section class="card">
       <div class="card-head"><h2>Empty states</h2><span class="muted src">EmptyState.svelte · icon + headline + first action</span></div>
@@ -410,6 +432,21 @@
 
   /* Feedback */
   .skel-demo { max-width: 420px; }
+
+  /* Keyboard & commands */
+  .kbd-line { font-size: var(--font-base); color: var(--text-body); line-height: 1.6; max-width: 75ch; margin-bottom: 12px; }
+  kbd {
+    font-family: inherit;
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--text-body);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-sm);
+    padding: 1px 6px;
+    margin: 0 1px;
+  }
 
   /* Motion */
   .speed-box {
