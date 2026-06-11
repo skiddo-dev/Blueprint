@@ -56,6 +56,19 @@ chip fill, `-border` = chip outline, `-subtle` = faint row tint,
 Rule of thumb: a status chip is `color: var(--success); background:
 var(--success-bg);` — never a hand-mixed hex pair.
 
+**Link ink** — `--link` is the readable indigo for text: an alias of
+`--primary-dark` in light and `--primary` in dark, because the fill anchor is
+too dim to read on dark surfaces. Use it for links, link-buttons, and active
+nav/toggle labels; keep `--primary-dark` for fills and gradients.
+
+**Contrast is enforced, not hoped for** — `src/lib/contrast.test.ts` parses
+the real token values out of `app.css` (both themes) and asserts WCAG ratios
+on every designed ink-on-fill pair: 4.5:1 AA for the text ramp, brand inks,
+link surfaces, and status chips; 3:1 for `--text-faint` (restricted to
+placeholders, timestamps, and glyphs — never essential copy) and for white on
+the primary-button gradient. A palette edit that breaks readability now fails
+CI with the offending pair and its computed ratio.
+
 ## Radius scale
 
 | Token | Value | Use |
@@ -184,6 +197,14 @@ elements, 16–18px card padding and section gaps, 24px+ between page regions.
   accounting's in-card table placeholders stay compact `.empty` one-liners
   by design. `size="sm"` inside palettes/cards, `framed={false}` when the
   host already draws the card.
+- **⌘K palette** — `SearchPalette.svelte` is search *and* the command bar:
+  an empty query lists every command (navigation, theme, new task, guide,
+  shortcuts), typing filters them alongside search hits. Commands are
+  role-aware; "New task" deep-links the board with `?new=1` so it works from
+  any page.
+- **Shortcuts overlay** — `ShortcutsHelp.svelte`, opened by `?` outside text
+  fields (and from the palette). `<kbd>` chips at `--font-xs` on `--bg` with
+  a 2px bottom border — reuse that recipe for any keyboard hint.
 - **Page titles** — `h1` at `--font-2xl`, weight 700–800; 22px is the
   page-title convention everywhere (PageShell, `.acct-head`, login).
 - **Tables** — see `.acct table`: `--font-base` cells, `--font-sm` uppercase
@@ -211,11 +232,16 @@ legend/tick colors. Dataset colors stay literal by design (see Principles #4).
   focus stays clean.
 - Mobile (≤768px): 44px tap targets, 16px input floor, `.mobile-topbar` shell
   convention, safe-area insets.
+- Tablet band (769–1100px): desktop layout, but `--sidebar-width` narrows to
+  200px so content keeps a workable share of the width.
+- Dialog focus is trapped (`use:trapFocus`), and contrast is regression-tested
+  (see Color tokens).
 
 ## Auditing drift
 
 Run these before a UI PR lands; each should return nothing (or only the
-documented exceptions above):
+documented exceptions above). Contrast has its own gate — `npx vitest run
+src/lib/contrast.test.ts` — which runs with the normal suite in CI:
 
 ```sh
 # fonts: only the iOS 16px input floor may remain

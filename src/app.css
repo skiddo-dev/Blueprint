@@ -26,13 +26,16 @@ html, body {
   --primary-dark: #4f46e5;
   --primary-bg: #eef2ff;
   --primary-text: #4338ca;
+  /* Link/active ink — the readable indigo for text. Aliased per theme because
+     the fill anchor (--primary-dark) is too dim to read on dark surfaces. */
+  --link: var(--primary-dark);
 
   /* Text (dark → faint) */
   --text: #1e293b;        /* headings / primary text */
   --text-body: #374151;   /* body text inside controls */
   --text-muted: #64748b;  /* secondary text */
   --text-soft: #475569;   /* slate labels */
-  --text-faint: #94a3b8;  /* tertiary text / placeholders / glyphs */
+  --text-faint: #8290a6;  /* tertiary text / placeholders / glyphs (≥3:1 floor) */
 
   /* Surfaces & borders */
   --bg: #f8fafc;          /* app background / subtle fills */
@@ -55,7 +58,7 @@ html, body {
   --warning: #b45309;
   --warning-bg: #fef3c7;
   --warning-border: #fde68a;
-  --danger: #dc2626;
+  --danger: #c81e1e; /* AA on both danger fills (red-600 read 3.95:1 on --danger-bg) */
   --danger-bg: #fee2e2;
   --danger-bg-subtle: #fef2f2;
   --danger-border: #fecaca;
@@ -135,10 +138,11 @@ html, body {
    Overrides the tokens above; vivid status/brand colours (constants.ts) are
    left alone — they read fine on dark. */
 :root[data-theme="dark"] {
-  --primary: #818cf8;
-  --primary-dark: #6366f1;
+  --primary: #7c87f8;      /* nudged from #818cf8 so white button text holds 3:1 */
+  --primary-dark: #5f62ef; /* nudged from #6366f1 so white button text holds 4.5:1 */
   --primary-bg: #1e1b4b;
   --primary-text: #c7d2fe;
+  --link: var(--primary);
 
   --text: #f1f5f9;
   --text-body: #e2e8f0;
@@ -158,8 +162,8 @@ html, body {
   --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.6);
   --shadow-drawer: 4px 0 20px rgba(0, 0, 0, 0.5);
   --shadow-sheet: -12px 0 40px rgba(0, 0, 0, 0.55);
-  --focus-halo: 0 0 0 3px rgba(129, 140, 248, 0.2);
-  --focus-ring: 0 0 0 2px rgba(129, 140, 248, 0.45);
+  --focus-halo: 0 0 0 3px rgba(124, 135, 248, 0.2);
+  --focus-ring: 0 0 0 2px rgba(124, 135, 248, 0.45);
   --backdrop: rgba(0, 0, 0, 0.6);
   --chip-bg: #3730a3;
   --scrollbar-thumb: #475569;
@@ -345,6 +349,13 @@ details summary::-webkit-details-marker { display: none; }
    inside it, dashboard/quotes add a page title. Hidden on desktop, where the
    sidebar is always visible. */
 .mobile-topbar { display: none; }
+
+/* Tablet band (769–1100px): same layout as desktop, but the fixed sidebar
+   narrows so content keeps a workable share of the width. Verified: no nav
+   label overflows at 200px. */
+@media (min-width: 769px) and (max-width: 1100px) {
+  :root { --sidebar-width: 200px; }
+}
 
 /* Mobile: ≤768px */
 @media (max-width: 768px) {

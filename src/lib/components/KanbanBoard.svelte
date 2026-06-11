@@ -2,6 +2,7 @@
   import { onMount, onDestroy, tick } from 'svelte'
   import { SvelteSet } from 'svelte/reactivity'
   import { page } from '$app/state'
+  import { afterNavigate, replaceState } from '$app/navigation'
   import KanbanColumn from './KanbanColumn.svelte'
   import NewTaskModal from './NewTaskModal.svelte'
   import CardDetailSheet from './CardDetailSheet.svelte'
@@ -114,6 +115,21 @@
   function flushStaged() {
     for (const tid of [...stagedToasts]) toast.dismiss(tid)
   }
+
+  // Deep link: /?new=1 (the ⌘K "New task" command, usable from any page) opens
+  // the create dialog; the param is stripped so reload/back don't re-open it.
+  // afterNavigate, not $effect/onMount: replaceState needs the router
+  // initialized, which on a cold load only afterNavigate guarantees.
+  afterNavigate(() => {
+    if (page.url.searchParams.get('new') === '1') {
+      showNewTask = true
+      const url = new URL(page.url)
+      url.searchParams.delete('new')
+      // Deferred: on a cold load the router finalizes the URL right after
+      // afterNavigate, which would clobber an immediate replaceState.
+      setTimeout(() => replaceState(url, {}), 0)
+    }
+  })
 
   // Which column is visible on mobile (phones show one status at a time via the
   // pill switcher below; desktop shows them all side by side).
@@ -1031,7 +1047,7 @@
   }
   .vt-btn.active {
     background: var(--card-bg);
-    color: var(--primary-dark);
+    color: var(--link);
     box-shadow: var(--shadow);
   }
   .vt-overdue {
@@ -1117,7 +1133,7 @@
   .link-btn {
     background: none;
     border: none;
-    color: var(--primary-dark);
+    color: var(--link);
     font-weight: 600;
     font-size: var(--font-base);
     padding: 0 2px;
@@ -1132,7 +1148,7 @@
     margin-top: 8px;
     font-size: var(--font-base);
     font-weight: 600;
-    color: var(--primary-dark);
+    color: var(--link);
     text-decoration: none;
   }
   .be-help:hover { text-decoration: underline; }

@@ -239,7 +239,7 @@
   .nav-link.active {
     background: var(--primary-bg);
     border-color: #c7d2fe;
-    color: var(--primary-dark);
+    color: var(--link);
     font-weight: 600;
   }
   /* Decorative leading glyph; kept out of the label text (see NAV). Muted by

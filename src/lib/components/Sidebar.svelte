@@ -387,6 +387,6 @@
     color: var(--text);
   }
   input[type="file"] { font-size: var(--font-xs); color: var(--text-muted); }
-  .dl-link { color: var(--primary-dark); text-decoration: none; }
+  .dl-link { color: var(--link); text-decoration: none; }
   .dl-link:hover { text-decoration: underline; }
 </style>
