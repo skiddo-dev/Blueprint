@@ -1,9 +1,16 @@
 name: CI
 
-# Gates pull requests (and post-merge main) on typecheck, unit tests, and a
-# production build smoke. Deploy stays separate (see deploy.yml) — this never
-# touches Azure and needs no secrets: the app reads all config at runtime via
-# $env/dynamic/private, so `vite build` succeeds without any of them.
+# Gates pull requests (and post-merge main) on four jobs:
+#   verify     — typecheck, unit tests + coverage ratchet, production build smoke
+#   e2e        — Playwright browser smoke against the dev server (mock data +
+#                dev auth bypass); catches the render/hydration failures the
+#                unit suite structurally can't see
+#   live-mongo — integration tests + a production-build boot probe against a
+#                real (standalone) mongod; catches cold-connect ordering bugs
+#                (#135 deadlock class) and 5xx-ing auth routes (#92 outage class)
+# Deploy stays separate (see deploy.yml) — this never touches Azure and needs no
+# secrets: the app reads all config at runtime via $env/dynamic/private, so
+# `vite build` succeeds without any of them.
 on:
   pull_request:
   push:
@@ -43,8 +50,94 @@ jobs:
       - name: iOS config in sync (gen:ios:check)
         run: npm run gen:ios:check
 
-      - name: Unit tests (vitest)
-        run: npm test
+      # Coverage thresholds (vite.config.ts) act as a ratchet: a PR landing a
+      # large untested module fails here, normal variance does not.
+      - name: Unit tests + coverage (vitest)
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Production build smoke
         run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Playwright boots `vite dev` itself (playwright.config.ts webServer) with
+      # USE_MOCK_DATA + DEV_FAKE_AUTH — no Mongo, no Entra, no secrets.
+      - name: Browser smoke (Playwright)
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  live-mongo:
+    runs-on: ubuntu-latest
+    # A STANDALONE mongod on purpose (no replica set): it exercises withTxn's
+    # no-transaction fallback, and matches the prod fallback topology. Atlas
+    # (replica set) behavior is covered by the deploy gate's revision health
+    # check, not here.
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Cold connect against a real mongod: index builds, migrations, the #135
+      # re-entrancy ordering, withTxn standalone fallback, postEntry idempotency
+      # against the real unique index.
+      - name: Live-Mongo integration tests
+        run: npm run test:live
+        env:
+          LIVE_MONGO_URI: mongodb://127.0.0.1:27017/
+
+      - name: Build production bundle
+        run: npm run build
+
+      # Boots `node build` against the same mongod and probes /healthz, /readyz
+      # (hard deadline — a hang here is the deadlock signature) and the sign-in
+      # path (must never 5xx).
+      - name: Boot smoke (production build)
+        run: npm run test:boot
+        env:
+          MONGODB_URI: mongodb://127.0.0.1:27017/

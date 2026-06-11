@@ -1,0 +1,36 @@
+name: iOS
+
+# Unit tests for the native app (XCTest on a simulator). PATH-FILTERED on
+# purpose: macOS runners bill at 10× Linux minutes, and web-only PRs can't
+# break the Swift targets — so this only runs when ios/ (or this file) changes.
+on:
+  pull_request:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - '.github/workflows/ios.yml'
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # Same script developers run locally (regenerates the project from
+      # project.yml, picks the first available iPhone simulator by UDID).
+      - name: Unit tests (simulator)
+        run: ios/scripts/test.sh

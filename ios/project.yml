@@ -32,3 +32,30 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
+
+  # Unit tests (XCTest, hosted in the app so @testable import Blueprint works —
+  # XcodeGen wires TEST_HOST/BUNDLE_LOADER from the target dependency). Run via
+  # ios/scripts/test.sh locally or the iOS workflow in CI.
+  BlueprintTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: BlueprintTests
+    dependencies:
+      - target: Blueprint
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ravesinc.blueprint.tests
+        GENERATE_INFOPLIST_FILE: "YES"
+
+# Explicit scheme so `xcodebuild test -scheme Blueprint` runs the unit tests;
+# without it XcodeGen emits per-target schemes and the app scheme has no Test
+# action wired.
+schemes:
+  Blueprint:
+    build:
+      targets:
+        Blueprint: all
+    test:
+      targets:
+        - BlueprintTests
