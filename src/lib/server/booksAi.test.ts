@@ -9,7 +9,7 @@ vi.mock('openai', () => ({
   },
 }))
 
-import { categorizeStatementLines } from './booksAi'
+import { categorizeStatementLines, parseBillDocument } from './booksAi'
 import { DEFAULT_CHART_OF_ACCOUNTS } from '$lib/accounting/coa'
 import type { CategoryLine } from '$lib/accounting/categorize'
 
@@ -67,5 +67,62 @@ describe('categorizeStatementLines', () => {
   it('skips the call entirely for empty input', async () => {
     await expect(categorizeStatementLines([], DEFAULT_CHART_OF_ACCOUNTS, [])).resolves.toEqual([])
     expect(createMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('parseBillDocument', () => {
+  const INVOICE_TXT = Buffer.from(
+    'ACME SUPPLY CO\nInvoice INV-2041\nDate: 2026-06-05\nRef: PO-2026-0003\n' +
+      'Drywall sheets ........ $800.00\nDelivery ........ $50.00\nTOTAL DUE: $850.00\n',
+    'utf8',
+  )
+
+  it('extracts a draft bill from a text invoice and keeps only chart accounts on lines', async () => {
+    modelReply({
+      vendor: 'Acme Supply Co',
+      vendor_invoice_no: 'INV-2041',
+      bill_date: '2026-06-05',
+      po: 'PO-2026-0003',
+      total: '$850.00',
+      memo: 'Drywall sheets + delivery',
+      lines: [
+        { description: 'Drywall sheets', amount: '$800.00', account_id: '5000' },
+        { description: 'Delivery', amount: '$50.00', account_id: 'not-an-account' },
+      ],
+      confidence: 0.9,
+    })
+    const out = await parseBillDocument('invoice.txt', 'text/plain', INVOICE_TXT, DEFAULT_CHART_OF_ACCOUNTS)
+    expect(out).not.toBeNull()
+    expect(out!.vendor).toBe('Acme Supply Co')
+    expect(out!.vendor_invoice_no).toBe('INV-2041')
+    expect(out!.bill_date).toBe('2026-06-05')
+    expect(out!.lines).toHaveLength(2)
+    expect(out!.lines[0].account_id).toBe('5000')
+    expect(out!.lines[1].account_id).toBeNull() // unknown account sanitized away
+    // The expense-account enum constrains line coding; bank accounts are not in it.
+    const call = createMock.mock.calls[0][0]
+    const accountEnum = call.response_format.json_schema.schema.properties.lines.items.properties.account_id.enum
+    expect(accountEnum).toContain('5000')
+    expect(accountEnum).not.toContain('1000')
+  })
+
+  it('returns null for unreadable file types without calling the model', async () => {
+    const out = await parseBillDocument('invoice.docx', 'application/vnd.openxmlformats', Buffer.from('x'), DEFAULT_CHART_OF_ACCOUNTS)
+    expect(out).toBeNull()
+    expect(createMock).not.toHaveBeenCalled()
+  })
+
+  it('degrades to the empty scan when the model fails; bad dates are dropped', async () => {
+    createMock.mockRejectedValue(new Error('boom'))
+    const out = await parseBillDocument('invoice.txt', 'text/plain', INVOICE_TXT, DEFAULT_CHART_OF_ACCOUNTS)
+    expect(out).toMatchObject({ vendor: null, total: null, lines: [], confidence: 0 })
+
+    createMock.mockReset()
+    modelReply({
+      vendor: 'Acme', vendor_invoice_no: null, bill_date: 'June 5th', po: null,
+      total: '$10.00', memo: '', lines: [], confidence: 0.5,
+    })
+    const out2 = await parseBillDocument('invoice.txt', 'text/plain', INVOICE_TXT, DEFAULT_CHART_OF_ACCOUNTS)
+    expect(out2!.bill_date).toBeNull()
   })
 })

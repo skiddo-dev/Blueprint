@@ -8,6 +8,7 @@ import type OpenAI from 'openai'
 import { env } from '$env/dynamic/private'
 import { getClient, MODEL } from './openai'
 import { getDb } from './db'
+import { extractText, imageMime } from './attachmentParse'
 import {
   categoryAccounts,
   sanitizeSuggestions,
@@ -16,6 +17,7 @@ import {
   type LineSuggestion,
   type PayeeHistoryRow,
 } from '$lib/accounting/categorize'
+import type { ScannedBill } from '$lib/accounting/billScan'
 import { usd } from '$lib/accounting/format'
 import type { Account } from '$lib/accounting/types'
 
@@ -159,4 +161,113 @@ export async function categorizeStatementLines(
     schema,
   })
   return sanitizeSuggestions(parsed?.suggestions, lines, accounts)
+}
+
+// ── Bill-document ingestion ───────────────────────────────────────────────────
+
+const EMPTY_SCAN: ScannedBill = {
+  vendor: null, vendor_invoice_no: null, bill_date: null, po: null,
+  total: null, memo: '', lines: [], confidence: 0,
+}
+
+const isoDate = (v: unknown): string | null =>
+  typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null
+
+/** Read a vendor invoice (PDF / photo / text) into a ScannedBill draft for the
+ *  new-bill form. Line accounts are suggested from the expense/COGS chart and
+ *  validated against it; amounts stay strings exactly as written. Returns null
+ *  for unreadable file types, the empty scan when the model fails — the form
+ *  just stays blank either way. */
+export async function parseBillDocument(
+  filename: string,
+  contentType: string | undefined,
+  buf: Buffer,
+  accounts: Account[],
+): Promise<ScannedBill | null> {
+  const { expense } = categoryAccounts(accounts)
+  const allowed = expense.map((a) => a._id)
+
+  const schema = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['vendor', 'vendor_invoice_no', 'bill_date', 'po', 'total', 'memo', 'lines', 'confidence'],
+    properties: {
+      vendor: { type: ['string', 'null'], description: 'The business that issued this invoice (the seller). Null if unclear.' },
+      vendor_invoice_no: { type: ['string', 'null'], description: "The vendor's own invoice number, exactly as printed. Null if none." },
+      bill_date: { type: ['string', 'null'], description: 'The invoice date as ISO YYYY-MM-DD, only when clearly printed.' },
+      po: { type: ['string', 'null'], description: 'A purchase-order reference printed on the invoice (e.g. "PO-2026-0003", "PO 4471"). Null if none.' },
+      total: { type: ['string', 'null'], description: 'The invoice total exactly as written, e.g. "$12,300.00".' },
+      memo: { type: 'string', description: 'One line (≤160 chars): what this bill is for.' },
+      lines: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['description', 'amount', 'account_id'],
+          properties: {
+            description: { type: 'string', description: 'The line item, ≤120 chars.' },
+            amount: { type: ['string', 'null'], description: 'The line amount exactly as written. Null if the invoice shows no per-line amounts.' },
+            account_id: {
+              type: ['string', 'null'],
+              enum: [...allowed, null],
+              description: 'The expense/COGS account this line belongs to, from the chart provided. Null when unsure.',
+            },
+          },
+        },
+        description: 'The billable line items (skip subtotal/tax/total rows). When the invoice has no itemization, return a single line for the whole amount.',
+      },
+      confidence: { type: 'number', description: 'Confidence 0–1 in this extraction.' },
+    },
+  }
+
+  const catalog =
+    'Expense/COGS accounts to code lines against:\n' + expense.map((a) => `${a.code} ${a.name}`).join('\n')
+  const system =
+    `You extract a vendor invoice (bill) for a commercial remodel/construction contractor's accounts-payable entry.\n` +
+    `Pull the vendor, their invoice number, the invoice date, any PO reference, the total, and the billable line items; ` +
+    `code each line to the closest expense/COGS account from the chart. Prefer null over guessing; reflect doubt in "confidence".`
+
+  let raw: ScannedBill | null = null
+  const text = await extractText(filename, contentType, buf)
+  if (text) {
+    raw = await structuredCall<ScannedBill>({
+      system,
+      user: `${catalog}\n\nFilename: ${filename}\n\n${text}`,
+      schemaName: 'bill_extraction',
+      schema,
+    })
+  } else {
+    const mime = imageMime(filename, contentType)
+    if (!mime) return null // unreadable type — the caller reports "unsupported"
+    if (!buf.length) return { ...EMPTY_SCAN }
+    raw = await structuredCall<ScannedBill>({
+      system,
+      user: [
+        { type: 'text', text: `${catalog}\n\nFilename: ${filename}\nThe attached image is a scanned or photographed vendor invoice.` },
+        { type: 'image_url', image_url: { url: `data:${mime};base64,${buf.toString('base64')}` } },
+      ],
+      schemaName: 'bill_extraction',
+      schema,
+    })
+  }
+  if (!raw) return { ...EMPTY_SCAN }
+
+  const allowedSet = new Set(allowed)
+  return {
+    vendor: typeof raw.vendor === 'string' && raw.vendor.trim() ? raw.vendor.trim().slice(0, 120) : null,
+    vendor_invoice_no:
+      typeof raw.vendor_invoice_no === 'string' && raw.vendor_invoice_no.trim()
+        ? raw.vendor_invoice_no.trim().slice(0, 60)
+        : null,
+    bill_date: isoDate(raw.bill_date),
+    po: typeof raw.po === 'string' && raw.po.trim() ? raw.po.trim().slice(0, 60) : null,
+    total: typeof raw.total === 'string' && raw.total.trim() ? raw.total.trim().slice(0, 40) : null,
+    memo: String(raw.memo ?? '').slice(0, 160),
+    lines: (Array.isArray(raw.lines) ? raw.lines : []).slice(0, 25).map((l) => ({
+      description: String(l?.description ?? '').slice(0, 120),
+      amount: typeof l?.amount === 'string' && l.amount.trim() ? l.amount.trim().slice(0, 40) : null,
+      account_id: typeof l?.account_id === 'string' && allowedSet.has(l.account_id) ? l.account_id : null,
+    })),
+    confidence: typeof raw.confidence === 'number' ? Math.min(1, Math.max(0, raw.confidence)) : 0,
+  }
 }
