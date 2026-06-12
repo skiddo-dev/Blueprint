@@ -11,8 +11,8 @@ vi.mock('$lib/server/db', () => ({
   archiveStaleClosedTasks: vi.fn(async () => 0),
 }))
 
-import { GET } from './+server'
-import { getTasks, getTasksForUser, archiveStaleClosedTasks } from '$lib/server/db'
+import { GET, POST } from './+server'
+import { getTasks, getTasksForUser, archiveStaleClosedTasks, insertTask } from '$lib/server/db'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ev = (user: Record<string, unknown> | null, query = ''): any => ({
@@ -46,6 +46,37 @@ describe('GET /api/tasks', () => {
     await GET(ev({ role: 'pm', displayName: 'Pat', email: 'pat@x.com' }, '?user=SomeoneElse'))
     expect(getTasksForUser).toHaveBeenCalledWith('pat@x.com', 'Pat', { archived: false })
     expect(getTasks).not.toHaveBeenCalled()
+  })
+
+  it('a non-PM (viewer) gets the same own-tasks scope — created-by tasks included', async () => {
+    // The scope is "assigned to OR created by" (getTasksForUser), so anyone who
+    // creates a card can track it on their board regardless of role.
+    await GET(ev({ role: 'viewer', displayName: 'Sam', email: 'sam@x.com' }))
+    expect(getTasksForUser).toHaveBeenCalledWith('sam@x.com', 'Sam', { archived: false })
+    expect(getTasks).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/tasks', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const post = (user: Record<string, unknown>, body: Record<string, unknown>) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    POST({
+      locals: { auth: async () => ({ user }) },
+      request: new Request('http://x/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    } as any)
+
+  it('stamps the creator identity from the session — a non-PM can track what they create', async () => {
+    const res = await post({ role: 'viewer', email: 'Sam@X.com', displayName: 'Sam' }, { title: 'Order signage' })
+    expect(res.status).toBe(201)
+    // created_by_email (lowercased login email) is what the board scope, My Work,
+    // and per-task authz all key on — stamping it is what makes the card trackable.
+    expect(insertTask).toHaveBeenCalledWith(expect.objectContaining({ created_by_email: 'sam@x.com' }))
   })
 
   it('a sweep failure never takes the board down', async () => {

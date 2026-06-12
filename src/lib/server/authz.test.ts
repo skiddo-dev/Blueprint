@@ -18,6 +18,11 @@ describe('canAccessTask', () => {
     expect(canAccessTask({ role: 'pm', email: 'bob@x.com' }, task({ assignee_email: 'bob@x.com' }))).toBe(true)
   })
 
+  it('a non-PM creator keeps access even after the card is assigned to someone else', () => {
+    const t = task({ created_by_email: 'sam@x.com', assignee_email: 'pm@x.com' })
+    expect(canAccessTask({ role: 'viewer', email: 'sam@x.com' }, t)).toBe(true)
+  })
+
   it('identity is authoritative: a name match does NOT grant access once emails are set', () => {
     const t = task({ created_by_email: 'alice@x.com', created_by: 'Bob', assigned_to: 'Bob' })
     expect(canAccessTask({ role: 'pm', email: 'bob@x.com', displayName: 'Bob' }, t)).toBe(false)
