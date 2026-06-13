@@ -14,7 +14,7 @@
   import { chartInk } from '$lib/theme'
   import type { ChartData, ChartOptions, TooltipItem } from 'chart.js'
   import { page } from '$app/state'
-  import { replaceState } from '$app/navigation'
+  import { afterNavigate, replaceState } from '$app/navigation'
   import { tick } from 'svelte'
   import { toast } from '$lib/toast.svelte'
 
@@ -203,6 +203,13 @@
     })
   })
 
+  // replaceState needs the client router initialized; on a cold load only
+  // afterNavigate guarantees that (a bare $effect/onMount can fire first and
+  // throw "Cannot call replaceState(...) before router is initialized"). Same
+  // reason KanbanBoard gates its shallow URL writes this way.
+  let routerReady = $state(false)
+  afterNavigate(() => (routerReady = true))
+
   // Persist active (non-default) filters to the URL — shallow replaceState, so
   // no load re-run or scroll jump. Makes the current view shareable.
   $effect(() => {
@@ -217,6 +224,9 @@
     if (estimatorFilter !== 'All') p.set('est', estimatorFilter)
     if (workTypeFilter !== 'All') p.set('wt', workTypeFilter)
     const qs = p.toString()
+    // Build params above unconditionally so every filter is tracked as a dep;
+    // gate the write here so the effect re-runs (and persists) once ready.
+    if (!routerReady) return
     replaceState(qs ? `?${qs}` : page.url.pathname, {})
   })
 
@@ -734,12 +744,24 @@
       <section class="charts-grid">
         <article class="chart-card">
           <h3>Win Rate by Estimator <span class="muted">(≥{minSample} decided)</span></h3>
-          <div class="canvas-wrap"><Chart type="bar" data={winByEstimatorData} options={winPctOpts} /></div>
+          <div class="canvas-wrap">
+            {#if estWin.length}
+              <Chart type="bar" data={winByEstimatorData} options={winPctOpts} />
+            {:else}
+              <p class="chart-empty">No estimator has ≥{minSample} decided quotes in this view. Lower the “Min decided” threshold to compare win rates.</p>
+            {/if}
+          </div>
         </article>
 
         <article class="chart-card">
           <h3>Win Rate by Work Type <span class="muted">(≥{minSample} decided)</span></h3>
-          <div class="canvas-wrap"><Chart type="bar" data={winByTypeData} options={winPctOpts} /></div>
+          <div class="canvas-wrap">
+            {#if typeWin.length}
+              <Chart type="bar" data={winByTypeData} options={winPctOpts} />
+            {:else}
+              <p class="chart-empty">No work type has ≥{minSample} decided quotes in this view. Lower the “Min decided” threshold to compare win rates.</p>
+            {/if}
+          </div>
         </article>
 
         <article class="chart-card">
@@ -795,6 +817,8 @@
                 <td>{e.topType}</td>
                 <td>{money(e.value)}</td>
               </tr>
+            {:else}
+              <tr><td colspan="6" class="muted-note">No estimators match the filters.</td></tr>
             {/each}
           </tbody>
         </table>
@@ -1082,6 +1106,20 @@
   .chart-card h3 .muted { color: var(--text-faint); font-weight: 400; }
   .canvas-wrap { position: relative; height: 260px; }
   .canvas-wrap.tall { height: 300px; }
+  /* Shown in place of a chart whose series is empty (e.g. no estimator clears
+     the ≥N-decided threshold) — a blank axis grid reads as broken. */
+  .chart-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 28px;
+    font-size: var(--font-sm);
+    line-height: 1.5;
+    color: var(--text-faint);
+  }
   .chart-note { font-size: var(--font-xs); color: var(--text-muted); margin: 6px 2px 2px; }
 
   .tracker-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
