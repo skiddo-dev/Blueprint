@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit'
 import type { RequestHandler } from './$types'
 import { getCustomer, listCustomerOpenInvoices } from '$lib/server/invoicing'
 import { generateCustomerStatement } from '$lib/server/pdf'
+import { contentDisposition } from '$lib/sanitize'
 
 // Admin-only. A customer's open-balance statement as a PDF — what you attach
 // to a collections email. Mirrors the invoice/bill PDF endpoints.
@@ -20,7 +21,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
   return new Response(new Uint8Array(pdf), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="statement-${customer.name.replace(/[^\w-]+/g, '_')}-${asOf}.pdf"`,
+      'Content-Disposition': contentDisposition(`statement-${customer.name}-${asOf}.pdf`, 'inline'),
     },
   })
 }
