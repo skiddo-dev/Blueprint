@@ -35,6 +35,7 @@
 <style>
   .page {
     min-height: 100vh;
+    min-height: 100dvh; /* track the visible viewport so the card centres true on mobile (matches app shell) */
     background: var(--bg);
     display: flex;
     align-items: center;

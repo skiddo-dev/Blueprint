@@ -1323,6 +1323,18 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
+      /* The scrollbar is hidden, so without this there's no hint that statuses
+         run past the edge (Done / On Hold / Cancelled sit off-screen on phones).
+         Same CSS scroll-shadow the tables use: cover gradients match the
+         topbar's --bg, --scroll-shadow-ink is the edge hint, and the local/
+         scroll attachment mix retracts each shadow once you hit that end. */
+      background:
+        linear-gradient(90deg, var(--bg) 30%, transparent) left / 24px 100%,
+        linear-gradient(270deg, var(--bg) 30%, transparent) right / 24px 100%,
+        radial-gradient(farthest-side at 0 50%, var(--scroll-shadow-ink), transparent) left / 10px 100%,
+        radial-gradient(farthest-side at 100% 50%, var(--scroll-shadow-ink), transparent) right / 10px 100%;
+      background-repeat: no-repeat;
+      background-attachment: local, local, scroll, scroll;
     }
     .col-tabs::-webkit-scrollbar { display: none; }
 
