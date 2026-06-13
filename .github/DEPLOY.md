@@ -96,8 +96,17 @@ az containerapp update -n "$APP" -g "$RG" --set-env-vars \
   AZURE_CLIENT_ID="<AZURE_CLIENT_ID>" \
   AZURE_TENANT_ID="<AZURE_TENANT_ID>" \
   AZURE_USER_EMAIL="<mailbox@domain>" \
-  ADMIN_EMAILS="<admin@domain>"
+  ADMIN_EMAILS="<admin@domain>" \
+  BODY_SIZE_LIMIT=12M
 ```
+
+**`BODY_SIZE_LIMIT` matters:** adapter-node caps request bodies at **512KB** by
+default, which breaks every upload surface (card attachments, accounting doc
+attachments, AI bill/receipt scans, CSV imports) with an unhandled 500 — the
+app's own friendly `MAX_ATTACHMENT_SIZE_MB` check (default 10 MB) is never
+reached. Keep it slightly above the attachment cap (10 MB cap → `12M`). The
+Dockerfile bakes `12M` as the image default; this env var is the per-environment
+override.
 
 **Multi-mailbox sync (per-PM inboxes):** flagged email is pulled from every
 provisioned PM's own inbox, with a Graph subscription created per mailbox. The
