@@ -15,6 +15,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 # Azure App Service / Container Apps: set WEBSITES_PORT=8501
 ENV PORT=8501
+# adapter-node's default request-body cap is 512KB, which 500s every upload
+# (attachments, bill/receipt scans, CSV imports) before the app's own
+# MAX_ATTACHMENT_SIZE_MB check (default 10 MB) can answer with a friendly 413.
+# Keep this slightly above that cap; a Container App env var overrides it.
+ENV BODY_SIZE_LIMIT=12M
 
 # Production deps first (own layer → cached unless package files change). Drop the
 # npm cache to keep the runtime image small.
