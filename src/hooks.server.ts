@@ -280,14 +280,26 @@ export const handle = sequence(securityHeaders, csrfGuard, authHandle, devAuthBy
 // SvelteKit and never reach here). Logs the full error with a correlation id and
 // returns a sanitized shape — the stack/message never leak to the client; the id
 // lets a user quote it for support.
+//
+// SvelteKit routes 404s (no matching route — e.g. a browser probing for
+// /favicon.ico or /apple-touch-icon-precomposed.png) through here too. Those are
+// not server faults: logging them at ERROR level with a full stack is noise that
+// (a) pollutes the log stream and (b) would trip an error-rate alert that should
+// fire only on genuine 5xx breakage. So anything below 500 is logged at WARN,
+// without a stack, and is never treated as an unhandled server error.
 export const handleError: HandleServerError = ({ error, event, status }) => {
   const id = crypto.randomUUID()
+  const message = error instanceof Error ? error.message : String(error)
+  if (typeof status === 'number' && status < 500) {
+    log.warn('client error', { id, status, method: event.request.method, path: event.url.pathname, error: message })
+    return { message: 'Not found', id }
+  }
   log.error('unhandled server error', {
     id,
     status,
     method: event.request.method,
     path: event.url.pathname,
-    error: error instanceof Error ? error.message : String(error),
+    error: message,
     stack: error instanceof Error ? error.stack : undefined,
   })
   return { message: 'Internal error', id }
