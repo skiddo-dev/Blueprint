@@ -182,24 +182,48 @@ Container App secrets + the Entra app registration. Keep `AUTH_SECRET`,
 `AZURE_CLIENT_SECRET`, `MONGODB_URI`, and `OPENAI_API_KEY` in a password manager;
 sections 1–3 above are the recipe to rebuild everything else from scratch.
 
-### Backup policy  *(confirm against your cluster)*
+### Backup policy
 
-Verify in **Atlas → Cluster → Backup**:
+**Current state (verified 2026-06-12):** prod is the **`Blueprint` Flex cluster**
+(Azure US_EAST_2, MongoDB 8.0.26). Atlas backup is **enabled** — daily snapshots
+are present and completing (`Atlas → Cluster → Backup → Snapshots`). Flex tier does
+**NOT** support continuous / point-in-time recovery (PITR), so the recovery floor
+is the most recent **daily snapshot**.
 
-- **Dedicated tier (M10+):** enable **Cloud Backup** with **continuous /
-  point-in-time recovery (PITR)** plus scheduled snapshots. Recommended: snapshot
-  every 6–12h, retain ≥ 7 daily / 4 weekly, PITR window ≥ 72h.
-- **Shared tier (M0/M2/M5):** PITR/continuous backup is **not available** — rely on
-  scheduled `mongodump` (e.g. a daily GitHub Action to encrypted storage) until you
-  move to M10+. Treat this as a gap to close before calling the data tier
-  production-grade.
+Tier guidance if/when the cluster changes:
 
-**Targets (set with the client, then record here):**
+- **Flex (current):** daily snapshots only, no PITR. Acceptable for the current data
+  volume; the residual exposure is up to ~24h of writes since the last snapshot.
+- **Dedicated tier (M10+):** enable **Cloud Backup** with **continuous / PITR** plus
+  scheduled snapshots (snapshot every 6–12h, retain ≥ 7 daily / 4 weekly, PITR
+  window ≥ 72h). This is the upgrade path when bookkeeping volume makes a ≤24h RPO
+  unacceptable — it also unlocks **PrivateLink** to close the open network posture
+  noted in section 4.
+- **M0 free:** no backups at all — never use for prod.
 
-| Objective | Target | Mechanism |
-|---|---|---|
-| RPO (max data loss) | _e.g._ ≤ 5 min (PITR) / ≤ 24h (snapshot only) | Atlas continuous backup |
-| RTO (max downtime to restore) | _e.g._ ≤ 2h | restore-to-new-cluster drill below |
+**Targets:**
+
+| Objective | Current (Flex) | Target if upgraded (M10+) | Mechanism |
+|---|---|---|---|
+| RPO (max data loss) | ≤ 24h (last daily snapshot) | ≤ 5 min | Atlas snapshot → PITR |
+| RTO (max downtime to restore) | ≤ 2h (snapshot → new cluster, drill below) | ≤ 2h | restore-to-new-cluster drill |
+
+### Database credentials & dev isolation  *(set 2026-06-12)*
+
+- **Prod** connects as **`blueprint_app`** — least privilege: `readWrite` on the
+  `blueprint` DB only, **scoped to the `Blueprint` cluster only**. The credential
+  lives solely in the `mongodb-uri` Container App secret. To rotate: create a
+  replacement user, update the secret, roll a revision (verify `/readyz` + the
+  sign-in path are healthy), then delete the old user — zero-downtime because the
+  old revision serves until the new one is ready.
+- **Local dev** connects as **`blueprint_dev`** against the separate **`Cluster1`**
+  Flex cluster (scoped to it) — never prod. This is deliberate: it removes the
+  "dev writes hit prod" failure class. Do not point a developer `.env` back at the
+  `Blueprint` cluster.
+- **Network:** the project IP access list is currently `0.0.0.0/0` (auth is
+  password + TLS). It cannot be pinned to the Container App because Consumption
+  egress IPs rotate; tightening to a private endpoint requires the M10+ upgrade
+  above (PrivateLink). Tracked as accepted risk at the Flex tier.
 
 ### Restore drill  *(run quarterly — never restore over prod)*
 
@@ -216,9 +240,11 @@ Verify in **Atlas → Cluster → Backup**:
 
 ### Data-incident runbook
 
-- **Accidental delete / corruption:** on a dedicated tier, **PITR-restore to a new
-  cluster at a timestamp just before the incident**, validate per the drill, then
-  cut `MONGODB_URI` over. Don't mutate prod while diagnosing.
+- **Accidental delete / corruption:** on the current Flex tier, **restore the most
+  recent daily snapshot to a NEW cluster** (no PITR — you lose writes since that
+  snapshot), validate per the drill, then cut `MONGODB_URI` over. On a dedicated
+  tier, PITR-restore to a timestamp just before the incident instead. Either way,
+  don't mutate prod while diagnosing.
 - **Destructive endpoints to treat with care:** `POST /api/tasks/backfill-cutoff`
   **hard-deletes** old synced cards — always run it **dry-run first**. Accounting
   period close / closing entries are reversible **through the app**, not via raw DB

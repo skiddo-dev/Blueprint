@@ -22,6 +22,30 @@ describe('handleError', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(logged.id).toBe((result as any).id)
   })
+
+  it('downgrades 4xx (e.g. a 404 for /favicon.ico) to a warn, not an error', () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const event = { request: { method: 'GET' }, url: new URL('https://x.test/favicon.ico') }
+    const result = handleError({
+      error: new Error('Not found: /favicon.ico'),
+      event,
+      status: 404,
+      message: 'Not Found',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    // Never counted as a server error → no error-level log (keeps the error-rate alert clean).
+    expect(errSpy).not.toHaveBeenCalled()
+    const warned = JSON.parse(warnSpy.mock.calls[0][0] as string)
+    expect(warned).toMatchObject({ level: 'warn', msg: 'client error', status: 404, path: '/favicon.ico' })
+    // No stack on the client-error path.
+    expect(warned.stack).toBeUndefined()
+    // Sanitized client shape still carries a correlation id.
+    expect(result).toMatchObject({ message: 'Not found' })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(typeof (result as any).id).toBe('string')
+  })
 })
 
 describe('fakeAuthInProd (DEV_FAKE_AUTH production guard)', () => {
