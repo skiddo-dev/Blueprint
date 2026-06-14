@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildProvidersFromSettled, isFresh } from './index'
+import { buildProvidersFromSettled, isFresh, withTimeout } from './index'
 import { emptyProvider } from './shared'
 import type { ProviderSpend, InfraSnapshot } from './types'
 
@@ -37,5 +37,16 @@ describe('isFresh', () => {
   })
   it('treats an unparseable timestamp as stale', () => {
     expect(isFresh(at('not-a-date'), now)).toBe(false)
+  })
+})
+
+describe('withTimeout', () => {
+  it('passes through a value that settles in time', async () => {
+    await expect(withTimeout(Promise.resolve(42), 50, 'Azure')).resolves.toBe(42)
+  })
+
+  it('rejects with a labeled message when the promise is too slow', async () => {
+    const slow = new Promise<number>((res) => setTimeout(() => res(1), 100))
+    await expect(withTimeout(slow, 10, 'Azure')).rejects.toThrow(/Azure billing fetch timed out/)
   })
 })
