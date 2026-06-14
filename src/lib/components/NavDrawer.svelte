@@ -26,6 +26,7 @@
   const NAV: { href: string; icon: IconName; label: string }[] = [
     { href: '/', icon: 'board', label: 'Kanban Board' },
     { href: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+    { href: '/jobs', icon: 'scales', label: 'Job Cockpit' },
     { href: '/quotes', icon: 'quote', label: 'Quote Generator' },
     { href: '/accounting', icon: 'ledger', label: 'Accounting' },
     { href: '/infra', icon: 'spend', label: 'Infra Spend' },

@@ -15,7 +15,9 @@ const MOCK_INBOXES = ['ben@raves.com', 'andrew@raves.com', 'kris@raves.com', 'mi
 
 // A small store pool with deliberate overlap so the #store tags and the store
 // filter have something realistic to chew on in mock mode.
-const MOCK_STORES = ['412', '257', '380', '441', '129']
+// Shared across mock cards, quotes, and job-cost docs so the Job Cockpit's three
+// lenses (quotes / cards / books) line up on the same stores in USE_MOCK_DATA.
+export const MOCK_STORES = ['412', '257', '380', '441', '129']
 
 const TEMPLATES: Array<[string, string, string]> = [
   ['Site Inspection Required', 'Requires immediate attention from site supervisor', 'Follow up with vendor on delivery date'],
@@ -168,7 +170,9 @@ export function generateMockQuotes(count = 28): Quote[] {
       _id: `mock_quote_${String(i).padStart(2, '0')}`,
       quote_number: i,
       year: sent.getFullYear(),
-      store_number: String(1000 + randInt(8000)),
+      // Most quotes land on a known store (so they roll up with cards + books in
+      // the Job Cockpit); a third get a random store for log variety.
+      store_number: i % 3 === 0 ? String(1000 + randInt(8000)) : MOCK_STORES[i % MOCK_STORES.length],
       point_of_contact: pick(QUOTE_PEOPLE),
       description: pick(QUOTE_WORK_TYPES),
       amount: 2500 + randInt(88_000),
