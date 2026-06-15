@@ -97,6 +97,8 @@ const ICONS = {
 
   /* ── Drawer controls & admin ────────────────────────────────────── */
   menu: '<path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/>',
+  // Panel split off a left rail: collapse / expand the sidebar.
+  sidebar: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.25 4.5v15"/>',
   x: '<path d="m6.5 6.5 11 11"/><path d="m17.5 6.5-11 11"/>',
   check: '<path d="m5 12.75 4.4 4.4L19 7.4"/>',
   plus: '<path d="M12 5.25v13.5"/><path d="M5.25 12h13.5"/>',

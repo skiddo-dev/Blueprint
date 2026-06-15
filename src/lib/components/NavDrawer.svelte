@@ -3,6 +3,7 @@
   import ThemeToggle from './ThemeToggle.svelte'
   import Icon from './Icon.svelte'
   import { openSearch } from '$lib/search.svelte'
+  import { sidebarUI, toggleSidebar } from '$lib/sidebar.svelte'
   import type { IconName } from '$lib/icons'
   import type { Snippet } from 'svelte'
 
@@ -51,10 +52,21 @@
   <div class="sidebar-backdrop" onclick={() => (open = false)} role="presentation"></div>
 {/if}
 
-<aside class="sidebar" class:open>
+<aside class="sidebar" class:open class:collapsed={sidebarUI.collapsed}>
   <div class="brand">
     <span class="brand-mark"><Icon name="logo" size={17} /></span>
     <span class="brand-name">Blueprint</span>
+    <!-- Collapses the sidebar to a slim rail on desktop; the same button expands
+         it again. Hidden on mobile, where the ☰ top-bar drives the drawer. -->
+    <button
+      class="sidebar-collapse"
+      onclick={toggleSidebar}
+      aria-label={sidebarUI.collapsed ? 'Show sidebar' : 'Hide sidebar'}
+      aria-expanded={!sidebarUI.collapsed}
+      title={sidebarUI.collapsed ? 'Show sidebar' : 'Hide sidebar'}
+    >
+      <Icon name="sidebar" size={16} />
+    </button>
   </div>
 
   <div class="user-info">
@@ -65,7 +77,12 @@
     <button class="sidebar-close" onclick={() => (open = false)} aria-label="Close menu"><Icon name="x" size={16} /></button>
   </div>
 
-  <button class="nav-search" type="button" onclick={() => { openSearch(); open = false }}>
+  <button
+    class="nav-search"
+    type="button"
+    onclick={() => { openSearch(); open = false }}
+    title={sidebarUI.collapsed ? 'Search' : undefined}
+  >
     <span class="nav-search-label"><Icon name="search" size={14} /> Search</span>
     <kbd>⌘K</kbd>
   </button>
@@ -75,6 +92,7 @@
     href={user.role === 'admin' ? '/guides/admin-user-guide.pdf' : '/guides/pm-user-guide.pdf'}
     target="_blank"
     rel="noopener"
+    title={sidebarUI.collapsed ? 'Help & Guide' : undefined}
     onclick={() => (open = false)}
   >
     <Icon name="guide" size={14} /> Help &amp; Guide
@@ -95,6 +113,7 @@
           class="nav-link"
           class:active={isActive(item.href)}
           aria-current={isActive(item.href) ? 'page' : undefined}
+          title={sidebarUI.collapsed ? item.label : undefined}
           onclick={() => (open = false)}
         >
           <span class="nav-icon" aria-hidden="true"><Icon name={item.icon} size={15} /></span>{item.label}
@@ -136,6 +155,81 @@
     align-items: center;
     gap: 8px;
     padding: 2px 2px 4px;
+  }
+
+  /* "Hide sidebar" — sits at the end of the brand row. Desktop only; the mobile
+     drawer is dismissed with the ✕ in the user row instead. */
+  .sidebar-collapse {
+    margin-left: auto;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: var(--text-faint);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+  }
+  .sidebar-collapse:hover { border-color: var(--primary); color: var(--primary-text); }
+
+  /* Desktop collapse → a slim icon rail: keep the toggle, search, help, theme and
+     the nav glyphs (labels collapsed to nothing), drop the text-only rows so
+     .main-content reclaims the width. Stays in the flex flow (no overlap), and is
+     scoped to ≥769px so it never fights the mobile off-canvas drawer rules. */
+  @media (min-width: 769px) {
+    .sidebar.collapsed {
+      width: 56px;
+      padding: 14px 8px;
+      align-items: stretch;
+      gap: 6px;
+      overflow-x: hidden;
+    }
+
+    /* Hide every row by default — board stats + ThemeToggle carry a foreign scope
+       hash (snippet / child component), so a scoped :not() can't reach them, hence
+       :global — then bring the icon chrome back below. */
+    .sidebar.collapsed > :global(:not(.brand)) { display: none; }
+
+    /* Brand row → just the toggle, centred. */
+    .sidebar.collapsed .brand { padding: 0; gap: 0; justify-content: center; }
+    .sidebar.collapsed .brand-mark,
+    .sidebar.collapsed .brand-name { display: none; }
+    .sidebar.collapsed .sidebar-collapse { margin: 0; }
+
+    /* Icon-only chrome. font-size:0 collapses the bare-text labels (and the ⌘K
+       hint) while the SVGs keep their fixed width/height — the labels stay in the
+       a11y tree, and a `title` (set when collapsed) surfaces on hover.
+       NOTE: keep the :global ThemeToggle rule on its own — mixing :global into a
+       comma list corrupts the scope hash of its scoped siblings (they silently
+       stop matching). */
+    .sidebar.collapsed .nav-search,
+    .sidebar.collapsed .nav-help {
+      display: inline-flex;
+      justify-content: center;
+      gap: 0;
+      padding: 9px 0;
+      font-size: 0;
+    }
+    .sidebar.collapsed :global(.theme-toggle) {
+      justify-content: center;
+      gap: 0;
+      padding: 9px 0;
+      font-size: 0;
+    }
+    .sidebar.collapsed .nav-search-label { gap: 0; }
+    .sidebar.collapsed .nav-search kbd { display: none; }
+    .sidebar.collapsed :global(.tt-label) { gap: 0; }
+
+    .sidebar.collapsed .nav-links { display: flex; }
+    .sidebar.collapsed .nav-link {
+      justify-content: center;
+      padding: 9px 0;
+      font-size: 0;
+    }
+    .sidebar.collapsed .nav-icon { margin-right: 0; }
   }
   .brand-mark {
     display: inline-flex;
@@ -266,5 +360,7 @@
     .sidebar.open { display: flex; }   /* shown when the menu button is tapped */
     .sidebar-close { display: inline-flex; }
     .nav-link { display: flex; align-items: center; min-height: 44px; }
+    /* Collapse is a desktop affordance; the ☰ top bar drives the drawer here. */
+    .sidebar-collapse { display: none; }
   }
 </style>
