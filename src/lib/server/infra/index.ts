@@ -17,6 +17,10 @@ export type { InfraSnapshot, ProviderSpend, SpendLine, SpendPoint } from './type
 const CACHE_KEY = 'infra_spend_cache'
 const TTL_MS = 6 * 60 * 60_000 // 6h
 const LEASE_MS = 60_000
+// Upper bound on a single provider's fetch. Bounds the cold-start and explicit
+// Refresh paths so one slow/throttled billing API (Azure Cost Management is the
+// usual culprit) degrades to an Error card instead of hanging the whole page.
+const FETCH_TIMEOUT_MS = 20_000
 
 // Provider order shown in the UI (matches how the feature was described).
 const FETCHERS: { provider: InfraProvider; label: string; fetch: (now: Date) => Promise<ProviderSpend> }[] = [
@@ -45,6 +49,17 @@ export function isFresh(snapshot: InfraSnapshot, now: Date = new Date(), ttlMs: 
   return Number.isFinite(at) && now.getTime() - at < ttlMs
 }
 
+/** Reject if `p` doesn't settle within `ms`. Clears its timer when `p` wins so a
+ *  resolved fetch can't keep the process alive. The losing fetch is left to
+ *  settle and be GC'd on its own (its result is simply discarded). */
+export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} billing fetch timed out after ${Math.round(ms / 1000)}s`)), ms)
+  })
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer))
+}
+
 async function readCache(): Promise<InfraSnapshot | null> {
   try {
     const meta = await getMeta(CACHE_KEY)
@@ -56,7 +71,9 @@ async function readCache(): Promise<InfraSnapshot | null> {
 
 async function buildSnapshot(): Promise<InfraSnapshot> {
   const now = new Date()
-  const results = await Promise.allSettled(FETCHERS.map((f) => f.fetch(now)))
+  const results = await Promise.allSettled(
+    FETCHERS.map((f) => withTimeout(f.fetch(now), FETCH_TIMEOUT_MS, f.label)),
+  )
   return { providers: buildProvidersFromSettled(results), refreshedAt: now.toISOString() }
 }
 
@@ -90,16 +107,37 @@ export async function refreshInfraSnapshot(): Promise<InfraSnapshot> {
   }
 }
 
-/** Cached read for the page load: serve a fresh cache immediately, otherwise
- *  refresh inline. Never throws — falls back to stale cache or an empty snapshot
- *  so the page always renders. */
+// In-process guard so concurrent stale page loads kick off at most one
+// background refresh (the DB lease additionally dedupes across replicas).
+let bgRefreshing = false
+
+/** Fire-and-forget refresh for the stale-while-revalidate path. Deduped per
+ *  process and never throws, so it can't crash the request that triggered it. */
+function refreshInBackground(): void {
+  if (bgRefreshing) return
+  bgRefreshing = true
+  void refreshInfraSnapshot()
+    .catch((e) => log.warn('infra spend background refresh failed', { error: e instanceof Error ? e.message : String(e) }))
+    .finally(() => {
+      bgRefreshing = false
+    })
+}
+
+/** Cached read for the page load. Stale-while-revalidate: serve any cached
+ *  snapshot immediately — even a stale one — and refresh in the background, so
+ *  the page never blocks on the slow, rate-limited billing APIs. Only a true
+ *  cold start (nothing cached yet) fetches inline. Never throws — falls back to
+ *  an empty snapshot so the page always renders. */
 export async function getInfraSnapshot(): Promise<InfraSnapshot> {
   const cached = await readCache()
-  if (cached && isFresh(cached)) return cached
+  if (cached) {
+    if (!isFresh(cached)) refreshInBackground()
+    return cached
+  }
   try {
     return await refreshInfraSnapshot()
   } catch (e) {
     log.warn('infra spend refresh failed', { error: e instanceof Error ? e.message : String(e) })
-    return cached ?? { providers: FETCHERS.map((f) => emptyProvider(f.provider, f.label, { error: 'unavailable' })), refreshedAt: new Date().toISOString() }
+    return { providers: FETCHERS.map((f) => emptyProvider(f.provider, f.label, { error: 'unavailable' })), refreshedAt: new Date().toISOString() }
   }
 }
