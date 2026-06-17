@@ -1,16 +1,26 @@
 import { PDFParse } from 'pdf-parse'
 import type OpenAI from 'openai'
 import { getClient, MODEL } from './openai'
+import { log } from './log'
 import { normalizeStoreNumbers } from '$lib/storeNumbers'
 
 // Reads the documents PMs retype by hand today — POs, scopes, and bids that
 // arrive as email attachments (downloaded + stored, but never opened until now).
 // Text is extracted locally (pdf-parse for PDFs, raw decode for txt/csv); image
 // attachments (scanned POs arrive as PNG/JPEG) go to the same model as vision
-// input. Both paths share one gpt-4o-mini Structured-Outputs call. Anything else
-// (Office docs, archives, image-only PDFs) is skipped.
+// input. A PDF with NO text layer (a scanned/signed contract, a faxed PO) is
+// rasterized to page images and OCR'd through that same vision path. Both paths
+// share one gpt-4o-mini Structured-Outputs call. Anything else (Office docs,
+// archives) is skipped.
 
 const TEXT_CAP = 8000
+// First N pages to rasterize when a PDF has no readable text layer. A contract's
+// parties/scope/amounts are on the opening pages; capping bounds vision cost.
+const MAX_VISION_PAGES = 3
+// A PDF with fewer real text characters than this is treated as having no usable
+// text layer (a scan / flattened-signed doc) and routed to vision OCR instead.
+// pdf-parse returns a page even when it's pure image, so ">0 chars" isn't enough.
+const PDF_MIN_TEXT = 24
 
 export interface ParsedDoc {
   doc_type: 'Purchase Order' | 'Quote/Bid' | 'Scope of Work' | 'Invoice' | 'Receipt' | 'Drawing' | 'Other' | null
@@ -30,6 +40,10 @@ function isType(filename: string, contentType: string | undefined, ext: string, 
   return filename.toLowerCase().endsWith(ext) || (!!contentType && mime.test(contentType))
 }
 
+function isPdf(filename: string, contentType: string | undefined): boolean {
+  return isType(filename, contentType, '.pdf', /pdf/i)
+}
+
 /** Pull plain text from a parseable attachment. Returns null for unsupported
  *  types (image-only PDFs yield little/no text — handled by the caller's null
  *  guard). Never throws — a bad file degrades to null, never blocks a sync. */
@@ -39,12 +53,16 @@ export async function extractText(
   buf: Buffer,
 ): Promise<string | null> {
   try {
-    if (isType(filename, contentType, '.pdf', /pdf/i)) {
+    if (isPdf(filename, contentType)) {
       const parser = new PDFParse({ data: buf })
       try {
-        const { text } = await parser.getText()
+        // pageJoiner: '' suppresses pdf-parse's synthetic "-- 1 of N --" page
+        // markers, which would otherwise count as "text" for an image-only PDF
+        // (and pollute the LLM input for normal ones). A near-empty result then
+        // means no usable text layer → caller falls through to vision OCR.
+        const { text } = await parser.getText({ pageJoiner: '' })
         const trimmed = (text ?? '').trim()
-        return trimmed ? trimmed.slice(0, TEXT_CAP) : null
+        return trimmed.length >= PDF_MIN_TEXT ? trimmed.slice(0, TEXT_CAP) : null
       } finally {
         await parser.destroy()
       }
@@ -57,7 +75,11 @@ export async function extractText(
       return text ? text.slice(0, TEXT_CAP) : null
     }
     return null
-  } catch {
+  } catch (e) {
+    // A bad file degrades to null (never blocks a sync) — but log it, because a
+    // silent null here was indistinguishable from a scanned PDF and hid the fact
+    // that parsing was being skipped entirely in prod.
+    log.warn('attachment: text extraction failed', { filename, err: e instanceof Error ? e.message : String(e) })
     return null
   }
 }
@@ -205,10 +227,36 @@ export async function parseImageAttachmentWithLLM(
   ])
 }
 
+/** Rasterize the first `maxPages` pages of a PDF to PNG data URLs (the vision API
+ *  accepts data:image/png). Used only when a PDF has no text layer to read.
+ *  Graceful: a corrupt/unrenderable PDF returns [] so a sync never blocks. Uses
+ *  the @napi-rs/canvas renderer pdf-parse already bundles — no extra dependency. */
+async function renderPdfPages(buf: Buffer, maxPages: number): Promise<string[]> {
+  const parser = new PDFParse({ data: buf })
+  try {
+    const shot = await parser.getScreenshot({ first: maxPages, scale: 2, imageBuffer: false, imageDataUrl: true })
+    return (shot.pages ?? []).map(p => p.dataUrl).filter((u): u is string => typeof u === 'string' && u.startsWith('data:image/'))
+  } finally {
+    await parser.destroy()
+  }
+}
+
+/** Extract a ParsedDoc from a scanned/image-only PDF by sending its rendered page
+ *  images to the model as vision input — the same single Structured-Outputs call
+ *  the text and single-image paths use, just with several page images at once. */
+async function parsePdfPagesViaVision(dataUrls: string[], filename: string): Promise<ParsedDoc> {
+  if (!dataUrls.length) return { ...EMPTY }
+  return extractWithLLM([
+    { type: 'text', text: `Filename: ${filename}\nThe attached page image(s) are a scanned or image-only PDF document.` },
+    ...dataUrls.map(url => ({ type: 'image_url' as const, image_url: { url } })),
+  ])
+}
+
 /** Unified entry for "read this attachment": local text extraction when the
- *  format allows it, vision for images, null for everything else (Office docs,
- *  archives, image-only PDFs). Null means "unreadable", distinct from a readable
- *  doc that yielded nothing. */
+ *  format allows it, vision for image files, and — for a PDF with no text layer
+ *  (a scanned/signed contract, a faxed PO) — rasterize-then-vision. Null means
+ *  "unreadable" (Office docs, archives), distinct from a readable doc that yielded
+ *  nothing. */
 export async function analyzeAttachment(
   filename: string,
   contentType: string | undefined,
@@ -216,7 +264,26 @@ export async function analyzeAttachment(
 ): Promise<ParsedDoc | null> {
   const text = await extractText(filename, contentType, buf)
   if (text) return parseAttachmentWithLLM(text, filename)
+
   const mime = imageMime(filename, contentType)
   if (mime) return parseImageAttachmentWithLLM(buf, mime, filename)
+
+  // No text layer and not an image file. If it's a PDF, it's almost certainly a
+  // scan or a flattened/signed document (the common shape for contracts) — read
+  // it through vision instead of dropping it on the floor as we used to.
+  if (isPdf(filename, contentType)) {
+    let images: string[] = []
+    try {
+      images = await renderPdfPages(buf, MAX_VISION_PAGES)
+    } catch (e) {
+      log.warn('attachment: scanned PDF could not be rasterized for vision', {
+        filename, err: e instanceof Error ? e.message : String(e),
+      })
+    }
+    if (!images.length) return null
+    log.info('attachment: PDF has no text layer, reading via vision OCR', { filename, pages: images.length })
+    return parsePdfPagesViaVision(images, filename)
+  }
+
   return null
 }
