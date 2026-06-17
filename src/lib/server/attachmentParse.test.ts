@@ -9,10 +9,25 @@ vi.mock('openai', () => ({
   },
 }))
 
+// Mock pdf-parse so PDF tests drive getText()/getScreenshot() without real files:
+// getText controls whether a PDF has a readable text layer, getScreenshot backs
+// the scanned-PDF → vision rasterization path.
+const getTextMock = vi.hoisted(() => vi.fn())
+const getScreenshotMock = vi.hoisted(() => vi.fn())
+vi.mock('pdf-parse', () => ({
+  PDFParse: class {
+    getText = getTextMock
+    getScreenshot = getScreenshotMock
+    destroy = vi.fn(async () => {})
+  },
+}))
+
 import { extractText, parseAttachmentWithLLM, parseImageAttachmentWithLLM, imageMime, analyzeAttachment } from './attachmentParse'
 
 beforeEach(() => {
   createMock.mockReset()
+  getTextMock.mockReset().mockResolvedValue({ text: '' })
+  getScreenshotMock.mockReset().mockResolvedValue({ pages: [], total: 0 })
 })
 
 const EMPTY = { doc_type: null, po: null, amount: null, vendor: null, doc_date: null, store_numbers: [], summary: '', pertinent: false, confidence: 0 }
@@ -135,6 +150,74 @@ describe('analyzeAttachment — routing', () => {
 
   it('returns null (no model call) for unreadable types', async () => {
     expect(await analyzeAttachment('plans.zip', 'application/zip', Buffer.from('zip'))).toBeNull()
+    expect(createMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('analyzeAttachment — scanned PDF vision fallback', () => {
+  it('uses the text path when the PDF has a readable text layer', async () => {
+    getTextMock.mockResolvedValue({ text: 'PURCHASE ORDER  PO 4471  $12,300.00' })
+    createMock.mockResolvedValue(modelReply({ doc_type: 'Purchase Order', po: '4471', pertinent: true, summary: 'PO.' }))
+
+    const result = await analyzeAttachment('po.pdf', 'application/pdf', Buffer.from('%PDF-1.7'))
+
+    expect(result?.po).toBe('4471')
+    // text path → string content; never rasterizes when there's a text layer
+    expect(typeof createMock.mock.calls[0][0].messages[1].content).toBe('string')
+    expect(getScreenshotMock).not.toHaveBeenCalled()
+  })
+
+  it('rasterizes a no-text-layer PDF (scanned contract) and reads it via vision', async () => {
+    getTextMock.mockResolvedValue({ text: '   ' }) // signed/scanned contract — no text layer
+    getScreenshotMock.mockResolvedValue({
+      pages: [
+        { dataUrl: 'data:image/png;base64,AAAA', pageNumber: 1 },
+        { dataUrl: 'data:image/png;base64,BBBB', pageNumber: 2 },
+      ],
+      total: 2,
+    })
+    createMock.mockResolvedValue(modelReply({
+      doc_type: 'Scope of Work', store_numbers: ['811'], pertinent: true, summary: 'Pharmacy contract for store 811.',
+    }))
+
+    const result = await analyzeAttachment('811 Contract.pdf', 'application/pdf', Buffer.from('%PDF-1.7'))
+
+    expect(result?.doc_type).toBe('Scope of Work')
+    expect(result?.store_numbers).toEqual(['811'])
+    expect(getScreenshotMock).toHaveBeenCalledWith(expect.objectContaining({ first: 3 }))
+    // vision path → array content carrying every rendered page image
+    const content = createMock.mock.calls[0][0].messages[1].content
+    expect(Array.isArray(content)).toBe(true)
+    expect(content.filter((p: { type: string }) => p.type === 'image_url')).toHaveLength(2)
+    expect(content[1].image_url.url).toBe('data:image/png;base64,AAAA')
+  })
+
+  it('treats a PDF whose only "text" is pdf-parse page markers as no text layer', async () => {
+    // pdf-parse emits a synthetic page for an image-only PDF; even with markers
+    // suppressed a scan can leave a few stray chars. Below PDF_MIN_TEXT we must
+    // route to vision, not feed the model near-empty junk.
+    getTextMock.mockResolvedValue({ text: '-- 1 of 1 --' })
+    getScreenshotMock.mockResolvedValue({ pages: [{ dataUrl: 'data:image/png;base64,AAAA', pageNumber: 1 }], total: 1 })
+    createMock.mockResolvedValue(modelReply({ doc_type: 'Invoice', pertinent: true, summary: 'Scanned invoice.' }))
+
+    const result = await analyzeAttachment('scan.pdf', 'application/pdf', Buffer.from('%PDF'))
+
+    expect(result?.doc_type).toBe('Invoice')
+    expect(getScreenshotMock).toHaveBeenCalled()
+    expect(Array.isArray(createMock.mock.calls[0][0].messages[1].content)).toBe(true)
+  })
+
+  it('returns null (no model call) when a no-text PDF cannot be rasterized', async () => {
+    getTextMock.mockResolvedValue({ text: '' })
+    getScreenshotMock.mockRejectedValue(new Error('not a pdf'))
+    expect(await analyzeAttachment('broken.pdf', 'application/pdf', Buffer.from('xx'))).toBeNull()
+    expect(createMock).not.toHaveBeenCalled()
+  })
+
+  it('returns null when rasterization yields zero pages', async () => {
+    getTextMock.mockResolvedValue({ text: '' })
+    getScreenshotMock.mockResolvedValue({ pages: [], total: 0 })
+    expect(await analyzeAttachment('empty.pdf', 'application/pdf', Buffer.from('%PDF'))).toBeNull()
     expect(createMock).not.toHaveBeenCalled()
   })
 })
